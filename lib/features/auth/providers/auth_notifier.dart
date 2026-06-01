@@ -1,0 +1,87 @@
+import 'dart:async';
+import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:ecopin_app/features/auth/data/models/auth_state.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+// Provider for AuthNotifier
+final authNotifierProvider = ChangeNotifierProvider((ref) => AuthNotifier(ref));
+
+class AuthNotifier extends ChangeNotifier {
+  final Ref _ref;
+  final SupabaseClient _supabase = Supabase.instance.client;
+  AppAuthState _state = AppAuthState.initial();
+  StreamSubscription<AuthState>? _authSubscription;
+
+  AuthNotifier(this._ref) {
+    _initialize();
+  }
+
+  AppAuthState get state => _state;
+
+  void _initialize() {
+    // Check current session
+    final session = _supabase.auth.currentSession;
+    _updateState(session);
+
+    // Listen to auth changes
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      _updateState(data.session);
+    });
+  }
+
+  Future<void> _updateState(Session? session) async {
+    if (session == null) {
+      _state = AppAuthState.unauthenticated();
+      notifyListeners();
+    } else {
+      try {
+        // Fetch user and role from backend (database-driven)
+        final apiClient = _ref.read(apiClientProvider);
+        final response = await apiClient.getMe();
+
+        final userData = response.data['user'];
+        final roleString = userData['role'] as String?;
+
+        UserRole? role;
+        if (roleString != null) {
+          role = UserRole.values.firstWhere(
+            (r) => r.name == roleString,
+            orElse: () => UserRole.citizen,
+          );
+        }
+
+        _state = AppAuthState.authenticated(role);
+      } catch (e) {
+        // If backend fails, we might still have a Supabase session but
+        // we can't verify the role/user in our DB.
+        // For safety, we can either treat as unauthenticated or use a default.
+        _state = AppAuthState.unauthenticated();
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> signOut() async {
+    try {
+      // 1. Call backend logout if possible
+      final apiClient = _ref.read(apiClientProvider);
+      await apiClient.logout();
+    } catch (e) {
+      // Ignore backend logout errors and proceed with local signout
+    } finally {
+      // 2. Clear Supabase session locally
+      await _supabase.auth.signOut();
+      // _updateState will be triggered by onAuthStateChange listener
+    }
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+}

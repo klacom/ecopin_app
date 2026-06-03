@@ -1,0 +1,242 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:ecopin_app/shared/widgets/app_button.dart';
+import 'package:ecopin_app/shared/widgets/app_text_field.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
+
+class CreateReportScreen extends StatefulWidget {
+  final LatLng? initialLocation;
+  const CreateReportScreen({super.key, this.initialLocation});
+
+  @override
+  State<CreateReportScreen> createState() => _CreateReportScreenState();
+}
+
+class _CreateReportScreenState extends State<CreateReportScreen> {
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  String? _selectedIssueType;
+  final MapController _mapController = MapController();
+  late LatLng _selectedLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedLocation = widget.initialLocation ?? pasigInitialCenter;
+  }
+
+  final List<String> _issueTypes = [
+    'Waste',
+    'Flooding',
+    'Pollution',
+    'Illegal Logging',
+    'Others',
+  ];
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Create Report')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Pin Location',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _selectedLocation,
+                    initialZoom: 15.0,
+                    minZoom: 12,
+                    maxZoom: 18,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.all,
+                    ),
+                    cameraConstraint: CameraConstraint.contain(
+                      bounds: pasigBounds,
+                    ),
+                    onTap: (tapPosition, point) {
+                      setState(() {
+                        _selectedLocation = point;
+                      });
+                    },
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.ecopinas.ecopin_app',
+                      tileBounds: pasigBounds,
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _selectedLocation,
+                          width: 80,
+                          height: 80,
+                          child: const Icon(
+                            Icons.location_pin,
+                            color: Colors.red,
+                            size: 40,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.my_location, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Coordinates: ${_selectedLocation.latitude.toStringAsFixed(6)}, ${_selectedLocation.longitude.toStringAsFixed(6)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                'Tap the map to fine-tune the location',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Details',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            AppTextField(
+              controller: _titleController,
+              labelText: 'Title',
+              hintText: 'Brief summary of the issue',
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedIssueType,
+              decoration: const InputDecoration(
+                labelText: 'Issue Type',
+                border: OutlineInputBorder(),
+              ),
+              items: _issueTypes.map((type) {
+                return DropdownMenuItem(value: type, child: Text(type));
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedIssueType = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            AppTextField(
+              controller: _descriptionController,
+              labelText: 'Description',
+              hintText: 'Provide more details about the issue...',
+              maxLines: 4,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Photos',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildPhotoOption(
+                  icon: Icons.camera_alt,
+                  label: 'Camera',
+                  onTap: () {
+                    // TODO: Implement camera logic
+                  },
+                ),
+                const SizedBox(width: 16),
+                _buildPhotoOption(
+                  icon: Icons.photo_library,
+                  label: 'Gallery',
+                  onTap: () {
+                    // TODO: Implement gallery logic
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 40),
+            AppButton(
+              text: 'Submit Report',
+              onPressed: () {
+                // TODO: Implement submit logic
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32, color: Colors.grey.shade700),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

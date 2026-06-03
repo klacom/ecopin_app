@@ -15,6 +15,9 @@ class PublicAppRoutes {
 class ProtectedAppRoutes {
   static const String maps = '/maps';
   static const String reports = '/reports';
+  static const String notifications = '/notifications';
+  static const String profile = '/profile';
+  static const String createReport = '/create-report';
 
-  static const protectedRoutes = [maps, reports];
+  static const protectedRoutes = [maps, reports, notifications, profile, createReport];
 }

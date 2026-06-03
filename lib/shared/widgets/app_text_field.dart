@@ -10,6 +10,8 @@ class AppTextField extends StatelessWidget {
   final String? placeholderText;
   final String? inputType;
   final TextEditingController controller;
+  final String? hintText;
+  final int? maxLines;
 
   const AppTextField({
     super.key,
@@ -20,8 +22,10 @@ class AppTextField extends StatelessWidget {
     this.width = double.infinity,
     this.height = 50.0,
     this.placeholderText = '',
-    this.inputType = 'text', 
-    required this.controller, 
+    this.inputType = 'text',
+    required this.controller,
+    this.hintText = "",
+    this.maxLines = 4,
   });
 
   @override

@@ -1,11 +1,18 @@
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
 import 'package:ecopin_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:ecopin_app/features/auth/presentation/screens/register_screen.dart';
+import 'package:ecopin_app/features/main_screen.dart';
 import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
+import 'package:ecopin_app/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:ecopin_app/features/profile/presentation/screens/profile_screen.dart';
+import 'package:ecopin_app/features/reports/presentation/screens/create_report_screen.dart';
+import 'package:ecopin_app/features/reports/presentation/screens/reports_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
+
+import 'package:latlong2/latlong.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.watch(authNotifierProvider);
@@ -39,16 +46,41 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const LoginScreen(),
       ),
       GoRoute(
-        path: ProtectedAppRoutes.maps,
-        builder: (_, _) => const MapScreen(),
-      ),
-      GoRoute(
         path: PublicAppRoutes.register,
         builder: (_, _) => const RegisterScreen(),
       ),
       GoRoute(
         path: PublicAppRoutes.unauthorized,
         builder: (_, _) => const UnauthorizedScreen(),
+      ),
+      // Shell Route to maintain a consistent UI shell. Allows navigating on different routes while maintaining access to Bottom Nav Bar.
+      ShellRoute(
+        builder: (context, state, child) => MainScreen(child: child),
+        routes: [
+          GoRoute(
+            path: ProtectedAppRoutes.maps,
+            builder: (_, _) => const MapScreen(),
+          ),
+          GoRoute(
+            path: ProtectedAppRoutes.reports,
+            builder: (_, _) => const ReportsScreen(),
+          ),
+          GoRoute(
+            path: ProtectedAppRoutes.notifications,
+            builder: (_, _) => const NotificationsScreen(),
+          ),
+          GoRoute(
+            path: ProtectedAppRoutes.profile,
+            builder: (_, _) => const ProfileScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: ProtectedAppRoutes.createReport,
+        builder: (_, state) {
+          final location = state.extra as LatLng?;
+          return CreateReportScreen(initialLocation: location);
+        },
       ),
     ],
   );

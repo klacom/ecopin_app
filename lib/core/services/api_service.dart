@@ -74,4 +74,36 @@ class ApiClient {
   Future<Response> logout() async {
     return _dio.post('/api/auth/logout');
   }
+
+  // Report methods
+  Future<Response> createReport({
+    required String title,
+    required String description,
+    required String issueType,
+    required double latitude,
+    required double longitude,
+  }) async {
+    return _dio.post(
+      '/api/reports',
+      data: {
+        'title': title,
+        'description': description,
+        'issue_type': issueType,
+        'latitude': latitude,
+        'longitude': longitude,
+      },
+    );
+  }
+
+  Future<Response> getMyReports() async {
+    return _dio.get('/api/reports/my');
+  }
+
+  Future<Response> getPublicReports() async {
+    return _dio.get('/api/reports/public');
+  }
+
+  Future<Response> getReportById(String id) async {
+    return _dio.get('/api/reports/$id');
+  }
 }

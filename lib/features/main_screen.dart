@@ -1,4 +1,7 @@
+import 'package:ecopin_app/core/services/location_service.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
 
@@ -47,66 +50,77 @@ class _MainScreenState extends State<MainScreen> {
       extendBody: true,
       body: widget.child,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      // Floating Action Button in the Center
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push(ProtectedAppRoutes.createReport),
+        onPressed: () async {
+          // Fetch current GPS location
+          final location = await LocationService.getCurrentLocation();
+          if (context.mounted) {
+            // If location is null, the CreateReportScreen will fallback to default coordinates
+            context.push(ProtectedAppRoutes.createReport, extra: location);
+          }
+        },
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: const Icon(Icons.add),
       ),
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        height: 70,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BottomAppBar(
-            elevation: 0,
-            color: Colors.transparent,
-            shape: const CircularNotchedRectangle(),
-            notchMargin: 8,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  0,
-                  Icons.map_outlined,
-                  Icons.map,
-                  'Maps',
-                  selectedIndex,
-                ),
-                _buildNavItem(
-                  1,
-                  Icons.location_on_outlined,
-                  Icons.location_on,
-                  'Reports',
-                  selectedIndex,
-                ),
-                const SizedBox(width: 40), // Space for FAB
-                _buildNavItem(
-                  2,
-                  Icons.notifications_outlined,
-                  Icons.notifications,
-                  'Alerts',
-                  selectedIndex,
-                ),
-                _buildNavItem(
-                  3,
-                  Icons.person_outline,
-                  Icons.person,
-                  'Profile',
-                  selectedIndex,
-                ),
-              ],
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          height: 70,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BottomAppBar(
+              elevation: 0,
+              color: Colors.transparent,
+              shape: const CircularNotchedRectangle(),
+              notchMargin: 8,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildNavItem(
+                    0,
+                    Icons.map_outlined,
+                    Icons.map,
+                    'Maps',
+                    selectedIndex,
+                  ),
+                  _buildNavItem(
+                    1,
+                    Icons.location_on_outlined,
+                    Icons.location_on,
+                    'Reports',
+                    selectedIndex,
+                  ),
+                  const SizedBox(width: 40), // Space for FAB
+                  _buildNavItem(
+                    2,
+                    Icons.notifications_outlined,
+                    Icons.notifications,
+                    'Alerts',
+                    selectedIndex,
+                  ),
+                  _buildNavItem(
+                    3,
+                    Icons.person_outline,
+                    Icons.person,
+                    'Profile',
+                    selectedIndex,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

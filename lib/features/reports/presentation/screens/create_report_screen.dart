@@ -4,21 +4,26 @@ import 'package:latlong2/latlong.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
 import 'package:ecopin_app/shared/widgets/app_text_field.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 
-class CreateReportScreen extends StatefulWidget {
+class CreateReportScreen extends ConsumerStatefulWidget {
   final LatLng? initialLocation;
   const CreateReportScreen({super.key, this.initialLocation});
 
   @override
-  State<CreateReportScreen> createState() => _CreateReportScreenState();
+  ConsumerState<CreateReportScreen> createState() => _CreateReportScreenState();
 }
 
-class _CreateReportScreenState extends State<CreateReportScreen> {
+class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   String? _selectedIssueType;
   final MapController _mapController = MapController();
   late LatLng _selectedLocation;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -33,6 +38,76 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
     'Illegal Logging',
     'Others',
   ];
+
+  Future<void> _submitReport() async {
+    if (_titleController.text.isEmpty) {
+      _showError('Please enter a title');
+      return;
+    }
+    if (_selectedIssueType == null) {
+      _showError('Please select an issue type');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Submission'),
+        content: const Text('Are you sure about your report details?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      await apiClient.createReport(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        issueType: _selectedIssueType!,
+        latitude: _selectedLocation.latitude,
+        longitude: _selectedLocation.longitude,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report submitted successfully!')),
+        );
+        context.pop(); // Go back after success
+      }
+    } on DioException catch (e) {
+      String message = 'Failed to submit report';
+      if (e.response?.data != null && e.response?.data['message'] != null) {
+        message = e.response?.data['message'];
+      }
+      _showError(message);
+    } catch (e) {
+      _showError('An unexpected error occurred: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
 
   @override
   void dispose() {
@@ -150,7 +225,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              initialValue: _selectedIssueType,
+              value: _selectedIssueType,
               decoration: const InputDecoration(
                 labelText: 'Issue Type',
                 border: OutlineInputBorder(),
@@ -173,7 +248,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Photos',
+              'Photos (Coming Soon)',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -182,26 +257,21 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                 _buildPhotoOption(
                   icon: Icons.camera_alt,
                   label: 'Camera',
-                  onTap: () {
-                    // TODO: Implement camera logic
-                  },
+                  onTap: () {},
                 ),
                 const SizedBox(width: 16),
                 _buildPhotoOption(
                   icon: Icons.photo_library,
                   label: 'Gallery',
-                  onTap: () {
-                    // TODO: Implement gallery logic
-                  },
+                  onTap: () {},
                 ),
               ],
             ),
             const SizedBox(height: 40),
             AppButton(
               text: 'Submit Report',
-              onPressed: () {
-                // TODO: Implement submit logic
-              },
+              isLoading: _isLoading,
+              onPressed: _isLoading ? null : _submitReport,
             ),
             const SizedBox(height: 24),
           ],
@@ -228,11 +298,11 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 32, color: Colors.grey.shade700),
+            Icon(icon, size: 32, color: Colors.grey.shade400),
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
             ),
           ],
         ),

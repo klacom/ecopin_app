@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
+import 'package:ecopin_app/features/reports/presentation/screens/report_details_screen.dart';
 
 import 'package:latlong2/latlong.dart';
 
@@ -64,6 +65,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: ProtectedAppRoutes.reports,
             builder: (_, _) => const ReportsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return ReportDetailsScreen(reportId: id);
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: ProtectedAppRoutes.notifications,

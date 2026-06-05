@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:dio/src/multipart_file.dart' as dio_multipart;
 
 final apiClientProvider = Provider((ref) => ApiClient());
 
@@ -105,5 +107,30 @@ class ApiClient {
 
   Future<Response> getReportById(String id) async {
     return _dio.get('/api/reports/$id');
+  }
+
+  Future<Response> uploadEvidence({
+    required String reportId,
+    required File imageFile,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final formData = FormData.fromMap({
+      'image': await dio_multipart.MultipartFile.fromFile(imageFile.path),
+      'latitude': latitude,
+      'longitude': longitude,
+    });
+
+    return _dio.post(
+      '/api/reports/$reportId/evidence',
+      data: formData,
+      options: Options(
+        contentType: 'multipart/form-data',
+      ),
+    );
+  }
+
+  Future<Response> getReportEvidence(String reportId) async {
+    return _dio.get('/api/reports/$reportId/evidence');
   }
 }

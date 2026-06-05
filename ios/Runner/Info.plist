@@ -26,6 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to capture evidence photos for environmental reports</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to save captured evidence photos</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs location access to tag evidence photos with accurate location data</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs location access to tag evidence photos with accurate location data</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -1,30 +1,27 @@
 import 'dart:io';
-import 'package:dio/dio.dart';
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:dio/src/multipart_file.dart' as dio_multipart;
 
 final apiClientProvider = Provider((ref) => ApiClient());
 
 class ApiClient {
   static String get baseUrl =>
-      dotenv.env['BACKEND_URL'] ?? 'http://localhost:3000';
-  // static const String baseUrl = 'https://your-backend.onrender.com'; // Production
+      dotenv.env['BACKEND_URL'] ?? 'http://localhost:3002';
 
-  final Dio _dio = Dio(
-    BaseOptions(
+  final dio.Dio _dio = dio.Dio(
+    dio.BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
       headers: {'Content-Type': 'application/json'},
     ),
   );
 
   ApiClient() {
-    // Add auth token interceptor
     _dio.interceptors.add(
-      InterceptorsWrapper(
+      dio.InterceptorsWrapper(
         onRequest: (options, handler) async {
           final session = Supabase.instance.client.auth.currentSession;
           final token = session?.accessToken;
@@ -35,10 +32,7 @@ class ApiClient {
         },
         onError: (error, handler) async {
           if (error.response?.statusCode == 401) {
-            // Supabase handles token refresh automatically in the background.
-            // If we still get a 401, it might mean the session is truly invalid/expired.
-            // We could attempt to force a refresh here if needed, but usually
-            // Supabase.instance.client.auth.currentSession handles it.
+            // Token refresh is handled by Supabase SDK
           }
           return handler.next(error);
         },
@@ -47,7 +41,7 @@ class ApiClient {
   }
 
   // Auth methods
-  Future<Response> register(
+  Future<dio.Response> register(
     String email,
     String password,
     String confirmPassword,
@@ -62,75 +56,71 @@ class ApiClient {
     );
   }
 
-  Future<Response> login(String email, String password) async {
+  Future<dio.Response> login(String email, String password) async {
     return _dio.post(
       '/api/auth/login',
       data: {'email': email, 'password': password},
     );
   }
 
-  Future<Response> getMe() async {
+  Future<dio.Response> getMe() async {
     return _dio.get('/api/auth/me');
   }
 
-  Future<Response> logout() async {
+  Future<dio.Response> logout() async {
     return _dio.post('/api/auth/logout');
   }
 
   // Report methods
-  Future<Response> createReport({
+  Future<dio.Response> createReport({
     required String title,
     required String description,
     required String issueType,
     required double latitude,
     required double longitude,
+    String? imagePath,
   }) async {
-    return _dio.post(
-      '/api/reports',
-      data: {
-        'title': title,
-        'description': description,
-        'issue_type': issueType,
-        'latitude': latitude,
-        'longitude': longitude,
-      },
-    );
+    final formData = dio.FormData.fromMap({
+      'title': title,
+      'description': description,
+      'issue_type': issueType,
+      'latitude': latitude,
+      'longitude': longitude,
+      if (imagePath != null)
+        'image': await dio.MultipartFile.fromFile(imagePath),
+    });
+
+    return _dio.post('/api/reports', data: formData);
   }
 
-  Future<Response> getMyReports() async {
+  Future<dio.Response> getMyReports() async {
     return _dio.get('/api/reports/my');
   }
 
-  Future<Response> getPublicReports() async {
+  Future<dio.Response> getPublicReports() async {
     return _dio.get('/api/reports/public');
   }
 
-  Future<Response> getReportById(String id) async {
+  Future<dio.Response> getReportById(String id) async {
     return _dio.get('/api/reports/$id');
   }
 
-  Future<Response> uploadEvidence({
+  Future<dio.Response> uploadEvidence({
     required String reportId,
     required File imageFile,
     required double latitude,
     required double longitude,
   }) async {
-    final formData = FormData.fromMap({
-      'image': await dio_multipart.MultipartFile.fromFile(imageFile.path),
+    final formData = dio.FormData.fromMap({
+      'image': await dio.MultipartFile.fromFile(imageFile.path),
       'latitude': latitude,
       'longitude': longitude,
     });
 
-    return _dio.post(
-      '/api/reports/$reportId/evidence',
-      data: formData,
-      options: Options(
-        contentType: 'multipart/form-data',
-      ),
-    );
+    return _dio.post('/api/reports/$reportId/evidence', data: formData);
   }
 
-  Future<Response> getReportEvidence(String reportId) async {
+  Future<dio.Response> getReportEvidence(String reportId) async {
     return _dio.get('/api/reports/$reportId/evidence');
   }
 }

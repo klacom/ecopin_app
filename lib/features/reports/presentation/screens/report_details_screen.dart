@@ -310,8 +310,32 @@ class _ValidationBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isValidated = status.toLowerCase() == 'validated';
-    final color = isValidated ? Colors.blue : Colors.grey;
+    Color color;
+    String label;
+    IconData icon;
+
+    switch (status.toLowerCase()) {
+      case 'automatically_valid':
+        color = Colors.green;
+        label = 'AI VALIDATED';
+        icon = Icons.verified;
+        break;
+      case 'manual_review':
+        color = Colors.orange;
+        label = 'MANUAL REVIEW';
+        icon = Icons.rate_review;
+        break;
+      case 'rejected':
+        color = Colors.red;
+        label = 'INVALID';
+        icon = Icons.error_outline;
+        break;
+      default:
+        color = Colors.grey;
+        label = 'PENDING';
+        icon = Icons.hourglass_empty;
+        break;
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -323,14 +347,10 @@ class _ValidationBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            isValidated ? Icons.verified : Icons.hourglass_empty,
-            size: 14,
-            color: color,
-          ),
+          Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
           Text(
-            isValidated ? 'AI VALIDATED' : 'PENDING VALIDATION',
+            label,
             style: TextStyle(
               color: color,
               fontSize: 10,

@@ -11,6 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
 class CreateReportScreen extends ConsumerStatefulWidget {
   final LatLng? initialLocation;
   const CreateReportScreen({super.key, this.initialLocation});
@@ -26,6 +29,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final MapController _mapController = MapController();
   late LatLng _selectedLocation = widget.initialLocation ?? pasigInitialCenter;
   bool _isLoading = false;
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
   final CameraService _cameraService = CameraService();
   List<File> _capturedImages = [];
   bool _isUploadingImage = false;
@@ -41,13 +46,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   Future<void> _captureImage() async {
     try {
       setState(() => _isUploadingImage = true);
-      
+
       final imageData = await _cameraService.captureImage();
       if (imageData != null) {
         setState(() {
           _capturedImages.add(imageData['file'] as File);
         });
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Image captured successfully')),
@@ -69,7 +74,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     if (_capturedImages.isEmpty) return;
 
     final apiClient = ref.read(apiClientProvider);
-    
+
     for (final image in _capturedImages) {
       try {
         print('Uploading evidence for report $reportId');
@@ -86,6 +91,23 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     }
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(source: source);
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+          // Also add to captured images for consistent UI if needed
+          if (!_capturedImages.contains(_selectedImage)) {
+            _capturedImages.add(_selectedImage!);
+          }
+        });
+      }
+    } catch (e) {
+      _showError('Failed to pick image: $e');
+    }
+  }
+
   Future<void> _submitReport() async {
     if (_titleController.text.isEmpty) {
       _showError('Please enter a title');
@@ -95,12 +117,18 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       _showError('Please select an issue type');
       return;
     }
+    if (_selectedImage == null && _capturedImages.isEmpty) {
+      _showError('Please provide a photo for validation');
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Submission'),
-        content: const Text('Are you sure about your report details?'),
+        content: const Text(
+          'Are you sure about your report details? The image will be analyzed by AI for validity.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -120,31 +148,68 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
     try {
       final apiClient = ref.read(apiClientProvider);
+
+      // Use the first image for initial report creation and AI validation
+      final mainImage =
+          _selectedImage ??
+          (_capturedImages.isNotEmpty ? _capturedImages.first : null);
+
       final response = await apiClient.createReport(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         issueType: _selectedIssueType!,
         latitude: _selectedLocation.latitude,
         longitude: _selectedLocation.longitude,
+        imagePath: mainImage?.path,
       );
 
       final reportId = response.data['report']['id'];
+      final aiScore = response.data['ai_score'] as num?;
+      final status = response.data['report']?['validation_status'];
 
-      // Upload evidence if any images were captured
-      if (_capturedImages.isNotEmpty) {
-        await _uploadEvidence(reportId);
+      // Upload remaining images as evidence if any
+      if (_capturedImages.length > 1) {
+        final remainingImages = _capturedImages
+            .where((img) => img.path != mainImage?.path)
+            .toList();
+        for (final img in remainingImages) {
+          await apiClient.uploadEvidence(
+            reportId: reportId,
+            imageFile: img,
+            latitude: _selectedLocation.latitude,
+            longitude: _selectedLocation.longitude,
+          );
+        }
       }
 
       if (mounted) {
+        String message = 'Report submitted successfully!';
+        if (status == 'automatically_valid') {
+          message += ' AI Validated (Score: ${aiScore?.toStringAsFixed(1)}%)';
+        } else if (status == 'manual_review') {
+          message +=
+              ' Pending manual review (Score: ${aiScore?.toStringAsFixed(1)}%)';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Report submitted successfully!')),
+          SnackBar(
+            content: Text(message),
+            backgroundColor: status == 'automatically_valid'
+                ? Colors.green
+                : Colors.orange,
+          ),
         );
         context.pop(); // Go back after success
       }
     } on DioException catch (e) {
+      print('caught e: $e');
       String message = 'Failed to submit report';
       if (e.response?.data != null && e.response?.data['message'] != null) {
         message = e.response?.data['message'];
+        if (e.response?.data['ai_score'] != null) {
+          message +=
+              ' (AI Score: ${e.response?.data['ai_score']?.toStringAsFixed(1)}%)';
+        }
       }
       _showError(message);
     } catch (e) {
@@ -306,67 +371,71 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
+            if (_capturedImages.isNotEmpty) ...[
+              SizedBox(
+                height: 100,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _capturedImages.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    return Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            _capturedImages[index],
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _capturedImages.removeAt(index);
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             Row(
               children: [
                 _buildPhotoOption(
                   icon: Icons.camera_alt,
                   label: 'Camera',
-                  onTap: _isUploadingImage ? null : _captureImage,
-                  isLoading: _isUploadingImage,
+                  onTap: () => _pickImage(ImageSource.camera),
+                ),
+                const SizedBox(width: 16),
+                _buildPhotoOption(
+                  icon: Icons.photo_library,
+                  label: 'Gallery',
+                  onTap: () => _pickImage(ImageSource.gallery),
                 ),
               ],
             ),
-            if (_capturedImages.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _capturedImages.length,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              _capturedImages[index],
-                              width: 100,
-                              height: 100,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _capturedImages.removeAt(index);
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
             const SizedBox(height: 40),
             AppButton(
               text: 'Submit Report',
@@ -406,11 +475,22 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else
-              Icon(icon, size: 32, color: onTap == null ? Colors.grey.shade300 : Colors.grey.shade400),
+              Icon(
+                icon,
+                size: 32,
+                color: onTap == null
+                    ? Colors.grey.shade300
+                    : Colors.grey.shade400,
+              ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(fontSize: 12, color: onTap == null ? Colors.grey.shade300 : Colors.grey.shade400),
+              style: TextStyle(
+                fontSize: 12,
+                color: onTap == null
+                    ? Colors.grey.shade300
+                    : Colors.grey.shade400,
+              ),
             ),
           ],
         ),

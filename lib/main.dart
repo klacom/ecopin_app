@@ -1,3 +1,4 @@
+import 'package:ecopin_app/features/notifications/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
@@ -17,5 +18,11 @@ Future<void> main() async {
     anonKey: dotenv.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? '',
   );
 
-  runApp(const ProviderScope(child: App()));
+  final container = ProviderContainer();
+  await container.read(notificationServiceProvider).init();
+
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const App(),
+  ));
 }

@@ -1,3 +1,4 @@
+import 'package:ecopin_app/features/notifications/services/notification_service.dart';
 import 'dart:async';
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -29,8 +30,17 @@ class AuthNotifier extends ChangeNotifier {
 
     // Listen to auth changes
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.signedIn) {
+        _ref.read(notificationServiceProvider).subscribeToNotifications();
+      } else if (data.event == AuthChangeEvent.signedOut) {
+        _ref.read(notificationServiceProvider).unsubscribe();
+      }
       _updateState(data.session);
     });
+
+    if (session != null) {
+      _ref.read(notificationServiceProvider).subscribeToNotifications();
+    }
   }
 
   Future<void> _updateState(Session? session) async {

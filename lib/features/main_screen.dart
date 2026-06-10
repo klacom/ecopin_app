@@ -1,21 +1,24 @@
+import 'package:ecopin_app/features/notifications/providers/notifications_provider.dart';
 import 'package:ecopin_app/core/services/location_service.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:badges/badges.dart' as badges;
 
 // The layout that houses all the components that also goes wherever the user navigates to. It currently contains the NavBar.
 
-class MainScreen extends StatefulWidget {
+class MainScreen extends ConsumerStatefulWidget {
   final Widget child;
   const MainScreen({super.key, required this.child});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends ConsumerState<MainScreen> {
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith(ProtectedAppRoutes.maps)) return 0;
@@ -105,7 +108,7 @@ class _MainScreenState extends State<MainScreen> {
                     selectedIndex,
                   ),
                   const SizedBox(width: 40), // Space for FAB
-                  _buildNavItem(
+                  _buildNotificationNavItem(
                     2,
                     Icons.notifications_outlined,
                     Icons.notifications,
@@ -124,6 +127,45 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationNavItem(
+    int index,
+    IconData icon,
+    IconData activeIcon,
+    String label,
+    int selectedIndex,
+  ) {
+    final unreadCount = ref.watch(unreadNotificationsCountProvider).value ?? 0;
+    final isSelected = index == selectedIndex;
+    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+
+    return InkWell(
+      onTap: () => _onItemTapped(index, context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          badges.Badge(
+            showBadge: unreadCount > 0,
+            badgeContent: Text(
+              unreadCount.toString(),
+              style: const TextStyle(color: Colors.white, fontSize: 10),
+            ),
+            position: badges.BadgePosition.topEnd(top: -10, end: -10),
+            child: Icon(isSelected ? activeIcon : icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
       ),
     );
   }

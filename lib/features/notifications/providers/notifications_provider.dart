@@ -5,24 +5,28 @@ final unreadNotificationsCountProvider = StreamProvider<int>((ref) {
   final user = Supabase.instance.client.auth.currentUser;
   if (user == null) return Stream.value(0);
 
+  final stream = Supabase.instance.client
+      .from('notifications')
+      .stream(primaryKey: ['id'])
+      .map(
+        (rows) => rows
+            .where(
+              (row) => row['user_id'] == user.id && row['is_read'] == false,
+            )
+            .length,
+      );
+
+  return stream;
+});
+
+final notificationsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) return Stream.value([]);
+
   return Supabase.instance.client
       .from('notifications')
       .stream(primaryKey: ['id'])
       .eq('user_id', user.id)
-      .map((data) => data.length);
-});
-
-final notificationsProvider = FutureProvider<List<Map<String, dynamic>>>((
-  ref,
-) async {
-  final user = Supabase.instance.client.auth.currentUser;
-  if (user == null) return [];
-
-  final response = await Supabase.instance.client
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', ascending: false);
-
-  return List<Map<String, dynamic>>.from(response);
+      .order('created_at', ascending: false)
+      .map((data) => List<Map<String, dynamic>>.from(data));
 });

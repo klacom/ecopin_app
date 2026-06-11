@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/location_search_service.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 
 import 'package:go_router/go_router.dart';
@@ -31,6 +32,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   List<LocationSuggestion> _suggestions = [];
   bool _showSuggestions = false;
   Timer? _debounce;
+  bool _showHeatmap = false;
+  bool _isLoadingLocation = false;
 
   String _getInitials(String? fullName) {
     if (fullName == null || fullName.isEmpty) return '?';
@@ -39,6 +42,82 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     } else {
       return parts[0][0].toUpperCase();
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isLoadingLocation = true;
+    });
+
+    try {
+      bool serviceEnabled;
+      LocationPermission permission;
+
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location services are disabled.')),
+          );
+        }
+        setState(() {
+          _isLoadingLocation = false;
+        });
+        return;
+      }
+
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location permissions are denied.')),
+            );
+          }
+          setState(() {
+            _isLoadingLocation = false;
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Location permissions are permanently denied, we cannot request permissions.',
+              ),
+            ),
+          );
+        }
+        setState(() {
+          _isLoadingLocation = false;
+        });
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      if (mounted) {
+        _mapController.move(
+          LatLng(position.latitude, position.longitude),
+          16.0,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingLocation = false;
+        });
+      }
     }
   }
 
@@ -88,6 +167,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final profileInitials = _getInitials(
       profileAsync.value?['full_name'] as String?,
     );
+    final avatarUrl = profileAsync.value?['avatar_url'] as String?;
 
     return Scaffold(
       body: reportsAsync.when(
@@ -115,6 +195,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   tileBounds: pasigBounds,
                 ),
+                if (_showHeatmap)
+                  CircleLayer(
+                    circles: reports.map((report) {
+                      double radius;
+                      Color color;
+                      switch (report.status.toLowerCase()) {
+                        case 'resolved':
+                          radius = 50;
+                          color = Colors.green.withOpacity(0.3);
+                          break;
+                        case 'in progress':
+                          radius = 80;
+                          color = Colors.orange.withOpacity(0.4);
+                          break;
+                        default:
+                          radius = 100;
+                          color = Colors.red.withOpacity(0.5);
+                          break;
+                      }
+                      return CircleMarker(
+                        point: report.location,
+                        radius: radius,
+                        color: color,
+                        borderStrokeWidth: 0,
+                      );
+                    }).toList(),
+                  ),
                 MarkerLayer(
                   markers: reports.map((report) {
                     return Marker(
@@ -141,16 +248,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ],
             ),
             Positioned(
-              top: 10,
-              left: 10,
-              child: Container(
-                width: 100,
-                height: 100,
-                color: Colors.red,
-                child: const Text("TEST BOX"),
-              ),
-            ),
-            Positioned(
               top: 0,
               left: 0,
               right: 0,
@@ -166,28 +263,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        color: Colors.yellow,
-                        padding: const EdgeInsets.all(4),
-                        child: Text(
-                          "DEBUG: show=$_showSuggestions, count=${_suggestions.length}",
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.blue,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 10,
                               offset: const Offset(0, 5),
                             ),
@@ -195,39 +280,46 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.search, color: Colors.white),
+                            const Icon(Icons.search, color: Colors.grey),
                             const SizedBox(width: 12),
                             Expanded(
                               child: TextField(
                                 controller: _searchController,
                                 focusNode: _searchFocusNode,
                                 onChanged: _onSearchChanged,
-                                style: const TextStyle(color: Colors.white),
                                 decoration: const InputDecoration(
-                                  hintText: 'Type here to search...',
+                                  hintText: 'Search location...',
                                   hintStyle: TextStyle(
-                                    color: Colors.white70,
+                                    color: Colors.grey,
                                     fontSize: 16,
                                   ),
                                   border: InputBorder.none,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 8),
                             GestureDetector(
                               onTap: () =>
                                   context.go(ProtectedAppRoutes.profile),
                               child: CircleAvatar(
                                 radius: 18,
-                                backgroundColor: Colors.white,
-                                child: Text(
-                                  profileInitials,
-                                  style: TextStyle(
-                                    color: Theme.of(context).primaryColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
+                                backgroundColor: Theme.of(context).primaryColor,
+                                foregroundImage:
+                                    avatarUrl != null && avatarUrl.isNotEmpty
+                                    ? NetworkImage(
+                                        "$avatarUrl?t=${DateTime.now().millisecondsSinceEpoch}",
+                                      )
+                                    : null,
+                                child: avatarUrl == null || avatarUrl.isEmpty
+                                    ? Text(
+                                        profileInitials,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ),
                           ],
@@ -237,11 +329,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       if (_showSuggestions)
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.purple,
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.5),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 15,
                                 offset: const Offset(0, 8),
                               ),
@@ -254,30 +346,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             itemCount: _suggestions.length,
                             itemBuilder: (context, index) {
                               final suggestion = _suggestions[index];
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 4),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.location_pin,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        suggestion.displayName,
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 13,
+                              return InkWell(
+                                onTap: () => _onSuggestionTap(suggestion),
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 4),
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_pin,
+                                        color: Colors.grey,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          suggestion.displayName,
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               );
                             },
@@ -285,6 +380,75 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ),
                     ],
                   ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 16,
+              bottom: 100, // Above the bottom navbar which is 80px
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _showHeatmap = !_showHeatmap;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.thermostat,
+                          color: _showHeatmap
+                              ? Colors.green
+                              : Colors.grey.shade700,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _getCurrentLocation,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: _isLoadingLocation
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                Icons.my_location,
+                                color: Colors.grey.shade700,
+                                size: 24,
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

@@ -7,6 +7,7 @@ import 'package:ecopin_app/features/notifications/presentation/screens/notificat
 import 'package:ecopin_app/features/profile/presentation/screens/profile_screen.dart';
 import 'package:ecopin_app/features/reports/presentation/screens/create_report_screen.dart';
 import 'package:ecopin_app/features/reports/presentation/screens/reports_screen.dart';
+import 'package:ecopin_app/features/splash/splash_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
@@ -19,7 +20,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.watch(authNotifierProvider);
 
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     refreshListenable: authNotifier,
     redirect: (context, state) {
       final auth = authNotifier.state;
@@ -28,6 +29,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final path = state.matchedLocation;
 
       if (isLoading) return null;
+
+      if (path == '/splash') {
+        return null;
+      }
 
       final isPublicRoute = PublicAppRoutes.publicRoutes.contains(path);
 
@@ -42,6 +47,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (_, _) => const SplashScreen(),
+      ),
       GoRoute(
         path: PublicAppRoutes.login,
         builder: (_, _) => const LoginScreen(),

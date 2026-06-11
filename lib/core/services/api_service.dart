@@ -123,4 +123,32 @@ class ApiClient {
   Future<dio.Response> getReportEvidence(String reportId) async {
     return _dio.get('/api/reports/$reportId/evidence');
   }
+
+  // Profile methods
+  Future<dio.Response> getProfile() async {
+    return _dio.get('/api/profile');
+  }
+
+  Future<dio.Response> updateProfile({
+    String? fullName,
+    String? email,
+    String? avatarUrl,
+  }) async {
+    final data = <String, dynamic>{};
+    if (fullName != null) data['full_name'] = fullName;
+    if (email != null) data['email'] = email;
+    if (avatarUrl != null) data['avatar_url'] = avatarUrl;
+
+    return _dio.put('/api/profile', data: data);
+  }
+
+  Future<dio.Response> uploadAvatar({
+    required String filePath,
+  }) async {
+    final formData = dio.FormData.fromMap({
+      'avatar': await dio.MultipartFile.fromFile(filePath),
+    });
+
+    return _dio.post('/api/profile/avatar', data: formData);
+  }
 }

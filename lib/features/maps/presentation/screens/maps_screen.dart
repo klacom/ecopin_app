@@ -14,7 +14,6 @@ import 'package:ecopin_app/routes/app_routes.dart';
 
 import 'package:ecopin_app/features/reports/providers/report_provider.dart';
 import 'package:ecopin_app/features/reports/data/models/report_model.dart';
-import 'package:ecopin_app/features/profile/providers/profile_provider.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -34,15 +33,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Timer? _debounce;
   bool _showHeatmap = false;
   bool _isLoadingLocation = false;
+  bool _isSearching = false;
 
-  String _getInitials(String? fullName) {
-    if (fullName == null || fullName.isEmpty) return '?';
-    final parts = fullName.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    } else {
-      return parts[0][0].toUpperCase();
-    }
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _debounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _getCurrentLocation() async {
@@ -123,6 +129,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    if (query.length >= 2) {
+      setState(() {
+        _isSearching = true;
+      });
+    }
+
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (query.length >= 2) {
         final results = await _searchService.searchLocations(
@@ -132,11 +145,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         setState(() {
           _suggestions = results;
           _showSuggestions = results.isNotEmpty;
+          _isSearching = false;
         });
       } else {
         setState(() {
           _showSuggestions = false;
           _suggestions = [];
+          _isSearching = false;
         });
       }
     });
@@ -153,21 +168,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    _searchFocusNode.dispose();
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(reportsStreamProvider);
-    final profileAsync = ref.watch(profileProvider);
-    final profileInitials = _getInitials(
-      profileAsync.value?['full_name'] as String?,
-    );
-    final avatarUrl = profileAsync.value?['avatar_url'] as String?;
 
     return Scaffold(
       body: reportsAsync.when(
@@ -297,29 +299,59 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            if (_searchController.text.isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _showSuggestions = false;
+                                    _suggestions = [];
+                                  });
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.grey,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            if (_isSearching)
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                width: 20,
+                                height: 20,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             GestureDetector(
-                              onTap: () =>
-                                  context.go(ProtectedAppRoutes.profile),
-                              child: CircleAvatar(
-                                radius: 18,
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundImage:
-                                    avatarUrl != null && avatarUrl.isNotEmpty
-                                    ? NetworkImage(
-                                        "$avatarUrl?t=${DateTime.now().millisecondsSinceEpoch}",
-                                      )
-                                    : null,
-                                child: avatarUrl == null || avatarUrl.isEmpty
-                                    ? Text(
-                                        profileInitials,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      )
-                                    : null,
+                              onTap: () {
+                                setState(() {
+                                  _showSuggestions = !_showSuggestions;
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: _showSuggestions
+                                      ? Colors.grey.shade300
+                                      : Colors.grey.shade200,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _showSuggestions
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                  color: Colors.grey,
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ],
@@ -385,7 +417,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
             Positioned(
               right: 16,
-              bottom: 100, // Above the bottom navbar which is 80px
+              bottom: 100,
               child: SafeArea(
                 child: Column(
                   children: [

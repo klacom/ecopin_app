@@ -149,13 +149,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child: Stack(
                         children: [
                           CircleAvatar(
+                            key: ValueKey(avatarUrl),
                             radius: 50,
                             backgroundColor: Theme.of(context).primaryColor,
-                            foregroundImage:
-                                avatarUrl != null && avatarUrl.isNotEmpty
-                                ? NetworkImage(
-                                    "$avatarUrl?t=${DateTime.now().millisecondsSinceEpoch}",
-                                  )
+                            foregroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                                ? NetworkImage(avatarUrl)
                                 : null,
                             child: avatarUrl == null || avatarUrl.isEmpty
                                 ? Text(

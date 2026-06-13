@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:ecopin_app/features/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/reports/data/models/report_model.dart';
 import 'package:ecopin_app/features/reports/providers/report_provider.dart';
 import 'package:flutter/material.dart';
@@ -11,12 +13,15 @@ class ReportDetailsScreen extends ConsumerStatefulWidget {
   const ReportDetailsScreen({super.key, required this.reportId});
 
   @override
-  ConsumerState<ReportDetailsScreen> createState() => _ReportDetailsScreenState();
+  ConsumerState<ReportDetailsScreen> createState() =>
+      _ReportDetailsScreenState();
 }
 
 class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
   List<dynamic> _evidence = [];
   bool _isLoadingEvidence = false;
+  CleanupTaskModel? _cleanupTask;
+  bool _isLoadingCleanupTask = false;
 
   @override
   void initState() {
@@ -38,6 +43,30 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
     }
   }
 
+  Future<void> _fetchCleanupTask(String clusterId) async {
+    setState(() => _isLoadingCleanupTask = true);
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final response = await apiClient.getCleanupTasksByCluster(clusterId);
+
+      if (response.data != null && response.data is List) {
+        final List<CleanupTaskModel> tasks = (response.data as List)
+            .map((taskJson) => CleanupTaskModel.fromJson(taskJson))
+            .toList();
+
+        if (tasks.isNotEmpty) {
+          setState(() {
+            _cleanupTask = tasks.first;
+          });
+        }
+      }
+    } catch (e) {
+      print('Failed to fetch cleanup tasks: $e');
+    } finally {
+      setState(() => _isLoadingCleanupTask = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final reportAsync = ref.watch(reportDetailsProvider(widget.reportId));
@@ -49,6 +78,11 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
           report: report,
           evidence: _evidence,
           isLoadingEvidence: _isLoadingEvidence,
+          cleanupTask: _cleanupTask,
+          isLoadingCleanupTask: _isLoadingCleanupTask,
+          onFetchCleanupTask: report.clusterId != null
+              ? () => _fetchCleanupTask(report.clusterId!)
+              : null,
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
@@ -57,22 +91,57 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
   }
 }
 
-class _ReportDetailsBody extends StatelessWidget {
+class _ReportDetailsBody extends StatefulWidget {
   final ReportModel report;
   final List<dynamic> evidence;
   final bool isLoadingEvidence;
+  final CleanupTaskModel? cleanupTask;
+  final bool isLoadingCleanupTask;
+  final VoidCallback? onFetchCleanupTask;
 
   const _ReportDetailsBody({
     required this.report,
     required this.evidence,
     required this.isLoadingEvidence,
+    this.cleanupTask,
+    required this.isLoadingCleanupTask,
+    this.onFetchCleanupTask,
   });
+
+  @override
+  State<_ReportDetailsBody> createState() => _ReportDetailsBodyState();
+}
+
+class _ReportDetailsBodyState extends State<_ReportDetailsBody> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.report.status.toLowerCase() == 'resolved' &&
+        widget.report.clusterId != null &&
+        widget.onFetchCleanupTask != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onFetchCleanupTask!();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReportDetailsBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.report.status.toLowerCase() == 'resolved' &&
+        widget.report.clusterId != null &&
+        widget.cleanupTask == null &&
+        widget.onFetchCleanupTask != null &&
+        !widget.isLoadingCleanupTask) {
+      widget.onFetchCleanupTask!();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat(
       'MMMM dd, yyyy - hh:mm a',
-    ).format(report.createdAt);
+    ).format(widget.report.createdAt);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -82,18 +151,18 @@ class _ReportDetailsBody extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _StatusBadge(status: report.status),
-              _ValidationBadge(status: report.validationStatus),
+              _StatusBadge(status: widget.report.status),
+              _ValidationBadge(status: widget.report.validationStatus),
             ],
           ),
           const SizedBox(height: 16),
           Text(
-            report.title,
+            widget.report.title,
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Issue: ${report.issueType ?? "General"}',
+            'Issue: ${widget.report.issueType ?? "General"}',
             style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
           ),
           const SizedBox(height: 16),
@@ -105,7 +174,7 @@ class _ReportDetailsBody extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            report.description ?? 'No description provided.',
+            widget.report.description ?? 'No description provided.',
             style: const TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 24),
@@ -117,7 +186,7 @@ class _ReportDetailsBody extends StatelessWidget {
           _InfoRow(
             icon: Icons.location_pin,
             text:
-                '${report.location.latitude.toStringAsFixed(6)}, ${report.location.longitude.toStringAsFixed(6)}',
+                '${widget.report.location.latitude.toStringAsFixed(6)}, ${widget.report.location.longitude.toStringAsFixed(6)}',
           ),
           _InfoRow(icon: Icons.calendar_today, text: dateStr),
           const SizedBox(height: 24),
@@ -126,9 +195,9 @@ class _ReportDetailsBody extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          if (isLoadingEvidence)
+          if (widget.isLoadingEvidence)
             const Center(child: CircularProgressIndicator())
-          else if (evidence.isEmpty)
+          else if (widget.evidence.isEmpty)
             Container(
               height: 200,
               width: double.infinity,
@@ -155,7 +224,7 @@ class _ReportDetailsBody extends StatelessWidget {
               height: 200,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: evidence.length,
+                itemCount: widget.evidence.length,
                 itemBuilder: (context, index) {
                   return Padding(
                     padding: const EdgeInsets.only(right: 8.0),
@@ -165,7 +234,7 @@ class _ReportDetailsBody extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (context) => FullScreenImageView(
-                              imageUrl: evidence[index]['url'],
+                              imageUrl: widget.evidence[index]['url'],
                             ),
                           ),
                         );
@@ -173,7 +242,7 @@ class _ReportDetailsBody extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
-                          evidence[index]['url'],
+                          widget.evidence[index]['url'],
                           width: 200,
                           height: 200,
                           fit: BoxFit.cover,
@@ -183,7 +252,10 @@ class _ReportDetailsBody extends StatelessWidget {
                               height: 200,
                               color: Colors.grey.shade300,
                               child: const Center(
-                                child: Icon(Icons.broken_image, color: Colors.grey),
+                                child: Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                ),
                               ),
                             );
                           },
@@ -194,20 +266,172 @@ class _ReportDetailsBody extends StatelessWidget {
                 },
               ),
             ),
-          if (report.status.toLowerCase() == 'resolved') ...[
+          if (widget.report.status.toLowerCase() == 'resolved') ...[
             const SizedBox(height: 24),
             const Text(
               'Before & After',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Row(
-              children: [
-                Expanded(child: _PlaceholderImage(label: 'Before')),
-                SizedBox(width: 8),
-                Expanded(child: _PlaceholderImage(label: 'After')),
-              ],
-            ),
+            if (widget.isLoadingCleanupTask)
+              const Center(child: CircularProgressIndicator())
+            else if (widget.cleanupTask != null)
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        if (widget.cleanupTask?.beforePhotoUrl != null)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: CachedNetworkImage(
+                              imageUrl: widget.cleanupTask!.beforePhotoUrl!,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                height: 150,
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                height: 150,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.grey.shade200,
+                                ),
+                                child: const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        size: 40,
+                                        color: Colors.red,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text('Image not available'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            height: 150,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.grey.shade200,
+                            ),
+                            child: const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.image_not_supported_outlined,
+                                    size: 40,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text('Before'),
+                                ],
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Before',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        if (widget.cleanupTask?.afterPhotoUrl != null)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: CachedNetworkImage(
+                              imageUrl: widget.cleanupTask!.afterPhotoUrl!,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                height: 150,
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                height: 150,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.grey.shade200,
+                                ),
+                                child: const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        size: 40,
+                                        color: Colors.red,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text('Image not available'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            height: 150,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.grey.shade200,
+                            ),
+                            child: const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.image_not_supported_outlined,
+                                    size: 40,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text('After'),
+                                ],
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'After',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            else
+              const Text(
+                'No cleanup task found for this report.',
+                style: TextStyle(fontSize: 14),
+              ),
           ],
           const SizedBox(height: 32),
         ],

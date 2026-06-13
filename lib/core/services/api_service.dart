@@ -151,4 +151,9 @@ class ApiClient {
 
     return _dio.post('/api/profile/avatar', data: formData);
   }
+
+  // Cleanup Task methods
+  Future<dio.Response> getCleanupTasksByCluster(String clusterId) async {
+    return _dio.get('/api/cleanup-tasks/cluster/$clusterId');
+  }
 }

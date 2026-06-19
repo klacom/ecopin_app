@@ -15,7 +15,12 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'unresolved', 'in progress', 'resolved'];
+  final List<String> _filters = [
+    'All',
+    'unresolved',
+    'in progress',
+    'resolved',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +59,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         data: (reports) {
           final filteredReports = _selectedFilter == 'All'
               ? reports
-              : reports.where((r) => r.status.toLowerCase() == _selectedFilter.toLowerCase()).toList();
+              : reports
+                    .where(
+                      (r) =>
+                          r.status.toLowerCase() ==
+                          _selectedFilter.toLowerCase(),
+                    )
+                    .toList();
 
           if (filteredReports.isEmpty) {
             return const Center(child: Text('No reports found.'));
@@ -86,15 +97,21 @@ class _ReportListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat('MMM dd, yyyy').format(report.createdAt);
-    
+
     return ListTile(
       onTap: () => context.push('${ProtectedAppRoutes.reports}/${report.id}'),
-      title: Text(report.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+        report.title,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(report.issueType ?? 'General'),
-          Text(dateStr, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(
+            dateStr,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
         ],
       ),
       trailing: Column(
@@ -121,7 +138,7 @@ class _ValidationBadge extends StatelessWidget {
     String label;
 
     switch (status.toLowerCase()) {
-      case 'automatically_valid':
+      case 'validated':
         color = Colors.green;
         label = 'AI OK';
         break;
@@ -148,7 +165,11 @@ class _ValidationBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -184,7 +205,11 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

@@ -10,11 +10,35 @@ class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   final Set<String> _deletingIds = {};
+  final ScrollController _scrollController = ScrollController();
+  final int _itemsPerPage = 10;
+  int _displayedItems = 10;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
+        // Load more items
+        setState(() {
+          _displayedItems += _itemsPerPage;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +68,24 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             return const Center(child: Text('No notifications yet'));
           }
 
+          final visibleNotifications = notifications
+              .take(_displayedItems)
+              .toList();
           return ListView.separated(
-            itemCount: notifications.length,
+            controller: _scrollController,
+            itemCount:
+                visibleNotifications.length +
+                (notifications.length > visibleNotifications.length ? 1 : 0),
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
-              final notification = notifications[index];
+              if (index == visibleNotifications.length) {
+                // Loading indicator at bottom
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final notification = visibleNotifications[index];
               final bool isRead = notification['is_read'] ?? false;
               final bool isDeleting = _deletingIds.contains(notification['id']);
 

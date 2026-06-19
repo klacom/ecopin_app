@@ -1,6 +1,7 @@
-import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +15,43 @@ import 'package:ecopin_app/routes/app_routes.dart';
 
 import 'package:ecopin_app/features/reports/providers/report_provider.dart';
 import 'package:ecopin_app/features/reports/data/models/report_model.dart';
+
+class _MyMarkerClusterLayer extends StatefulWidget {
+  final List<Marker> markers;
+
+  const _MyMarkerClusterLayer({required this.markers});
+
+  @override
+  State<_MyMarkerClusterLayer> createState() => _MyMarkerClusterLayerState();
+}
+
+class _MyMarkerClusterLayerState extends State<_MyMarkerClusterLayer> {
+  @override
+  Widget build(BuildContext context) {
+    return MarkerClusterLayerWidget(
+      options: MarkerClusterLayerOptions(
+        markers: widget.markers,
+        builder: (context, markers) {
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.green,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: Text(
+                markers.length.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -224,7 +262,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       );
                     }).toList(),
                   ),
-                MarkerLayer(
+                CurrentLocationLayer(
+                  alignPositionOnUpdate: AlignOnUpdate.never,
+                  alignDirectionOnUpdate: AlignOnUpdate.never,
+                  style: const LocationMarkerStyle(
+                    marker: DefaultLocationMarker(
+                      child: Icon(Icons.navigation, color: Colors.white),
+                    ),
+                    markerSize: Size(40, 40),
+                    markerDirection: MarkerDirection.heading,
+                    accuracyCircleColor: Colors.blue,
+                    headingSectorColor: Colors.blue,
+                    headingSectorRadius: 60,
+                    showAccuracyCircle: true,
+                  ),
+                ),
+                _MyMarkerClusterLayer(
                   markers: reports.map((report) {
                     return Marker(
                       point: report.location,

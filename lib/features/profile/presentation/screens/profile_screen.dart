@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -54,11 +55,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SnackBar(content: Text('Avatar uploaded successfully!')),
           );
         }
-      } catch (e) {
+      } on dio.DioException catch (e) {
+        print('DioException during avatar upload: $e');
+        String errorMsg = 'Failed to upload avatar';
+        if (e.response?.data != null && e.response?.data['message'] != null) {
+          errorMsg = e.response?.data['message'];
+        } else if (e.message != null) {
+          errorMsg = e.message!;
+        }
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error uploading avatar: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+          );
+        }
+      } catch (e) {
+        print('Error uploading avatar: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error uploading avatar: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       } finally {
         if (mounted) {
@@ -105,9 +123,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _logout() async {
-    await ref.read(authNotifierProvider.notifier).signOut();
-    if (mounted) {
-      context.go(PublicAppRoutes.login);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log Out'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(authNotifierProvider.notifier).signOut();
+      if (mounted) {
+        context.go(PublicAppRoutes.login);
+      }
     }
   }
 
@@ -152,7 +191,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             key: ValueKey(avatarUrl),
                             radius: 50,
                             backgroundColor: Theme.of(context).primaryColor,
-                            foregroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                            foregroundImage:
+                                avatarUrl != null && avatarUrl.isNotEmpty
                                 ? NetworkImage(avatarUrl)
                                 : null,
                             child: avatarUrl == null || avatarUrl.isEmpty

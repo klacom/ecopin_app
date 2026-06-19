@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -12,7 +13,6 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 
 class CreateReportScreen extends ConsumerStatefulWidget {
   final LatLng? initialLocation;
@@ -25,6 +25,8 @@ class CreateReportScreen extends ConsumerStatefulWidget {
 class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _titleFocusNode = FocusNode();
+  final _descriptionFocusNode = FocusNode();
   String? _selectedIssueType;
   final MapController _mapController = MapController();
   late LatLng _selectedLocation = widget.initialLocation ?? pasigInitialCenter;
@@ -34,6 +36,15 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final CameraService _cameraService = CameraService();
   List<File> _capturedImages = [];
   bool _isUploadingImage = false;
+
+  static const List<String> _funFacts = [
+    "Did you know? A single tree can absorb up to 48 lbs of CO2 per year!",
+    "Fun fact: Recycling one glass bottle saves enough energy to power a 100W bulb for 4 hours!",
+    "Every year, over 8 million tons of plastic ends up in our oceans.",
+    "A plastic bottle can take up to 450 years to decompose!",
+    "Planting native species helps local wildlife thrive!",
+    "Turning off tap while brushing teeth saves up to 200 gallons/month!",
+  ];
 
   final List<String> _issueTypes = [
     'Waste',
@@ -144,7 +155,17 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
     if (confirmed != true) return;
 
-    setState(() => _isLoading = true);
+    // Remove focus from text fields
+    _titleFocusNode.unfocus();
+    _descriptionFocusNode.unfocus();
+
+    // Show loading dialog with cycling fun facts
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _LoadingDialog(funFacts: _funFacts),
+    );
 
     try {
       final apiClient = ref.read(apiClientProvider);
@@ -183,6 +204,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       }
 
       if (mounted) {
+        // Close loading dialog
+        Navigator.pop(context);
         String message = 'Report submitted successfully!';
         if (status == 'automatically_valid') {
           message += ' AI Validated (Score: ${aiScore?.toStringAsFixed(1)}%)';
@@ -203,6 +226,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       }
     } on DioException catch (e) {
       print('caught e: $e');
+      if (mounted) Navigator.pop(context); // Close loading dialog
       String message = 'Failed to submit report';
       if (e.response?.data != null && e.response?.data['message'] != null) {
         message = e.response?.data['message'];
@@ -213,11 +237,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       }
       _showError(message);
     } catch (e) {
+      if (mounted) Navigator.pop(context); // Close loading dialog
       _showError('An unexpected error occurred: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
     }
   }
 
@@ -232,6 +253,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _titleFocusNode.dispose();
+    _descriptionFocusNode.dispose();
     super.dispose();
   }
 
@@ -339,6 +362,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             const SizedBox(height: 16),
             AppTextField(
               controller: _titleController,
+              focusNode: _titleFocusNode,
               labelText: 'Title',
               hintText: 'Brief summary of the issue',
             ),
@@ -361,6 +385,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             const SizedBox(height: 16),
             AppTextField(
               controller: _descriptionController,
+              focusNode: _descriptionFocusNode,
               labelText: 'Description',
               hintText: 'Provide more details about the issue...',
               maxLines: 4,
@@ -490,6 +515,69 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 color: onTap == null
                     ? Colors.grey.shade300
                     : Colors.grey.shade400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingDialog extends StatefulWidget {
+  final List<String> funFacts;
+
+  const _LoadingDialog({required this.funFacts});
+
+  @override
+  State<_LoadingDialog> createState() => _LoadingDialogState();
+}
+
+class _LoadingDialogState extends State<_LoadingDialog> {
+  int _currentFactIndex = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      setState(() {
+        _currentFactIndex = (_currentFactIndex + 1) % widget.funFacts.length;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 24),
+            const Text(
+              "Submitting your report...",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: Text(
+                widget.funFacts[_currentFactIndex],
+                key: ValueKey(_currentFactIndex),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600]),
               ),
             ),
           ],

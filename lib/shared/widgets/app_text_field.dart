@@ -6,12 +6,13 @@ class AppTextField extends StatelessWidget {
   final bool isLoading;
   final IconData? icon;
   final double width;
-  final double height;
+  final double? height;
   final String? placeholderText;
   final String? inputType;
   final TextEditingController controller;
   final String? hintText;
   final int? maxLines;
+  final FocusNode? focusNode;
 
   const AppTextField({
     super.key,
@@ -20,12 +21,13 @@ class AppTextField extends StatelessWidget {
     this.isLoading = false,
     this.icon,
     this.width = double.infinity,
-    this.height = 50.0,
+    this.height,
     this.placeholderText = '',
     this.inputType = 'text',
     required this.controller,
     this.hintText = "",
-    this.maxLines = 4,
+    this.maxLines = 1,
+    this.focusNode,
   });
 
   @override
@@ -35,11 +37,15 @@ class AppTextField extends StatelessWidget {
       height: height,
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         obscureText: inputType == 'password',
+        maxLines: maxLines,
         decoration: InputDecoration(
           labelText: labelText,
-          hintText: placeholderText,
-          border: OutlineInputBorder(),
+          hintText: (hintText != null && hintText!.isNotEmpty)
+              ? hintText
+              : placeholderText,
+          border: const OutlineInputBorder(),
         ),
       ),
     );

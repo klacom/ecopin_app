@@ -102,17 +102,71 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     }
   }
 
+  static const int REPORT_MIN_PHOTOS = 1;
+  static const int REPORT_MAX_PHOTOS = 5;
+  static const int REPORT_TOTAL_PHOTOS_SIZE = 10 * 1024 * 1024; // 10MB
+
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final XFile? image = await _picker.pickImage(source: source);
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-          // Also add to captured images for consistent UI if needed
-          if (!_capturedImages.contains(_selectedImage)) {
-            _capturedImages.add(_selectedImage!);
+      if (source == ImageSource.gallery) {
+        final List<XFile>? images = await _picker.pickMultiImage();
+        if (images != null && images.isNotEmpty) {
+          for (final XFile xFile in images) {
+            final File file = File(xFile.path);
+            if (!_capturedImages.any((img) => img.path == file.path)) {
+              // Check if adding this would exceed max photos
+              if (_capturedImages.length >= REPORT_MAX_PHOTOS) {
+                if (mounted) {
+                  _showError('Maximum $REPORT_MAX_PHOTOS photos allowed');
+                }
+                break;
+              }
+              // Check total size
+              final currentTotalSize = _capturedImages.fold<int>(
+                0,
+                (sum, img) => sum + img.lengthSync(),
+              );
+              final newFileSize = await file.length();
+              if (currentTotalSize + newFileSize > REPORT_TOTAL_PHOTOS_SIZE) {
+                if (mounted) {
+                  _showError('Total photo size exceeds 10MB limit');
+                }
+                break;
+              }
+              setState(() {
+                _capturedImages.add(file);
+              });
+            }
           }
-        });
+        }
+      } else {
+        final XFile? image = await _picker.pickImage(source: source);
+        if (image != null) {
+          final File file = File(image.path);
+          if (!_capturedImages.any((img) => img.path == file.path)) {
+            if (_capturedImages.length >= REPORT_MAX_PHOTOS) {
+              if (mounted) {
+                _showError('Maximum $REPORT_MAX_PHOTOS photos allowed');
+              }
+              return;
+            }
+            final currentTotalSize = _capturedImages.fold<int>(
+              0,
+              (sum, img) => sum + img.lengthSync(),
+            );
+            final newFileSize = await file.length();
+            if (currentTotalSize + newFileSize > REPORT_TOTAL_PHOTOS_SIZE) {
+              if (mounted) {
+                _showError('Total photo size exceeds 10MB limit');
+              }
+              return;
+            }
+            setState(() {
+              _selectedImage = file;
+              _capturedImages.add(file);
+            });
+          }
+        }
       }
     } catch (e) {
       _showError('Failed to pick image: $e');
@@ -128,8 +182,21 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       _showError('Please select an issue type');
       return;
     }
-    if (_selectedImage == null && _capturedImages.isEmpty) {
-      _showError('Please provide a photo for validation');
+    if (_capturedImages.length < REPORT_MIN_PHOTOS) {
+      _showError('Please provide at least $REPORT_MIN_PHOTOS photo(s)');
+      return;
+    }
+    if (_capturedImages.length > REPORT_MAX_PHOTOS) {
+      _showError('Maximum $REPORT_MAX_PHOTOS photos allowed');
+      return;
+    }
+    // Check total size again
+    final totalSize = _capturedImages.fold<int>(
+      0,
+      (sum, img) => sum + img.lengthSync(),
+    );
+    if (totalSize > REPORT_TOTAL_PHOTOS_SIZE) {
+      _showError('Total photo size exceeds 10MB limit');
       return;
     }
 
@@ -280,45 +347,46 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: _selectedLocation,
-                    initialZoom: 15.0,
-                    minZoom: 12,
-                    maxZoom: 18,
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.all,
-                    ),
-                    cameraConstraint: CameraConstraint.contain(
-                      bounds: pasigBounds,
-                    ),
-                    onTap: (tapPosition, point) {
-                      setState(() {
-                        _selectedLocation = point;
-                      });
-                    },
-                  ),
+                child: Stack(
                   children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.ecopinas.ecopin_app',
-                      tileBounds: pasigBounds,
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: _selectedLocation,
-                          width: 80,
-                          height: 80,
-                          child: const Icon(
-                            Icons.location_pin,
-                            color: Colors.red,
-                            size: 40,
-                          ),
+                    FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: _selectedLocation,
+                        initialZoom: 15.0,
+                        minZoom: 12,
+                        maxZoom: 18,
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.all,
+                        ),
+                        cameraConstraint: CameraConstraint.contain(
+                          bounds: pasigBounds,
+                        ),
+                        onPositionChanged:
+                            (MapCamera camera, bool hasGesture) {
+                              setState(() {
+                                _selectedLocation = camera.center;
+                              });
+                            },
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.ecopinas.ecopin_app',
+                          tileBounds: pasigBounds,
                         ),
                       ],
+                    ),
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 40.0),
+                        child: Icon(
+                          Icons.location_pin,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -350,7 +418,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8.0),
               child: Text(
-                'Tap the map to fine-tune the location',
+                'Drag the map to set the location',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ),

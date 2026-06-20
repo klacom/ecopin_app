@@ -89,6 +89,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               final bool isRead = notification['is_read'] ?? false;
               final bool isDeleting = _deletingIds.contains(notification['id']);
 
+              // Slideable Boxes
+
               return Slidable(
                 key: ValueKey(notification['id']),
                 endActionPane: ActionPane(
@@ -118,6 +120,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                 .from('notifications')
                                 .delete()
                                 .eq('id', notification['id']);
+
+                            // Invalidate to refresh
+
+                            ref.invalidate(notificationsProvider);
                           } finally {
                             if (mounted) {
                               setState(() {

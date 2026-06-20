@@ -17,8 +17,8 @@ dependencies:
   flutter_riverpod: ^3.3.1
   go_router: ^17.2.3
   latlong2: ^0.9.1
-  geolocator: ^13.0.1
-  supabase_flutter: ^2.12.4
+  geolocator: ^14.0.3
+  supabase_flutter: ^2.15.0
   url_launcher: ^6.3.2
   geobase: ^1.5.0
   camera: ^0.12.0+1
@@ -28,12 +28,21 @@ dependencies:
   badges: ^3.2.0
   flutter_slidable: ^4.0.3
   cached_network_image: ^3.4.1
-  flutter_map_location_marker: ^10.0.2
+  flutter_map_location_marker: ^10.2.0
+  flutter_map_heatmap:
+    git:
+      url: https://github.com/klacom/fluttermap_heatmap.git
+  connectivity_plus: ^6.1.3
+  app_links: ^6.3.2
   
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+dependency_overrides:
+  flutter_rotation_sensor:
+    path: packages/flutter_rotation_sensor
 
 flutter:
   uses-material-design: true

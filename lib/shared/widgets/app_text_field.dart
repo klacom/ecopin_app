@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class AppTextField extends StatelessWidget {
+class AppTextField extends StatefulWidget {
   final String? labelText;
   final String text;
   final bool isLoading;
@@ -31,21 +31,40 @@ class AppTextField extends StatelessWidget {
   });
 
   @override
+  State<AppTextField> createState() => _AppTextFieldState();
+}
+
+class _AppTextFieldState extends State<AppTextField> {
+  bool _obscureText = true;
+
+  @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: width,
-      height: height,
+      width: widget.width,
+      height: widget.height,
       child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        obscureText: inputType == 'password',
-        maxLines: maxLines,
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        obscureText: widget.inputType == 'password' ? _obscureText : false,
+        maxLines: widget.maxLines,
         decoration: InputDecoration(
-          labelText: labelText,
-          hintText: (hintText != null && hintText!.isNotEmpty)
-              ? hintText
-              : placeholderText,
+          labelText: widget.labelText,
+          hintText: (widget.hintText != null && widget.hintText!.isNotEmpty)
+              ? widget.hintText
+              : widget.placeholderText,
           border: const OutlineInputBorder(),
+          suffixIcon: widget.inputType == 'password'
+              ? IconButton(
+                  icon: Icon(
+                    _obscureText ? Icons.visibility : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureText = !_obscureText;
+                    });
+                  },
+                )
+              : null,
         ),
       ),
     );

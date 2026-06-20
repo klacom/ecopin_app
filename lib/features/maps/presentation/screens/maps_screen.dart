@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -236,31 +237,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   tileBounds: pasigBounds,
                 ),
                 if (_showHeatmap)
-                  CircleLayer(
-                    circles: reports.map((report) {
-                      double radius;
-                      Color color;
-                      switch (report.status.toLowerCase()) {
-                        case 'resolved':
-                          radius = 50;
-                          color = Colors.green.withOpacity(0.3);
-                          break;
-                        case 'in progress':
-                          radius = 80;
-                          color = Colors.orange.withOpacity(0.4);
-                          break;
-                        default:
-                          radius = 100;
-                          color = Colors.red.withOpacity(0.5);
-                          break;
-                      }
-                      return CircleMarker(
-                        point: report.location,
-                        radius: radius,
-                        color: color,
-                        borderStrokeWidth: 0,
-                      );
-                    }).toList(),
+                  HeatMapLayer(
+                    heatMapDataSource: InMemoryHeatMapDataSource(
+                      data: reports.map((report) {
+                        double weight;
+                        switch (report.status.toLowerCase()) {
+                          case 'resolved':
+                            weight = 0.3;
+                            break;
+                          case 'in progress':
+                            weight = 0.6;
+                            break;
+                          default:
+                            weight = 1.0;
+                            break;
+                        }
+                        return WeightedLatLng(report.location, weight);
+                      }).toList(),
+                    ),
+                    heatMapOptions: HeatMapOptions(
+                      radius: 50,
+                      minOpacity: 0.6,
+                    ),
                   ),
                 CurrentLocationLayer(
                   alignPositionOnUpdate: AlignOnUpdate.never,
@@ -384,29 +382,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   strokeWidth: 2,
                                 ),
                               ),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _showSuggestions = !_showSuggestions;
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: _showSuggestions
-                                      ? Colors.grey.shade300
-                                      : Colors.grey.shade200,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _showSuggestions
-                                      ? Icons.keyboard_arrow_up
-                                      : Icons.keyboard_arrow_down,
-                                  color: Colors.grey,
-                                  size: 20,
+                            if (_suggestions.isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _showSuggestions = !_showSuggestions;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: _showSuggestions
+                                        ? Colors.grey.shade300
+                                        : Colors.grey.shade200,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _showSuggestions
+                                        ? Icons.keyboard_arrow_up
+                                        : Icons.keyboard_arrow_down,
+                                    color: Colors.grey,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),

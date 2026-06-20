@@ -106,11 +106,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             AppTextField(
               controller: _passwordController,
               labelText: 'Password',
+              inputType: 'password',
             ),
             const SizedBox(height: 16),
             AppTextField(
               controller: _confirmPasswordController,
               labelText: 'Confirm Password',
+              inputType: 'password',
             ),
             const SizedBox(height: 32),
             AppButton(

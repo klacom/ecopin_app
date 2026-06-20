@@ -55,7 +55,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (e.response?.data != null && e.response?.data['message'] != null) {
         errorMessage = e.response?.data['message'];
       }
-      _showError(errorMessage);
+      print('ERORRRRRRRRRRRRRRRR: $e');
+      _showError("LOGIN ERROR: $errorMessage");
     } catch (e) {
       _showError('An unexpected error occurred: $e');
     } finally {
@@ -103,7 +104,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               AppTextField(
                 controller: _passwordController,
                 labelText: 'Password',
-                // obscureText: true,
+                inputType: 'password',
               ),
               const SizedBox(height: 24),
               AppButton(

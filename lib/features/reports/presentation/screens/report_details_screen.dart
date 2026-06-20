@@ -434,6 +434,7 @@ class _ReportDetailsBodyState extends State<_ReportDetailsBody> {
               ),
           ],
           const SizedBox(height: 32),
+          const SizedBox(height: 100),
         ],
       ),
     );

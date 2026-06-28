@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'package:dio/dio.dart' as dio;
+import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +8,7 @@ import 'package:ecopin_app/features/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -18,6 +19,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  final Logger _log = Logger("Profile Screen");
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _fullNameController;
   late TextEditingController _emailController;
@@ -51,32 +53,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         await ref.read(profileProvider.future);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Avatar uploaded successfully!')),
-          );
+          SnackbarHelper.showMessage('Avatar uploaded successfully');
         }
-      } on dio.DioException catch (e) {
-        print('DioException during avatar upload: $e');
+      } on dio.DioException catch (e, stackTrace) {
+
+        _log.severe('DioException during avatar upload: $e', stackTrace);
         String errorMsg = 'Failed to upload avatar';
+
         if (e.response?.data != null && e.response?.data['message'] != null) {
           errorMsg = e.response?.data['message'];
         } else if (e.message != null) {
           errorMsg = e.message!;
         }
+
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
-          );
+          SnackbarHelper.showError(errorMsg);
         }
-      } catch (e) {
-        print('Error uploading avatar: $e');
+
+      } catch (e, stackTrace) {
+        _log.severe('Error uploading avatar: $e', stackTrace);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error uploading avatar: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          SnackbarHelper.showError('Error uploading avatar');
         }
       } finally {
         if (mounted) {
@@ -93,7 +90,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       setState(() {
         _isSaving = true;
       });
+
       try {
+
         final apiClient = ref.read(apiClientProvider);
         await apiClient.updateProfile(fullName: _fullNameController.text);
 
@@ -102,15 +101,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         await ref.read(profileProvider.future);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully!')),
-          );
+          SnackbarHelper.showMessage('Profile updated successfully!');
         }
-      } catch (e) {
+
+      } catch (e, stackTrace) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
+          _log.severe(e, stackTrace);
+          SnackbarHelper.showError('Error updating profile');
         }
       } finally {
         if (mounted) {

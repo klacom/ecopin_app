@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:logging/logging.dart';
 
 class CameraService {
   final ImagePicker _picker = ImagePicker();
+  final Logger camServiceLog = Logger("Camera Service");
 
   Future<bool> _checkCameraPermission() async {
     final status = await Permission.camera.request();
@@ -36,21 +38,26 @@ class CameraService {
       return null;
     }
 
+    final LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 1, // 1 Meter 
+    );
+
     // Get current location for metadata
     Map<String, dynamic>? locationData;
     if (hasLocationPermission) {
       try {
         final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
+          locationSettings: locationSettings
         );
         locationData = {
           'latitude': position.latitude,
           'longitude': position.longitude,
           'accuracy': position.accuracy,
-          'timestamp': position.timestamp?.toIso8601String(),
+          'timestamp': position.timestamp.toIso8601String(),
         };
       } catch (e) {
-        print('Error getting location: $e');
+        camServiceLog.severe('Error getting location: $e');
       }
     }
 

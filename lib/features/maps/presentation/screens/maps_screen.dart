@@ -1,7 +1,7 @@
+import 'package:ecopin_app/features/maps/presentation/widgets/status_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
-import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -10,49 +10,12 @@ import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/location_search_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
-
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
-
 import 'package:ecopin_app/features/reports/providers/report_provider.dart';
 import 'package:ecopin_app/features/reports/data/models/report_model.dart';
-
-class _MyMarkerClusterLayer extends StatefulWidget {
-  final List<Marker> markers;
-
-  const _MyMarkerClusterLayer({required this.markers});
-
-  @override
-  State<_MyMarkerClusterLayer> createState() => _MyMarkerClusterLayerState();
-}
-
-class _MyMarkerClusterLayerState extends State<_MyMarkerClusterLayer> {
-  @override
-  Widget build(BuildContext context) {
-    return MarkerClusterLayerWidget(
-      options: MarkerClusterLayerOptions(
-        markers: widget.markers,
-        builder: (context, markers) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.green,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: Text(
-                markers.length.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
+import 'package:ecopin_app/features/maps/presentation/widgets/my_marker_cluster_layer.dart';
+import 'package:ecopin_app/features/maps/presentation/widgets/report_marker.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -63,6 +26,7 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class _MapScreenState extends ConsumerState<MapScreen> {
   final MapController _mapController = MapController();
+  // TODO: Make own Text Editing Controller + Separate controller in different file.
   final TextEditingController _searchController = TextEditingController();
   final LocationSearchService _searchService = LocationSearchService();
   final FocusNode _searchFocusNode = FocusNode();
@@ -275,7 +239,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     showAccuracyCircle: true,
                   ),
                 ),
-                _MyMarkerClusterLayer(
+                MyMarkerClusterLayer(
                   markers: reports.map((report) {
                     return Marker(
                       point: report.location,
@@ -283,7 +247,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       height: 40,
                       child: GestureDetector(
                         onTap: () => _showReportPreview(context, report),
-                        child: _ReportMarker(status: report.status),
+                        child: ReportMarker(status: report.status),
                       ),
                     );
                   }).toList(),
@@ -586,7 +550,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                _StatusBadge(status: report.status),
+                StatusBadge(status: report.status),
               ],
             ),
             const SizedBox(height: 8),
@@ -612,83 +576,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ReportMarker extends StatelessWidget {
-  final String status;
-
-  const _ReportMarker({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'resolved':
-        color = Colors.green;
-        break;
-      case 'in progress':
-        color = Colors.orange;
-        break;
-      default:
-        color = Colors.red;
-        break;
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: const Icon(Icons.location_pin, color: Colors.white, size: 20),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final String status;
-
-  const _StatusBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'resolved':
-        color = Colors.green;
-        break;
-      case 'in progress':
-        color = Colors.orange;
-        break;
-      default:
-        color = Colors.red;
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
         ),
       ),
     );

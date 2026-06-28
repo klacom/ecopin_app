@@ -1,15 +1,14 @@
 import 'package:ecopin_app/features/notifications/providers/notifications_provider.dart';
 import 'package:ecopin_app/features/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/core/services/location_service.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
-import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:badges/badges.dart' as badges;
 
-// The layout that houses all the components that also goes wherever the user navigates to. It currently contains the NavBar.
+// The layout that houses all the components that also goes wherever the user navigates to. 
+// It currently contains the NavBar.
 
 class MainScreen extends ConsumerStatefulWidget {
   final Widget child;

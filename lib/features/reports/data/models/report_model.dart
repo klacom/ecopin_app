@@ -1,5 +1,6 @@
 import 'package:latlong2/latlong.dart';
 import 'package:geobase/geobase.dart';
+import 'package:logging/logging.dart';
 
 class ReportModel {
   final String id;
@@ -32,6 +33,7 @@ class ReportModel {
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
     LatLng latLng;
+    final Logger _log = Logger("Report Model");
 
     // 1. Try direct latitude/longitude (from reports_view)
     if (json.containsKey('latitude') &&
@@ -42,6 +44,7 @@ class ReportModel {
         (json['longitude'] as num).toDouble(),
       );
     }
+
     // 2. Try GeoJSON location (from updated reports_view)
     else if (json['location'] != null &&
         json['location'] is Map &&
@@ -49,6 +52,7 @@ class ReportModel {
       final coords = json['location']['coordinates'] as List;
       latLng = LatLng(coords[1].toDouble(), coords[0].toDouble());
     }
+
     // 3. Fallback for raw POINT string
     else if (json['location'] != null &&
         json['location'] is String &&
@@ -59,22 +63,23 @@ class ReportModel {
           .split(' ');
       latLng = LatLng(double.parse(parts[1]), double.parse(parts[0]));
     }
+
     // 4. Handle EWKB hex string (common in Supabase Realtime stream)
     else if (json['location'] != null && json['location'] is String) {
       try {
         final point = Point.decodeHex(json['location'], format: WKB.geometry);
-        print('point: $point');
+        _log.info('point: $point');
         latLng = LatLng(point.position.y, point.position.x);
-      } catch (e) {
-        print('Error parsing EWKB: $e');
+      } catch (e, stackTrace) {
+        _log.severe('Error parsing EWKB: $e', stackTrace);
         latLng = const LatLng(0, 0);
       }
     } else {
       latLng = const LatLng(0, 0);
     }
 
-    print('JSON: $json');
-    print('LAT & LONG: $latLng');
+    _log.finer('JSON: $json');
+    _log.info('LAT & LONG: $latLng');
 
     return ReportModel(
       id: json['id']?.toString() ?? '',

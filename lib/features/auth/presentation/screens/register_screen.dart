@@ -1,10 +1,12 @@
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
+import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/shared/widgets/app_text_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
+import 'package:logging/logging.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -16,8 +18,8 @@ class RegisterScreen extends ConsumerStatefulWidget {
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  final Logger _log = Logger("Register Screen");
   bool _isLoading = false;
 
   void signUp() async {
@@ -26,27 +28,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final confirmPassword = _confirmPasswordController.text.trim();
 
     // Frontend validation
+    // TODO: Make modular later, isang file nalang baguhin for validation rules.
+
     if (email.isEmpty) {
-      _showError('Email is required');
+      SnackbarHelper.showError('Email is required');
       return;
     }
     if (password.isEmpty) {
-      _showError('Password is required');
+      SnackbarHelper.showError('Password is required');
       return;
     }
     if (password != confirmPassword) {
-      _showError('Passwords do not match');
+      SnackbarHelper.showError('Passwords do not match');
       return;
     }
     if (password.length < 6) {
-      _showError('Password must be at least 6 characters');
+      SnackbarHelper.showError('Password must be at least 6 characters');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
+
       final apiClient = ref.read(apiClientProvider);
+      // TODO: Lagyan ng Confirm Email
       final response = await apiClient.register(
         email,
         password,
@@ -54,17 +60,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful')),
-        );
+        SnackbarHelper.showMessage('Registration successful');
         // Go to login page after successful registration
         context.go('/login');
       }
-    } on DioException catch (e) {
+    } on DioException catch (e, stackTrace) {
+
       String errorMessage = 'Registration failed';
       // String errorMessage = 'RF: $e';
 
-      print('ERROR: $e');
+      _log.severe(e, stackTrace);
 
       if (e.response?.data != null && e.response?.data['message'] != null) {
         errorMessage = e.response?.data['message'];
@@ -76,21 +81,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           errorMessage = errors[0]['msg'];
         }
       }
-      _showError(errorMessage);
-    } catch (e) {
-      _showError('An unexpected error occurred: $e');
+      SnackbarHelper.showError(errorMessage);
+    } catch (e, stackTrace) {
+       _log.severe(e, stackTrace);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
   }
 
   @override

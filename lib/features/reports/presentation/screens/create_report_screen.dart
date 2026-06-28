@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -7,12 +8,12 @@ import 'package:ecopin_app/shared/widgets/app_button.dart';
 import 'package:ecopin_app/shared/widgets/app_text_field.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/core/services/camera_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
-
 import 'package:image_picker/image_picker.dart';
+import 'package:logging/logging.dart';
+import 'package:ecopin_app/features/reports/presentation/widgets/create_report_widgets/loading_dialog.dart';
 
 class CreateReportScreen extends ConsumerStatefulWidget {
   final LatLng? initialLocation;
@@ -23,6 +24,7 @@ class CreateReportScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
+  final Logger _log = Logger('Create Report Screen');
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _titleFocusNode = FocusNode();
@@ -30,94 +32,26 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   String? _selectedIssueType;
   final MapController _mapController = MapController();
   late LatLng _selectedLocation = widget.initialLocation ?? pasigInitialCenter;
+  // ignore: prefer_final_fields
   bool _isLoading = false;
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
-  final CameraService _cameraService = CameraService();
-  List<File> _capturedImages = [];
-  bool _isUploadingImage = false;
-
-  static const List<String> _funFacts = [
-    "Did you know? A single tree can absorb up to 48 lbs of CO2 per year!",
-    "Fun fact: Recycling one glass bottle saves enough energy to power a 100W bulb for 4 hours!",
-    "Every year, over 8 million tons of plastic ends up in our oceans.",
-    "A plastic bottle can take up to 450 years to decompose!",
-    "Planting native species helps local wildlife thrive!",
-    "Turning off tap while brushing teeth saves up to 200 gallons/month!",
-  ];
-
-  final List<String> _issueTypes = [
-    'Waste',
-    'Flooding',
-    'Pollution',
-    'Illegal Logging',
-    'Others',
-  ];
-
-  Future<void> _captureImage() async {
-    try {
-      setState(() => _isUploadingImage = true);
-
-      final imageData = await _cameraService.captureImage();
-      if (imageData != null) {
-        setState(() {
-          _capturedImages.add(imageData['file'] as File);
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Image captured successfully')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        _showError('Failed to capture image: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isUploadingImage = false);
-      }
-    }
-  }
-
-  Future<void> _uploadEvidence(String reportId) async {
-    if (_capturedImages.isEmpty) return;
-
-    final apiClient = ref.read(apiClientProvider);
-
-    for (final image in _capturedImages) {
-      try {
-        print('Uploading evidence for report $reportId');
-        final response = await apiClient.uploadEvidence(
-          reportId: reportId,
-          imageFile: image,
-          latitude: _selectedLocation.latitude,
-          longitude: _selectedLocation.longitude,
-        );
-        print('Evidence upload response: ${response.data}');
-      } catch (e) {
-        print('Failed to upload evidence: $e');
-      }
-    }
-  }
-
-  static const int REPORT_MIN_PHOTOS = 1;
-  static const int REPORT_MAX_PHOTOS = 5;
-  static const int REPORT_TOTAL_PHOTOS_SIZE = 10 * 1024 * 1024; // 10MB
+  final List<File> _capturedImages = [];
 
   Future<void> _pickImage(ImageSource source) async {
     try {
       if (source == ImageSource.gallery) {
-        final List<XFile>? images = await _picker.pickMultiImage();
-        if (images != null && images.isNotEmpty) {
+        final List<XFile> images = await _picker.pickMultiImage();
+        if (images.isNotEmpty) {
           for (final XFile xFile in images) {
             final File file = File(xFile.path);
             if (!_capturedImages.any((img) => img.path == file.path)) {
               // Check if adding this would exceed max photos
-              if (_capturedImages.length >= REPORT_MAX_PHOTOS) {
+              if (_capturedImages.length >= reportMaxPhotos) {
                 if (mounted) {
-                  _showError('Maximum $REPORT_MAX_PHOTOS photos allowed');
+                  SnackbarHelper.showError(
+                    'Maximum $reportMaxPhotos photos allowed',
+                  );
                 }
                 break;
               }
@@ -127,9 +61,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 (sum, img) => sum + img.lengthSync(),
               );
               final newFileSize = await file.length();
-              if (currentTotalSize + newFileSize > REPORT_TOTAL_PHOTOS_SIZE) {
+              if (currentTotalSize + newFileSize > reportTotalPhotosSize) {
                 if (mounted) {
-                  _showError('Total photo size exceeds 10MB limit');
+                  SnackbarHelper.showError(
+                    'Total photo size exceeds 10MB limit',
+                  );
                 }
                 break;
               }
@@ -144,9 +80,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         if (image != null) {
           final File file = File(image.path);
           if (!_capturedImages.any((img) => img.path == file.path)) {
-            if (_capturedImages.length >= REPORT_MAX_PHOTOS) {
+            if (_capturedImages.length >= reportMaxPhotos) {
               if (mounted) {
-                _showError('Maximum $REPORT_MAX_PHOTOS photos allowed');
+                SnackbarHelper.showError(
+                  'Maximum $reportMaxPhotos photos allowed',
+                );
               }
               return;
             }
@@ -155,9 +93,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               (sum, img) => sum + img.lengthSync(),
             );
             final newFileSize = await file.length();
-            if (currentTotalSize + newFileSize > REPORT_TOTAL_PHOTOS_SIZE) {
+            if (currentTotalSize + newFileSize > reportTotalPhotosSize) {
               if (mounted) {
-                _showError('Total photo size exceeds 10MB limit');
+                SnackbarHelper.showError('Total photo size exceeds 10MB limit');
               }
               return;
             }
@@ -169,25 +107,27 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         }
       }
     } catch (e) {
-      _showError('Failed to pick image: $e');
+      SnackbarHelper.showError('Failed to pick image: $e');
     }
   }
 
   Future<void> _submitReport() async {
     if (_titleController.text.isEmpty) {
-      _showError('Please enter a title');
+      SnackbarHelper.showError('Please enter a title');
       return;
     }
     if (_selectedIssueType == null) {
-      _showError('Please select an issue type');
+      SnackbarHelper.showError('Please select an issue type');
       return;
     }
-    if (_capturedImages.length < REPORT_MIN_PHOTOS) {
-      _showError('Please provide at least $REPORT_MIN_PHOTOS photo(s)');
+    if (_capturedImages.length < reportMinPhotos) {
+      SnackbarHelper.showError(
+        'Please provide at least $reportMinPhotos photo(s)',
+      );
       return;
     }
-    if (_capturedImages.length > REPORT_MAX_PHOTOS) {
-      _showError('Maximum $REPORT_MAX_PHOTOS photos allowed');
+    if (_capturedImages.length > reportMaxPhotos) {
+      SnackbarHelper.showError('Maximum $reportMaxPhotos photos allowed');
       return;
     }
     // Check total size again
@@ -195,8 +135,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       0,
       (sum, img) => sum + img.lengthSync(),
     );
-    if (totalSize > REPORT_TOTAL_PHOTOS_SIZE) {
-      _showError('Total photo size exceeds 10MB limit');
+    if (totalSize > reportTotalPhotosSize) {
+      SnackbarHelper.showError('Total photo size exceeds 10MB limit');
       return;
     }
 
@@ -231,7 +171,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _LoadingDialog(funFacts: _funFacts),
+      builder: (context) => LoadingDialog(funFacts: funFacts),
     );
 
     try {
@@ -281,20 +221,22 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               ' Pending manual review (Score: ${aiScore?.toStringAsFixed(1)}%)';
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: status == 'automatically_valid'
-                ? Colors.green
-                : Colors.orange,
-          ),
-        );
+        // TODO: This currently decides to show if valid or 'valid' or 'manually review' but image validation flow is changed. User can post it first then the AI would flag it after posting, to reduce the delay in posting. After the change modify the scaffold messenger.
+
+        if (status == 'automatically_valid') {
+          SnackbarHelper.showValidMessage(message);
+        } else {
+          SnackbarHelper.showSemiValidMessage(message);
+        }
+
         context.pop(); // Go back after success
       }
-    } on DioException catch (e) {
-      print('caught e: $e');
+    } on DioException catch (e, stackTrace) {
+      _log.severe(e, stackTrace);
       if (mounted) Navigator.pop(context); // Close loading dialog
+
       String message = 'Failed to submit report';
+
       if (e.response?.data != null && e.response?.data['message'] != null) {
         message = e.response?.data['message'];
         if (e.response?.data['ai_score'] != null) {
@@ -302,18 +244,14 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               ' (AI Score: ${e.response?.data['ai_score']?.toStringAsFixed(1)}%)';
         }
       }
-      _showError(message);
-    } catch (e) {
-      if (mounted) Navigator.pop(context); // Close loading dialog
-      _showError('An unexpected error occurred: $e');
-    }
-  }
 
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+      SnackbarHelper.showError(message);
+    } catch (e, stackTrace) {
+      if (mounted) Navigator.pop(context); // Close loading dialog
+      _log.severe(e, stackTrace);
+
+      SnackbarHelper.showError('An unexpected error occurred');
+    }
   }
 
   @override
@@ -362,12 +300,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         cameraConstraint: CameraConstraint.contain(
                           bounds: pasigBounds,
                         ),
-                        onPositionChanged:
-                            (MapCamera camera, bool hasGesture) {
-                              setState(() {
-                                _selectedLocation = camera.center;
-                              });
-                            },
+                        onPositionChanged: (MapCamera camera, bool hasGesture) {
+                          setState(() {
+                            _selectedLocation = camera.center;
+                          });
+                        },
                       ),
                       children: [
                         TileLayer(
@@ -436,12 +373,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedIssueType,
+              initialValue: _selectedIssueType,
               decoration: const InputDecoration(
                 labelText: 'Issue Type',
                 border: OutlineInputBorder(),
               ),
-              items: _issueTypes.map((type) {
+              items: issueTypes.map((type) {
                 return DropdownMenuItem(value: type, child: Text(type));
               }).toList(),
               onChanged: (value) {
@@ -583,69 +520,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 color: onTap == null
                     ? Colors.grey.shade300
                     : Colors.grey.shade400,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadingDialog extends StatefulWidget {
-  final List<String> funFacts;
-
-  const _LoadingDialog({required this.funFacts});
-
-  @override
-  State<_LoadingDialog> createState() => _LoadingDialogState();
-}
-
-class _LoadingDialogState extends State<_LoadingDialog> {
-  int _currentFactIndex = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      setState(() {
-        _currentFactIndex = (_currentFactIndex + 1) % widget.funFacts.length;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 24),
-            const Text(
-              "Submitting your report...",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              transitionBuilder: (child, animation) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-              child: Text(
-                widget.funFacts[_currentFactIndex],
-                key: ValueKey(_currentFactIndex),
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[600]),
               ),
             ),
           ],

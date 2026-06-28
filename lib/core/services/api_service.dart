@@ -3,6 +3,7 @@ import 'package:dio/dio.dart' as dio;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ecopin_app/core/constants/api_constants.dart';
 
 final apiClientProvider = Provider((ref) => ApiClient());
 
@@ -40,14 +41,15 @@ class ApiClient {
     );
   }
 
-  // Auth methods
+    // Auth methods
+
   Future<dio.Response> register(
     String email,
     String password,
     String confirmPassword,
   ) async {
     return _dio.post(
-      '/api/auth/register',
+      ApiConstants.register,
       data: {
         'email': email,
         'password': password,
@@ -58,20 +60,21 @@ class ApiClient {
 
   Future<dio.Response> login(String email, String password) async {
     return _dio.post(
-      '/api/auth/login',
+      ApiConstants.login,
       data: {'email': email, 'password': password},
     );
   }
 
   Future<dio.Response> getMe() async {
-    return _dio.get('/api/auth/me');
+    return _dio.get(ApiConstants.me);
   }
 
   Future<dio.Response> logout() async {
-    return _dio.post('/api/auth/logout');
+    return _dio.post(ApiConstants.logout);
   }
 
-  // Report methods
+    // Report methods
+
   Future<dio.Response> createReport({
     required String title,
     required String description,
@@ -90,20 +93,22 @@ class ApiClient {
         'image': await dio.MultipartFile.fromFile(imagePath),
     });
 
-    return _dio.post('/api/reports', data: formData);
+    return _dio.post(ApiConstants.createReport, data: formData);
   }
 
   Future<dio.Response> getMyReports() async {
-    return _dio.get('/api/reports/my');
+    return _dio.get(ApiConstants.getMyReports);
   }
 
   Future<dio.Response> getPublicReports() async {
-    return _dio.get('/api/reports/public');
+    return _dio.get(ApiConstants.getPublicReports);
   }
 
   Future<dio.Response> getReportById(String id) async {
-    return _dio.get('/api/reports/$id');
+    return _dio.get(ApiConstants.getReportById(id));
   }
+
+    // Evidences Methods
 
   Future<dio.Response> uploadEvidence({
     required String reportId,
@@ -117,16 +122,17 @@ class ApiClient {
       'longitude': longitude,
     });
 
-    return _dio.post('/api/reports/$reportId/evidence', data: formData);
+    return _dio.post(ApiConstants.evidenceByReportId(reportId), data: formData);
   }
 
   Future<dio.Response> getReportEvidence(String reportId) async {
-    return _dio.get('/api/reports/$reportId/evidence');
+    return _dio.get(ApiConstants.evidenceByReportId(reportId));
   }
 
-  // Profile methods
+    // Profile methods
+
   Future<dio.Response> getProfile() async {
-    return _dio.get('/api/profile');
+    return _dio.get(ApiConstants.profile);
   }
 
   Future<dio.Response> updateProfile({
@@ -139,7 +145,7 @@ class ApiClient {
     if (email != null) data['email'] = email;
     if (avatarUrl != null) data['avatar_url'] = avatarUrl;
 
-    return _dio.put('/api/profile', data: data);
+    return _dio.put(ApiConstants.profile, data: data);
   }
 
   Future<dio.Response> uploadAvatar({
@@ -149,11 +155,12 @@ class ApiClient {
       'avatar': await dio.MultipartFile.fromFile(filePath),
     });
 
-    return _dio.post('/api/profile/avatar', data: formData);
+    return _dio.post(ApiConstants.avatar, data: formData);
   }
 
-  // Cleanup Task methods
+    // Cleanup Task methods
+
   Future<dio.Response> getCleanupTasksByCluster(String clusterId) async {
-    return _dio.get('/api/cleanup-tasks/cluster/$clusterId');
+    return _dio.get(ApiConstants.getCleanupTasksByCluster(clusterId));
   }
 }

@@ -3,6 +3,8 @@ import 'package:ecopin_app/routes/app_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ecopin_app/core/services/connectivity_service.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -13,6 +15,7 @@ class App extends ConsumerWidget {
     final connectivityAsync = ref.watch(connectivityProvider);
 
     return MaterialApp.router(
+      scaffoldMessengerKey: messengerKey, // in app constants
       debugShowCheckedModeBanner: false,
       title: 'Ecopin App',
       theme: ThemeData(primarySwatch: Colors.green),
@@ -24,7 +27,7 @@ class App extends ConsumerWidget {
               ConnectivityResult.none,
             );
             if (!hasConnection) {
-              return const NoInternetScreen();
+              return const NoInternetScreen(); // show now interenet
             }
             return child!;
           },
@@ -34,38 +37,6 @@ class App extends ConsumerWidget {
               Scaffold(body: Center(child: Text('Error: $error'))),
         );
       },
-    );
-  }
-}
-
-class NoInternetScreen extends StatelessWidget {
-  const NoInternetScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.wifi_off, size: 80, color: Colors.grey[400]),
-              const SizedBox(height: 24),
-              const Text(
-                'No Internet Connection',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Please check your internet connection and try again',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

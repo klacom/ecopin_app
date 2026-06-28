@@ -13,14 +13,15 @@ import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/features/reports/presentation/screens/report_details_screen.dart';
-
 import 'package:latlong2/latlong.dart';
+
+// Guides user to Public and Protected Routes
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.watch(authNotifierProvider);
 
   return GoRouter(
-    initialLocation: '/splash',
+    initialLocation: PublicAppRoutes.splash,
     refreshListenable: authNotifier,
     redirect: (context, state) {
       final auth = authNotifier.state;
@@ -30,7 +31,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isLoading) return null;
 
-      if (path == '/splash') {
+      if (path == PublicAppRoutes.splash) {
         return null;
       }
 
@@ -48,7 +49,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
-        path: '/splash',
+        path: PublicAppRoutes.splash,
         builder: (_, _) => const SplashScreen(),
       ),
       GoRoute(

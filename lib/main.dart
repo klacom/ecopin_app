@@ -6,9 +6,24 @@ import 'app.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:app_links/app_links.dart';
+import 'package:logging/logging.dart';
 
 Future<void> main() async {
-  // The fuck does this mean
+
+  // Logger Package for Logging
+
+  Logger.root.level = Level.ALL;
+
+  Logger.root.onRecord.listen((record){
+    print(
+      '${record.time} '
+      '[${record.level.name}] '
+      '${record.loggerName}: '
+      '${record.message}'
+    );
+  });
+
+  // dafuq is this
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables
@@ -17,7 +32,7 @@ Future<void> main() async {
   // Catch "No URL and anonKey available" error
   await Supabase.initialize(
     url: dotenv.env['NEXT_PUBLIC_SUPABASE_URL'] ?? '',
-    anonKey: dotenv.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ?? '',
+    publishableKey: dotenv.env['NEXT_PUBLIC_PUBLISHABLE_KEY'] ?? '',
   );
 
   // Handle deep links

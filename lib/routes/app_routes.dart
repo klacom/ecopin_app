@@ -1,8 +1,7 @@
-// The Arrays are to keep track of what routes are public or not.
-
 // Accessible by everyone
 
 class PublicAppRoutes {
+  static const String splash = '/splash';
   static const String login = '/login';
   static const String register = '/register';
   static const String unauthorized = '/unauthorized';

@@ -5,7 +5,9 @@ import 'package:ecopin_app/shared/widgets/app_text_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
+import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +17,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final Logger _log = Logger("Login Screen");
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -24,7 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      _showError('Please enter email and password');
+      SnackbarHelper.showError('Please enter email and password');
       return;
     }
 
@@ -45,32 +48,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
 
         if (mounted) {
-          context.go('/maps');
+          context.go('/maps'); // Initial Screen
         }
       } else {
-        _showError('Login failed: Invalid session data');
+        SnackbarHelper.showError('Login failed: Invalid session data');
       }
     } on DioException catch (e) {
       String errorMessage = 'Login failed';
       if (e.response?.data != null && e.response?.data['message'] != null) {
         errorMessage = e.response?.data['message'];
       }
-      print('ERORRRRRRRRRRRRRRRR: $e');
-      _showError("LOGIN ERROR: $errorMessage");
-    } catch (e) {
-      _showError('An unexpected error occurred: $e');
+      _log.severe(e);
+      SnackbarHelper.showError("LOGIN ERROR: $errorMessage");
+    } catch (e, stackTrace) {
+      _log.severe(e, stackTrace);
+      SnackbarHelper.showError('An unexpected error occurred: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
   }
 
   @override

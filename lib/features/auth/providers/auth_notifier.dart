@@ -5,6 +5,7 @@ import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/auth/data/models/auth_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +15,7 @@ final authNotifierProvider = ChangeNotifierProvider((ref) => AuthNotifier(ref));
 class AuthNotifier extends ChangeNotifier {
   final Ref _ref;
   final SupabaseClient _supabase = Supabase.instance.client;
+  final Logger _log = Logger('Auth Notifier');
   AppAuthState _state = AppAuthState.initial();
   StreamSubscription<AuthState>? _authSubscription;
 
@@ -65,10 +67,11 @@ class AuthNotifier extends ChangeNotifier {
         }
 
         _state = AppAuthState.authenticated(role);
-      } catch (e) {
+      } catch (e, stackTrace) {
         // If backend fails, we might still have a Supabase session but
         // we can't verify the role/user in our DB.
         // For safety, we can either treat as unauthenticated or use a default.
+        _log.severe(e, stackTrace);
         _state = AppAuthState.unauthenticated();
       }
       notifyListeners();
@@ -80,8 +83,9 @@ class AuthNotifier extends ChangeNotifier {
       // 1. Call backend logout if possible
       final apiClient = _ref.read(apiClientProvider);
       await apiClient.logout();
-    } catch (e) {
+    } catch (e, stackTrace) {
       // Ignore backend logout errors and proceed with local signout
+      _log.severe(e, stackTrace);
     } finally {
       // 2. Clear Supabase session locally
       await _supabase.auth.signOut();

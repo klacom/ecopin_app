@@ -5,6 +5,7 @@ import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -17,8 +18,6 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   final Set<String> _deletingIds = {};
   final ScrollController _scrollController = ScrollController();
-  final int _itemsPerPage = 10;
-  int _displayedItems = 10;
 
   @override
   void initState() {
@@ -28,7 +27,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           _scrollController.position.maxScrollExtent - 200) {
         // Load more items
         setState(() {
-          _displayedItems += _itemsPerPage;
+          displayedItems += itemsPerPage;
         });
       }
     });
@@ -69,7 +68,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           }
 
           final visibleNotifications = notifications
-              .take(_displayedItems)
+              .take(displayedItems)
               .toList();
           return ListView.separated(
             controller: _scrollController,

@@ -15,10 +15,24 @@ class ApiConstants {
     return '/api/reports/$reportId/evidence';
   }
 
+  static String updatePropertyOwnerConsent(String reportId) {
+    return '/api/reports/$reportId/property-owner-consent';
+  }
+
+  static String disclosureRequests(String reportId) {
+    return '/api/reports/$reportId/disclosure-requests';
+  }
+
+  static String respondToDisclosureRequest(String reportId, String disclosureRequestId) {
+    return '/api/reports/$reportId/disclosure-requests/$disclosureRequestId/respond';
+  }
+
   static const String profile = '/api/profile';
   static const String avatar = '/api/profile/avatar';
 
   static String getCleanupTasksByCluster(String clusterId) {
     return "/api/cleanup-tasks/cluster/$clusterId";
   }
+
+  static const String updateDataConsent = '/api/profile/data-consent';
 }

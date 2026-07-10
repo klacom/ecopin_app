@@ -37,12 +37,15 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
   final List<File> _capturedImages = [];
+  bool _onPrivateProperty = false;
 
   Future<void> _pickImage(ImageSource source) async {
     try {
       if (source == ImageSource.gallery) {
+        // Multiple Pictures
         final List<XFile> images = await _picker.pickMultiImage();
         if (images.isNotEmpty) {
+            _log.info("Images are not empty, now beginning to check images");
           for (final XFile xFile in images) {
             final File file = File(xFile.path);
             if (!_capturedImages.any((img) => img.path == file.path)) {
@@ -61,10 +64,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 (sum, img) => sum + img.lengthSync(),
               );
               final newFileSize = await file.length();
+            // Check if exceeds limit
               if (currentTotalSize + newFileSize > reportTotalPhotosSize) {
                 if (mounted) {
                   SnackbarHelper.showError(
-                    'Total photo size exceeds 10MB limit',
+                    'Total photo size exceeds $reportTotalPhotosSize limit',
                   );
                 }
                 break;
@@ -76,6 +80,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           }
         }
       } else {
+        // Single picture
         final XFile? image = await _picker.pickImage(source: source);
         if (image != null) {
           final File file = File(image.path);
@@ -182,6 +187,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           _selectedImage ??
           (_capturedImages.isNotEmpty ? _capturedImages.first : null);
 
+    // _log.info("Main image: ", mainImage);
+    // _log.info("Main image path: ", mainImage?.path);
+
       final response = await apiClient.createReport(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -189,24 +197,40 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         latitude: _selectedLocation.latitude,
         longitude: _selectedLocation.longitude,
         imagePath: mainImage?.path,
+        onPrivateProperty: _onPrivateProperty,
       );
+
+      _log.fine("CREATE REPORT RESPONSE: ",response);
 
       final reportId = response.data['report']['id'];
       final aiScore = response.data['ai_score'] as num?;
       final status = response.data['report']?['validation_status'];
 
       // Upload remaining images as evidence if any
-      if (_capturedImages.length > 1) {
-        final remainingImages = _capturedImages
-            .where((img) => img.path != mainImage?.path)
-            .toList();
-        for (final img in remainingImages) {
-          await apiClient.uploadEvidence(
+
+        // _log.info('IS CAPTURED IMAGES NOT EMPTY?:', _capturedImages.isNotEmpty);
+
+      if (_capturedImages.isNotEmpty) {
+        
+        // eto may problem
+        // final remainingImages = _capturedImages
+        //     .where((img) => img.path != mainImage?.path)
+            // .toList();
+
+        // _log.info('REMAINING IMAGES COUNT: ', remainingImages);
+
+        for (final img in _capturedImages) {
+            await apiClient.uploadEvidence(
             reportId: reportId,
             imageFile: img,
             latitude: _selectedLocation.latitude,
             longitude: _selectedLocation.longitude,
           );
+          _log.info(
+            'Image uploaded! \n ReportID: $reportId \n ImageFile: $img \n Latitude:',
+          );
+          _log.info('\n Latitude: ', _selectedLocation.latitude);
+          _log.info('\n Longitude: ', _selectedLocation.longitude);
         }
       }
 
@@ -394,6 +418,19 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               labelText: 'Description',
               hintText: 'Provide more details about the issue...',
               maxLines: 4,
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Report is on private property'),
+              subtitle: const Text(
+                'Mark if the issue is on private property. Owner consent may be required.',
+              ),
+              value: _onPrivateProperty,
+              onChanged: (value) {
+                setState(() {
+                  _onPrivateProperty = value;
+                });
+              },
             ),
             const SizedBox(height: 24),
             const Text(

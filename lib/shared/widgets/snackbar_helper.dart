@@ -25,7 +25,7 @@ class SnackbarHelper {
 
   static void showSemiValidMessage(String message){
      messengerKey.currentState?.showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.yellow),
+      SnackBar(content: Text(message, style: TextStyle(color: Colors.black),), backgroundColor: Colors.yellow,),
     );
   }
 

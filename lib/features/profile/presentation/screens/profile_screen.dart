@@ -25,6 +25,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   late TextEditingController _emailController;
   bool _isSaving = false;
   bool _isUploading = false;
+  bool _isUpdatingConsent = false;
 
   String _getInitials(String? fullName) {
     if (fullName == null || fullName.isEmpty) return '?';
@@ -47,7 +48,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       try {
         final apiClient = ref.read(apiClientProvider);
         await apiClient.uploadAvatar(filePath: image.path);
-
+ 
         // Invalidate provider to refresh data
         ref.invalidate(profileProvider);
         await ref.read(profileProvider.future);
@@ -147,6 +148,50 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+Future<void> _updateDataConsent(bool value) async {
+    if (_isUpdatingConsent) return;
+
+    setState(() {
+      _isUpdatingConsent = true;
+    });
+
+    try {
+      final apiClient = ref.read(apiClientProvider);
+
+      await apiClient.updateDataConsent(value);
+
+      // Refresh profile
+      ref.invalidate(profileProvider);
+      await ref.read(profileProvider.future);
+
+      if (mounted) {
+        SnackbarHelper.showMessage(
+          value ? 'Data sharing enabled.' : 'Data sharing disabled.',
+        );
+      }
+    } on dio.DioException catch (e, stackTrace) {
+      _log.severe('Failed updating consent: $e', stackTrace);
+
+      if (mounted) {
+        SnackbarHelper.showError(
+          e.response?.data?['message'] ?? 'Failed to update data consent.',
+        );
+      }
+    } catch (e, stackTrace) {
+      _log.severe(e, stackTrace);
+
+      if (mounted) {
+        SnackbarHelper.showError('Failed to update data consent.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingConsent = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileProvider);
@@ -164,6 +209,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             final avatarUrl = profile?['avatar_url'] as String?;
             final createdAt = profile?['created_at'] as String?;
             final userEmail = Supabase.instance.client.auth.currentUser?.email;
+            final bool dataConsent = profile?['data_consent'] ?? false;
 
             if (_fullNameController.text.isEmpty) {
               _fullNameController.text = fullName ?? '';
@@ -295,7 +341,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: SwitchListTile(
+                        secondary: const Icon(Icons.privacy_tip_outlined),
+                        title: const Text(
+                          "Share Personal Information",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          dataConsent
+                              ? "The LGU may access your profile information when handling your reports."
+                              : "Your identity will remain hidden when possible.",
+                        ),
+                        value: dataConsent,
+                        onChanged: _isUpdatingConsent
+                            ? null
+                            : (value) => _updateDataConsent(value),
+                      ),
+                    ),
+
+                    if (_isUpdatingConsent)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: LinearProgressIndicator(),
+                      ),
+
+                    const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -325,6 +402,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 128),
                   ],
                 ),
               ),

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:ecopin_app/features/maps/presentation/widgets/status_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -16,6 +18,9 @@ import 'package:ecopin_app/features/reports/providers/report_provider.dart';
 import 'package:ecopin_app/features/reports/data/models/report_model.dart';
 import 'package:ecopin_app/features/maps/presentation/widgets/my_marker_cluster_layer.dart';
 import 'package:ecopin_app/features/maps/presentation/widgets/report_marker.dart';
+import 'package:ecopin_app/features/profile/providers/profile_provider.dart';
+import 'package:logging/logging.dart';
+import 'package:ecopin_app/core/services/api_service.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -25,6 +30,7 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
+  final Logger log = Logger("Maps Screen");
   final MapController _mapController = MapController();
   // TODO: Make own Text Editing Controller + Separate controller in different file.
   final TextEditingController _searchController = TextEditingController();
@@ -41,8 +47,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runOnce(); // check and ask for user data/location disclosure initially.
+    });
     _searchController.addListener(() {
       setState(() {});
+    });
+  }
+
+  void _runOnce() async {
+    final apiClient = ref.read(apiClientProvider);
+    await apiClient.getProfile().then((data){
+        // log.fine('profile in runonce: ', data);
+        Map<String, dynamic> user =  jsonDecode(data.toString());
+        // log.info('USER data consent run once : ', user['profile']['data_consent']);
+
+        // Checking
+        // If user hasn't given their consent yet.
+        if (user['profile']['data_consent'] == null) {
+            // log.info('IS USER CONSENT NULL: ', user['profile']['data_consent'].toString() == "");
+            if (mounted) _dialogBuilder(context);
+        }
     });
   }
 
@@ -53,6 +78,62 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _debounce?.cancel();
     super.dispose();
   }
+
+  // For Data/Location Disclosure
+
+  Future<void> _dialogBuilder(BuildContext context) {
+    final apiClient = ref.read(apiClientProvider);
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext dialogContext) {
+      return AlertDialog(
+        icon: const Icon(Icons.privacy_tip_outlined),
+        title: const Text("Data Privacy Consent"),
+        content: const SingleChildScrollView(
+          child: Text(
+            "To help the LGU verify and resolve your reports more efficiently, "
+            "you may allow authorized personnel to access your profile information "
+            "and location (when applicable).\n\n"
+            "Your information will only be used for handling your reports and "
+            "will not be shared with unauthorized parties.\n\n"
+            "Your consent is optional, and you can continue using the app even if you decline.",
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Disagree"),
+            onPressed: () async {
+              try {
+                await apiClient.updateDataConsent(false);
+              } catch (e) {
+                log.severe("Failed to update consent: $e");
+              }
+
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop();
+              }
+            },
+          ),
+          FilledButton(
+            child: const Text("Agree"),
+            onPressed: () async {
+              try {
+                await apiClient.updateDataConsent(true);
+              } catch (e) {
+                log.severe("Failed to update consent: $e");
+              }
+
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop();
+              }
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
 
   Future<void> _getCurrentLocation() async {
     setState(() {
@@ -173,7 +254,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(reportsStreamProvider);
-
+    
     return Scaffold(
       body: reportsAsync.when(
         data: (reports) => Stack(

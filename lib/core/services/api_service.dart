@@ -4,8 +4,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/constants/api_constants.dart';
+import 'package:logging/logging.dart';
 
 final apiClientProvider = Provider((ref) => ApiClient());
+final Logger log = Logger("API Service: ");
 
 class ApiClient {
   static String get baseUrl =>
@@ -41,7 +43,7 @@ class ApiClient {
     );
   }
 
-    // Auth methods
+  // Auth methods
 
   Future<dio.Response> register(
     String email,
@@ -73,7 +75,7 @@ class ApiClient {
     return _dio.post(ApiConstants.logout);
   }
 
-    // Report methods
+  // Report methods
 
   Future<dio.Response> createReport({
     required String title,
@@ -82,6 +84,7 @@ class ApiClient {
     required double latitude,
     required double longitude,
     String? imagePath,
+    bool onPrivateProperty = false,
   }) async {
     final formData = dio.FormData.fromMap({
       'title': title,
@@ -89,6 +92,7 @@ class ApiClient {
       'issue_type': issueType,
       'latitude': latitude,
       'longitude': longitude,
+      'on_private_property': onPrivateProperty,
       if (imagePath != null)
         'image': await dio.MultipartFile.fromFile(imagePath),
     });
@@ -108,7 +112,7 @@ class ApiClient {
     return _dio.get(ApiConstants.getReportById(id));
   }
 
-    // Evidences Methods
+  // Evidences Methods
 
   Future<dio.Response> uploadEvidence({
     required String reportId,
@@ -116,11 +120,14 @@ class ApiClient {
     required double latitude,
     required double longitude,
   }) async {
+
     final formData = dio.FormData.fromMap({
       'image': await dio.MultipartFile.fromFile(imageFile.path),
       'latitude': latitude,
       'longitude': longitude,
     });
+
+    log.fine("EVIDENCE FORM DATA: ", formData);
 
     return _dio.post(ApiConstants.evidenceByReportId(reportId), data: formData);
   }
@@ -129,7 +136,7 @@ class ApiClient {
     return _dio.get(ApiConstants.evidenceByReportId(reportId));
   }
 
-    // Profile methods
+  // Profile methods
 
   Future<dio.Response> getProfile() async {
     return _dio.get(ApiConstants.profile);
@@ -148,9 +155,7 @@ class ApiClient {
     return _dio.put(ApiConstants.profile, data: data);
   }
 
-  Future<dio.Response> uploadAvatar({
-    required String filePath,
-  }) async {
+  Future<dio.Response> uploadAvatar({required String filePath}) async {
     final formData = dio.FormData.fromMap({
       'avatar': await dio.MultipartFile.fromFile(filePath),
     });
@@ -158,7 +163,18 @@ class ApiClient {
     return _dio.post(ApiConstants.avatar, data: formData);
   }
 
-    // Cleanup Task methods
+    Future<Map<String, dynamic>> updateDataConsent(bool dataConsent) async {
+    final response = await _dio.patch(
+        ApiConstants.updateDataConsent,
+        data: {
+            'data_consent': dataConsent,
+        },
+    );
+    log.info("Data Consent Response: ", response.data);
+    return response.data;
+    }
+
+  // Cleanup Task methods
 
   Future<dio.Response> getCleanupTasksByCluster(String clusterId) async {
     return _dio.get(ApiConstants.getCleanupTasksByCluster(clusterId));

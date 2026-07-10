@@ -15,6 +15,8 @@ class ReportModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? userFullName;
+  final bool onPrivateProperty;
+  final String propertyOwnerConsentStatus;
 
   ReportModel({
     required this.id,
@@ -29,6 +31,8 @@ class ReportModel {
     required this.createdAt,
     required this.updatedAt,
     this.userFullName,
+    this.onPrivateProperty = false,
+    this.propertyOwnerConsentStatus = 'not_required',
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -68,7 +72,7 @@ class ReportModel {
     else if (json['location'] != null && json['location'] is String) {
       try {
         final point = Point.decodeHex(json['location'], format: WKB.geometry);
-        _log.info('point: $point');
+        // _log.info('point: $point');
         latLng = LatLng(point.position.y, point.position.x);
       } catch (e, stackTrace) {
         _log.severe('Error parsing EWKB: $e', stackTrace);
@@ -78,8 +82,8 @@ class ReportModel {
       latLng = const LatLng(0, 0);
     }
 
-    _log.finer('JSON: $json');
-    _log.info('LAT & LONG: $latLng');
+    // _log.finer('JSON: $json');
+    // _log.info('LAT & LONG: $latLng');
 
     return ReportModel(
       id: json['id']?.toString() ?? '',
@@ -98,6 +102,22 @@ class ReportModel {
           DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
           DateTime.now(),
       userFullName: json['profiles']?['full_name']?.toString(),
+      onPrivateProperty: json['on_private_property'] ?? false,
+      propertyOwnerConsentStatus: json['property_owner_consent_status']?.toString() ?? 'not_required',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'title': title,
+      'description': description,
+      'issue_type': issueType,
+      'latitude': location.latitude,
+      'longitude': location.longitude,
+      'on_private_property': onPrivateProperty,
+      'property_owner_consent_status': propertyOwnerConsentStatus,
+    };
   }
 }

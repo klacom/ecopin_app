@@ -179,4 +179,16 @@ class ApiClient {
   Future<dio.Response> getCleanupTasksByCluster(String clusterId) async {
     return _dio.get(ApiConstants.getCleanupTasksByCluster(clusterId));
   }
+
+  // New report lifecycle methods
+  Future<dio.Response> lguResolveReport(String reportId) async {
+    return _dio.patch(ApiConstants.lguResolveReport(reportId));
+  }
+
+  Future<dio.Response> citizenCloseReport(String reportId, int satisfactionRating) async {
+    return _dio.patch(
+      ApiConstants.citizenCloseReport(reportId),
+      data: {'satisfaction_rating': satisfactionRating},
+    );
+  }
 }

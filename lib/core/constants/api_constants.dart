@@ -27,6 +27,14 @@ class ApiConstants {
     return '/api/reports/$reportId/disclosure-requests/$disclosureRequestId/respond';
   }
 
+  static String lguResolveReport(String reportId) {
+    return '/api/reports/$reportId/resolve';
+  }
+
+  static String citizenCloseReport(String reportId) {
+    return '/api/reports/$reportId/close';
+  }
+
   static const String profile = '/api/profile';
   static const String avatar = '/api/profile/avatar';
 

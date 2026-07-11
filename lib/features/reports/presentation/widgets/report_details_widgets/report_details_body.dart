@@ -1,9 +1,9 @@
-
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecopin_app/features/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/reports/data/models/report_model.dart';
+import 'package:ecopin_app/features/reports/presentation/screens/satisfaction_rating_screen.dart';
 import 'package:ecopin_app/features/reports/presentation/widgets/report_details_widgets/fullscreen_image_view.dart';
 import 'package:ecopin_app/features/reports/presentation/widgets/report_details_widgets/info_row.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +20,8 @@ class ReportDetailsBody extends StatefulWidget {
   final bool isLoadingCleanupTask;
   final VoidCallback? onFetchCleanupTask;
 
-  const ReportDetailsBody({super.key, 
+  const ReportDetailsBody({
+    super.key,
     required this.report,
     required this.evidence,
     required this.isLoadingEvidence,
@@ -355,9 +356,106 @@ class _ReportDetailsBodyState extends State<ReportDetailsBody> {
               ),
           ],
           const SizedBox(height: 32),
+          // Satisfaction rating button if waiting for feedback
+          if (widget.report.status.toLowerCase() == 'waiting_for_feedback') ...[
+            const Text(
+              'The issue has been resolved! Please rate the service.',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          SatisfactionRatingScreen(reportId: widget.report.id),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.blue,
+                ),
+                child: const Text(
+                  'Rate & Close Report',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          // Show satisfaction rating if already closed
+          if (widget.report.status.toLowerCase() == 'closed' &&
+              widget.report.satisfactionRating != null) ...[
+            const Text(
+              'Your Satisfaction Rating',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    _getEmojiForRating(widget.report.satisfactionRating!),
+                    style: const TextStyle(fontSize: 64),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _getLabelForRating(widget.report.satisfactionRating!),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           const SizedBox(height: 100),
         ],
       ),
     );
+  }
+
+  String _getEmojiForRating(int rating) {
+    switch (rating) {
+      case 1:
+        return '😢';
+      case 2:
+        return '😕';
+      case 3:
+        return '😐';
+      case 4:
+        return '😊';
+      case 5:
+        return '😄';
+      default:
+        return '😐';
+    }
+  }
+
+  String _getLabelForRating(int rating) {
+    switch (rating) {
+      case 1:
+        return 'Very Dissatisfied';
+      case 2:
+        return 'Dissatisfied';
+      case 3:
+        return 'Neutral';
+      case 4:
+        return 'Satisfied';
+      case 5:
+        return 'Very Satisfied';
+      default:
+        return 'Neutral';
+    }
   }
 }

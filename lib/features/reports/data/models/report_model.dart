@@ -17,6 +17,10 @@ class ReportModel {
   final String? userFullName;
   final bool onPrivateProperty;
   final String propertyOwnerConsentStatus;
+  final int? satisfactionRating;
+  final DateTime? lguResolvedAt;
+  final DateTime? citizenClosedAt;
+  final bool isOverdue;
 
   ReportModel({
     required this.id,
@@ -33,6 +37,10 @@ class ReportModel {
     this.userFullName,
     this.onPrivateProperty = false,
     this.propertyOwnerConsentStatus = 'not_required',
+    this.satisfactionRating,
+    this.lguResolvedAt,
+    this.citizenClosedAt,
+    this.isOverdue = false,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -104,6 +112,10 @@ class ReportModel {
       userFullName: json['profiles']?['full_name']?.toString(),
       onPrivateProperty: json['on_private_property'] ?? false,
       propertyOwnerConsentStatus: json['property_owner_consent_status']?.toString() ?? 'not_required',
+      satisfactionRating: json['satisfaction_rating'] as int?,
+      lguResolvedAt: json['lgu_resolved_at'] != null ? DateTime.tryParse(json['lgu_resolved_at']?.toString() ?? '') : null,
+      citizenClosedAt: json['citizen_closed_at'] != null ? DateTime.tryParse(json['citizen_closed_at']?.toString() ?? '') : null,
+      isOverdue: json['is_overdue'] ?? false,
     );
   }
 
@@ -118,6 +130,10 @@ class ReportModel {
       'longitude': location.longitude,
       'on_private_property': onPrivateProperty,
       'property_owner_consent_status': propertyOwnerConsentStatus,
+      'satisfaction_rating': satisfactionRating,
+      'lgu_resolved_at': lguResolvedAt?.toIso8601String(),
+      'citizen_closed_at': citizenClosedAt?.toIso8601String(),
+      'is_overdue': isOverdue,
     };
   }
 }

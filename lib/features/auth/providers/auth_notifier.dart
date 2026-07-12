@@ -58,20 +58,30 @@ class AuthNotifier extends ChangeNotifier {
         final userData = response.data['user'];
         final roleString = userData['role'] as String?;
 
+        _log.info('User data from backend: $userData');
+        _log.info('Role string from backend: $roleString');
+
         UserRole? role;
         if (roleString != null) {
           role = UserRole.values.firstWhere(
             (r) => r.name == roleString,
-            orElse: () => UserRole.citizen,
+            orElse: () {
+              _log.warning('Role "$roleString" not found in UserRole enum, defaulting to citizen');
+              return UserRole.citizen;
+            },
           );
+        } else {
+          _log.warning('Role string is null, defaulting to citizen');
+          role = UserRole.citizen;
         }
 
+        _log.info('Resolved UserRole: ${role.name}');
         _state = AppAuthState.authenticated(role);
       } catch (e, stackTrace) {
         // If backend fails, we might still have a Supabase session but
         // we can't verify the role/user in our DB.
         // For safety, we can either treat as unauthenticated or use a default.
-        _log.severe(e, stackTrace);
+        _log.severe('Error fetching user role: $e', stackTrace);
         _state = AppAuthState.unauthenticated();
       }
       notifyListeners();

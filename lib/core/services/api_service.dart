@@ -191,4 +191,37 @@ class ApiClient {
       data: {'satisfaction_rating': satisfactionRating},
     );
   }
+
+  // LGU methods
+
+  Future<dio.Response> getSystemStats() async {
+    return _dio.get(ApiConstants.systemStats);
+  }
+
+  Future<dio.Response> getClusters() async {
+    return _dio.get(ApiConstants.clusters);
+  }
+
+  Future<dio.Response> getClusterById(String clusterId) async {
+    return _dio.get(ApiConstants.clusterById(clusterId));
+  }
+
+  Future<dio.Response> getCleanupTasks() async {
+    return _dio.get(ApiConstants.cleanupTasks);
+  }
+
+  Future<dio.Response> getCleanupTaskById(String taskId) async {
+    return _dio.get(ApiConstants.cleanupTaskById(taskId));
+  }
+
+  Future<dio.Response> getResponseLogs({Map<String, dynamic>? params}) async {
+    return _dio.get(ApiConstants.responseLogs, queryParameters: params);
+  }
+
+  Future<dio.Response> updateReportStatus(String reportId, String status) async {
+    return _dio.patch(
+      ApiConstants.updateReportStatus(reportId),
+      data: {'status': status},
+    );
+  }
 }

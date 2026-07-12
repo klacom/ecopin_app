@@ -1,0 +1,253 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:ecopin_app/core/services/api_service.dart';
+
+class ResponseLog {
+  final String id;
+  final String? actionType;
+  final String? actionDetails;
+  final DateTime? createdAt;
+  final String? userId;
+  final Map<String, dynamic>? profile;
+
+  ResponseLog({
+    required this.id,
+    this.actionType,
+    this.actionDetails,
+    this.createdAt,
+    this.userId,
+    this.profile,
+  });
+
+  factory ResponseLog.fromJson(Map<String, dynamic> json) {
+    return ResponseLog(
+      id: json['id']?.toString() ?? '',
+      actionType: json['action_type'] as String?,
+      actionDetails: json['action_details'] as String?,
+      createdAt: json['created_at'] != null 
+          ? DateTime.tryParse(json['created_at']) 
+          : null,
+      userId: json['user_id']?.toString(),
+      profile: json['profiles'] as Map<String, dynamic>?,
+    );
+  }
+}
+
+class ResponseLogsNotifier extends ChangeNotifier {
+  final ApiClient _apiClient;
+  AsyncValue<List<ResponseLog>> _logs = const AsyncValue.loading();
+
+  ResponseLogsNotifier(this._apiClient) {
+    loadLogs();
+  }
+
+  AsyncValue<List<ResponseLog>> get logs => _logs;
+
+  Future<void> loadLogs({Map<String, dynamic>? params}) async {
+    _logs = const AsyncValue.loading();
+    notifyListeners();
+    try {
+      final response = await _apiClient.getResponseLogs(params: params);
+      final List<dynamic> data = response.data['logs'] is List 
+          ? response.data['logs'] as List<dynamic>
+          : [];
+      final logs = data.map((json) => ResponseLog.fromJson(json as Map<String, dynamic>)).toList();
+      _logs = AsyncValue.data(logs);
+      notifyListeners();
+    } catch (e, stackTrace) {
+      _logs = AsyncValue.error(e, stackTrace);
+      notifyListeners();
+    }
+  }
+}
+
+final lguResponseLogsProvider = ChangeNotifierProvider<ResponseLogsNotifier>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return ResponseLogsNotifier(apiClient);
+});
+
+class LguResponseLogsScreen extends ConsumerStatefulWidget {
+  const LguResponseLogsScreen({super.key});
+
+  @override
+  ConsumerState<LguResponseLogsScreen> createState() => _LguResponseLogsScreenState();
+}
+
+class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
+  String _actionTypeFilter = 'all';
+
+  @override
+  Widget build(BuildContext context) {
+    final logsAsync = ref.watch(lguResponseLogsProvider).logs;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Response Logs'),
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          _buildFilters(),
+          Expanded(
+            child: logsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Error: $error'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => ref.read(lguResponseLogsProvider).loadLogs(),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+              data: (logs) {
+                final filteredLogs = _filterLogs(logs);
+                if (filteredLogs.isEmpty) {
+                  return const Center(
+                    child: Text('No response logs found'),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filteredLogs.length,
+                  itemBuilder: (context, index) {
+                    final log = filteredLogs[index];
+                    return _buildLogCard(log);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: DropdownButtonFormField<String>(
+        initialValue: _actionTypeFilter,
+        decoration: const InputDecoration(
+          labelText: 'Action Type',
+          border: OutlineInputBorder(),
+        ),
+        items: const [
+          DropdownMenuItem(value: 'all', child: Text('All Actions')),
+          DropdownMenuItem(value: 'status_update', child: Text('Status Update')),
+          DropdownMenuItem(value: 'lifecycle_stage_update', child: Text('Lifecycle Stage Update')),
+          DropdownMenuItem(value: 'acknowledge_complaint', child: Text('Acknowledge Complaint')),
+          DropdownMenuItem(value: 'manual_note', child: Text('Manual Note')),
+        ],
+        onChanged: (value) {
+          setState(() {
+            _actionTypeFilter = value ?? 'all';
+          });
+        },
+      ),
+    );
+  }
+
+  List<ResponseLog> _filterLogs(List<ResponseLog> logs) {
+    if (_actionTypeFilter == 'all') return logs;
+    return logs.where((log) => log.actionType == _actionTypeFilter).toList();
+  }
+
+  Widget _buildLogCard(ResponseLog log) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildActionTypeBadge(log.actionType),
+                if (log.createdAt != null)
+                  Text(
+                    _formatDateTime(log.createdAt!),
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (log.actionDetails != null && log.actionDetails!.isNotEmpty)
+              Text(
+                log.actionDetails!,
+                style: const TextStyle(fontSize: 14),
+              ),
+            const SizedBox(height: 8),
+            if (log.profile != null)
+              Row(
+                children: [
+                  Icon(Icons.person, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    log.profile!['full_name'] ?? 'Unknown User',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionTypeBadge(String? actionType) {
+    Color color;
+    String label;
+    
+    switch (actionType) {
+      case 'status_update':
+        color = Colors.blue;
+        label = 'STATUS UPDATE';
+        break;
+      case 'lifecycle_stage_update':
+        color = Colors.purple;
+        label = 'LIFECYCLE UPDATE';
+        break;
+      case 'acknowledge_complaint':
+        color = Colors.green;
+        label = 'ACKNOWLEDGED';
+        break;
+      case 'manual_note':
+        color = Colors.orange;
+        label = 'NOTE';
+        break;
+      default:
+        color = Colors.grey;
+        label = actionType?.toUpperCase() ?? 'UNKNOWN';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+}

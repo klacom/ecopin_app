@@ -1,6 +1,14 @@
+import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
 import 'package:ecopin_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:ecopin_app/features/auth/presentation/screens/register_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cleanup_tasks_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_clusters_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_dashboard_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_main_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_profile_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_reports_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_response_logs_screen.dart';
 import 'package:ecopin_app/features/main_screen.dart';
 import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/features/notifications/presentation/screens/notifications_screen.dart';
@@ -28,21 +36,65 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loggedIn = auth.isAuthenticated;
       final isLoading = auth.isLoading;
       final path = state.matchedLocation;
+      final role = auth.role;
+
+      print('Redirect check - Path: $path, LoggedIn: $loggedIn, Role: $role, IsLoading: $isLoading');
 
       if (isLoading) return null;
 
       if (path == PublicAppRoutes.splash) {
+        // If logged in, redirect based on role
+        if (loggedIn) {
+          if (role == UserRole.lgu) {
+            print('Redirecting from splash to LGU Dashboard');
+            return LguAppRoutes.dashboard;
+          } else if (role == UserRole.admin) {
+            print('Redirecting from splash to Admin Dashboard');
+            return AdminAppRoutes.dashboard;
+          } else {
+            print('Redirecting from splash to Maps (Citizen)');
+            return ProtectedAppRoutes.maps;
+          }
+        }
         return null;
       }
 
       final isPublicRoute = PublicAppRoutes.publicRoutes.contains(path);
+      final isLguRoute = LguAppRoutes.lguRoutes.contains(path);
+      final isAdminRoute = AdminAppRoutes.adminRoutes.contains(path);
+
+      print('Route checks - IsPublicRoute: $isPublicRoute, IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute');
 
       if (loggedIn && isPublicRoute) {
-        return ProtectedAppRoutes.maps;
+        // Route based on role
+        print('Redirecting based on role: $role');
+        if (role == UserRole.lgu) {
+          print('Redirecting to LGU Dashboard');
+          return LguAppRoutes.dashboard;
+        } else if (role == UserRole.admin) {
+          print('Redirecting to Admin Dashboard');
+          return AdminAppRoutes.dashboard;
+        } else {
+          print('Redirecting to Maps (Citizen)');
+          return ProtectedAppRoutes.maps;
+        }
       }
 
       if (!loggedIn && !isPublicRoute) {
         return PublicAppRoutes.login;
+      }
+
+      // Role-based route protection
+      if (loggedIn) {
+        if (isLguRoute && role != UserRole.lgu && role != UserRole.admin) {
+          return ProtectedAppRoutes.maps;
+        }
+        if (isAdminRoute && role != UserRole.admin) {
+          return role == UserRole.lgu ? LguAppRoutes.dashboard : ProtectedAppRoutes.maps;
+        }
+        if (!isLguRoute && !isAdminRoute && !ProtectedAppRoutes.protectedRoutes.contains(path)) {
+          return ProtectedAppRoutes.maps;
+        }
       }
 
       return null;
@@ -101,6 +153,36 @@ final routerProvider = Provider<GoRouter>((ref) {
           final location = state.extra as LatLng?;
           return CreateReportScreen(initialLocation: location);
         },
+      ),
+      // LGU Shell Route
+      ShellRoute(
+        builder: (context, state, child) => LguMainScreen(child: child),
+        routes: [
+          GoRoute(
+            path: LguAppRoutes.dashboard,
+            builder: (_, _) => const LguDashboardScreen(),
+          ),
+          GoRoute(
+            path: LguAppRoutes.clusters,
+            builder: (_, _) => const LguClustersScreen(),
+          ),
+          GoRoute(
+            path: LguAppRoutes.cleanupTasks,
+            builder: (_, _) => const LguCleanupTasksScreen(),
+          ),
+          GoRoute(
+            path: LguAppRoutes.reports,
+            builder: (_, _) => const LguReportsScreen(),
+          ),
+          GoRoute(
+            path: LguAppRoutes.responseLogs,
+            builder: (_, _) => const LguResponseLogsScreen(),
+          ),
+          GoRoute(
+            path: LguAppRoutes.profile,
+            builder: (_, _) => const LguProfileScreen(),
+          ),
+        ],
       ),
     ],
   );

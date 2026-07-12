@@ -20,3 +20,28 @@ class ProtectedAppRoutes {
 
   static const protectedRoutes = [maps, reports, notifications, profile, createReport];
 }
+
+// LGU-only routes
+class LguAppRoutes {
+  static const String dashboard = '/lgu/dashboard';
+  static const String clusters = '/lgu/clusters';
+  static const String clusterDetails = '/lgu/clusters/:id';
+  static const String cleanupTasks = '/lgu/cleanup-tasks';
+  static const String taskDetails = '/lgu/cleanup-tasks/:id';
+  static const String reports = '/lgu/reports';
+  static const String reportDetails = '/lgu/reports/:id';
+  static const String responseLogs = '/lgu/response-logs';
+  static const String profile = '/lgu/profile';
+
+  static const lguRoutes = [dashboard, clusters, cleanupTasks, reports, responseLogs, profile];
+}
+
+// Admin-only routes
+class AdminAppRoutes {
+  static const String dashboard = '/admin/dashboard';
+  static const String users = '/admin/users';
+  static const String settings = '/admin/settings';
+  static const String auditLogs = '/admin/audit-logs';
+
+  static const adminRoutes = [dashboard, users, settings, auditLogs];
+}

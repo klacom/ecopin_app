@@ -1,0 +1,74 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:ecopin_app/core/services/api_service.dart';
+
+class CleanupTask {
+  final String id;
+  final String? clusterId;
+  final String? title;
+  final String? description;
+  final String? status;
+  final DateTime? createdAt;
+  final String? createdBy;
+  final Map<String, dynamic>? cluster;
+
+  CleanupTask({
+    required this.id,
+    this.clusterId,
+    this.title,
+    this.description,
+    this.status,
+    this.createdAt,
+    this.createdBy,
+    this.cluster,
+  });
+
+  factory CleanupTask.fromJson(Map<String, dynamic> json) {
+    return CleanupTask(
+      id: json['id']?.toString() ?? '',
+      clusterId: json['cluster_id']?.toString(),
+      title: json['title'] as String?,
+      description: json['description'] as String?,
+      status: json['status'] as String?,
+      createdAt: json['created_at'] != null 
+          ? DateTime.tryParse(json['created_at']) 
+          : null,
+      createdBy: json['created_by']?.toString(),
+      cluster: json['clusters'] as Map<String, dynamic>?,
+    );
+  }
+}
+
+class CleanupTasksNotifier extends ChangeNotifier {
+  final ApiClient _apiClient;
+  AsyncValue<List<CleanupTask>> _tasks = const AsyncValue.loading();
+
+  CleanupTasksNotifier(this._apiClient) {
+    loadTasks();
+  }
+
+  AsyncValue<List<CleanupTask>> get tasks => _tasks;
+
+  Future<void> loadTasks() async {
+    _tasks = const AsyncValue.loading();
+    notifyListeners();
+    try {
+      final response = await _apiClient.getCleanupTasks();
+      final List<dynamic> data = response.data is List 
+          ? response.data as List<dynamic>
+          : [];
+      final tasks = data.map((json) => CleanupTask.fromJson(json as Map<String, dynamic>)).toList();
+      _tasks = AsyncValue.data(tasks);
+      notifyListeners();
+    } catch (e, stackTrace) {
+      _tasks = AsyncValue.error(e, stackTrace);
+      notifyListeners();
+    }
+  }
+}
+
+final lguCleanupTasksProvider = ChangeNotifierProvider<CleanupTasksNotifier>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  return CleanupTasksNotifier(apiClient);
+});

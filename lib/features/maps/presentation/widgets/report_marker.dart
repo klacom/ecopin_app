@@ -10,10 +10,16 @@ class ReportMarker extends StatelessWidget {
     Color color;
     switch (status.toLowerCase()) {
       case 'resolved':
+      case 'closed':
         color = Colors.green;
         break;
       case 'in progress':
+      case 'acknowledged':
+      case 'waiting_for_feedback':
         color = Colors.orange;
+        break;
+      case 'pending_owner_consent':
+        color = Colors.yellow;
         break;
       default:
         color = Colors.red;

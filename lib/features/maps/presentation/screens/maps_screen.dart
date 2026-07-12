@@ -288,10 +288,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         double weight;
                         switch (report.status.toLowerCase()) {
                           case 'resolved':
+                          case 'closed':
                             weight = 0.3;
                             break;
                           case 'in progress':
+                          case 'acknowledged':
+                          case 'waiting_for_feedback':
                             weight = 0.6;
+                            break;
+                          case 'pending_owner_consent':
+                            weight = 0.8;
                             break;
                           default:
                             weight = 1.0;

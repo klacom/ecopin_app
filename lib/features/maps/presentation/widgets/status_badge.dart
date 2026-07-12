@@ -8,15 +8,35 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color color;
+    String displayText;
     switch (status.toLowerCase()) {
       case 'resolved':
         color = Colors.green;
+        displayText = 'Resolved';
+        break;
+      case 'closed':
+        color = Colors.green;
+        displayText = 'Closed';
         break;
       case 'in progress':
         color = Colors.orange;
+        displayText = 'In Progress';
+        break;
+      case 'acknowledged':
+        color = Colors.orange;
+        displayText = 'Acknowledged';
+        break;
+      case 'waiting_for_feedback':
+        color = Colors.orange;
+        displayText = 'Waiting for Feedback';
+        break;
+      case 'pending_owner_consent':
+        color = Colors.yellow;
+        displayText = 'Pending Owner Consent';
         break;
       default:
         color = Colors.red;
+        displayText = status.toUpperCase();
         break;
     }
 
@@ -28,7 +48,7 @@ class StatusBadge extends StatelessWidget {
         border: Border.all(color: color),
       ),
       child: Text(
-        status.toUpperCase(),
+        displayText,
         style: TextStyle(
           color: color,
           fontSize: 10,

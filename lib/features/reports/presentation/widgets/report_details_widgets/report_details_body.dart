@@ -188,7 +188,7 @@ class _ReportDetailsBodyState extends State<ReportDetailsBody> {
                 },
               ),
             ),
-          if (widget.report.status.toLowerCase() == 'resolved') ...[
+          if (widget.report.status.toLowerCase() == 'resolved' || widget.report.status.toLowerCase() == 'waiting_for_feedback' || widget.report.status.toLowerCase() == 'closed') ...[
             const SizedBox(height: 24),
             const Text(
               'Before & After',
@@ -197,17 +197,17 @@ class _ReportDetailsBodyState extends State<ReportDetailsBody> {
             const SizedBox(height: 8),
             if (widget.isLoadingCleanupTask)
               const Center(child: CircularProgressIndicator())
-            else if (widget.cleanupTask != null)
+            else if (widget.report.beforePhotoUrl != null || widget.report.afterPhotoUrl != null || widget.cleanupTask != null)
               Row(
                 children: [
                   Expanded(
                     child: Column(
                       children: [
-                        if (widget.cleanupTask?.beforePhotoUrl != null)
+                        if ((widget.cleanupTask?.beforePhotoUrl != null) || (widget.report.beforePhotoUrl != null))
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: CachedNetworkImage(
-                              imageUrl: widget.cleanupTask!.beforePhotoUrl!,
+                              imageUrl: widget.cleanupTask?.beforePhotoUrl ?? widget.report.beforePhotoUrl!,
                               height: 150,
                               width: double.infinity,
                               fit: BoxFit.cover,
@@ -277,11 +277,11 @@ class _ReportDetailsBodyState extends State<ReportDetailsBody> {
                   Expanded(
                     child: Column(
                       children: [
-                        if (widget.cleanupTask?.afterPhotoUrl != null)
+                        if ((widget.cleanupTask?.afterPhotoUrl != null) || (widget.report.afterPhotoUrl != null))
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: CachedNetworkImage(
-                              imageUrl: widget.cleanupTask!.afterPhotoUrl!,
+                              imageUrl: widget.cleanupTask?.afterPhotoUrl ?? widget.report.afterPhotoUrl!,
                               height: 150,
                               width: double.infinity,
                               fit: BoxFit.cover,
@@ -351,7 +351,7 @@ class _ReportDetailsBodyState extends State<ReportDetailsBody> {
               )
             else
               const Text(
-                'No cleanup task found for this report.',
+                'No before/after photos available yet.',
                 style: TextStyle(fontSize: 14),
               ),
           ],

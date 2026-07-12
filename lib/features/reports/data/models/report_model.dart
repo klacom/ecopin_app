@@ -21,6 +21,8 @@ class ReportModel {
   final DateTime? lguResolvedAt;
   final DateTime? citizenClosedAt;
   final bool isOverdue;
+  final String? beforePhotoUrl;
+  final String? afterPhotoUrl;
 
   ReportModel({
     required this.id,
@@ -41,6 +43,8 @@ class ReportModel {
     this.lguResolvedAt,
     this.citizenClosedAt,
     this.isOverdue = false,
+    this.beforePhotoUrl,
+    this.afterPhotoUrl,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -56,7 +60,6 @@ class ReportModel {
         (json['longitude'] as num).toDouble(),
       );
     }
-
     // 2. Try GeoJSON location (from updated reports_view)
     else if (json['location'] != null &&
         json['location'] is Map &&
@@ -64,7 +67,6 @@ class ReportModel {
       final coords = json['location']['coordinates'] as List;
       latLng = LatLng(coords[1].toDouble(), coords[0].toDouble());
     }
-
     // 3. Fallback for raw POINT string
     else if (json['location'] != null &&
         json['location'] is String &&
@@ -75,7 +77,6 @@ class ReportModel {
           .split(' ');
       latLng = LatLng(double.parse(parts[1]), double.parse(parts[0]));
     }
-
     // 4. Handle EWKB hex string (common in Supabase Realtime stream)
     else if (json['location'] != null && json['location'] is String) {
       try {
@@ -111,11 +112,18 @@ class ReportModel {
           DateTime.now(),
       userFullName: json['profiles']?['full_name']?.toString(),
       onPrivateProperty: json['on_private_property'] ?? false,
-      propertyOwnerConsentStatus: json['property_owner_consent_status']?.toString() ?? 'not_required',
+      propertyOwnerConsentStatus:
+          json['property_owner_consent_status']?.toString() ?? 'not_required',
       satisfactionRating: json['satisfaction_rating'] as int?,
-      lguResolvedAt: json['lgu_resolved_at'] != null ? DateTime.tryParse(json['lgu_resolved_at']?.toString() ?? '') : null,
-      citizenClosedAt: json['citizen_closed_at'] != null ? DateTime.tryParse(json['citizen_closed_at']?.toString() ?? '') : null,
+      lguResolvedAt: json['lgu_resolved_at'] != null
+          ? DateTime.tryParse(json['lgu_resolved_at']?.toString() ?? '')
+          : null,
+      citizenClosedAt: json['citizen_closed_at'] != null
+          ? DateTime.tryParse(json['citizen_closed_at']?.toString() ?? '')
+          : null,
       isOverdue: json['is_overdue'] ?? false,
+      beforePhotoUrl: json['before_photo_url']?.toString(),
+      afterPhotoUrl: json['after_photo_url']?.toString(),
     );
   }
 

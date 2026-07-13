@@ -138,6 +138,9 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
         return Colors.green;
       case 'in_progress':
         return Colors.orange;
+      case 'closed':
+        return Colors.grey;
+      case 'unresolved':
       default:
         return Colors.red;
     }
@@ -200,47 +203,38 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
               ],
             ),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
               children: [
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 48) / 2,
-                  child: _buildStatCard(
-                    'Total Reports',
-                    _cluster?.reportCount?.toString() ?? '0',
-                    Icons.description,
-                    Colors.blue,
-                  ),
+                _buildStatCard(
+                  'Total Reports',
+                  _cluster?.reportCount?.toString() ?? '0',
+                  Icons.description,
+                  Colors.blue,
                 ),
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 48) / 2,
-                  child: _buildStatCard(
-                    'Severity',
-                    _cluster?.severity?.toUpperCase() ?? 'N/A',
-                    Icons.warning,
-                    _getSeverityColor(_cluster?.severity),
-                  ),
+                _buildStatCard(
+                  'Severity',
+                  _cluster?.severity?.toUpperCase() ?? 'N/A',
+                  Icons.warning,
+                  _getSeverityColor(_cluster?.severity),
                 ),
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 48) / 2,
-                  child: _buildStatCard(
-                    'Issue Type',
-                    _cluster?.issueType ?? 'N/A',
-                    Icons.category,
-                    Colors.purple,
-                  ),
+                _buildStatCard(
+                  'Issue Type',
+                  _cluster?.issueType ?? 'N/A',
+                  Icons.category,
+                  Colors.purple,
                 ),
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 48) / 2,
-                  child: _buildStatCard(
-                    'Location',
-                    _cluster?.centerLat != null && _cluster?.centerLng != null
-                        ? '${_cluster!.centerLat!.toStringAsFixed(4)}, ${_cluster!.centerLng!.toStringAsFixed(4)}'
-                        : 'N/A',
-                    Icons.location_on,
-                    Colors.teal,
-                  ),
+                _buildStatCard(
+                  'Location',
+                  _cluster?.centerLat != null && _cluster?.centerLng != null
+                      ? '${_cluster!.centerLat!.toStringAsFixed(4)}, ${_cluster!.centerLng!.toStringAsFixed(4)}'
+                      : 'N/A',
+                  Icons.location_on,
+                  Colors.teal,
                 ),
               ],
             ),
@@ -343,18 +337,21 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
                       ),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(report.status).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      report.status?.replaceAll('_', ' ').toUpperCase() ?? 'N/A',
-                      style: TextStyle(
-                        color: _getStatusColor(report.status),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(report.status).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        report.status?.replaceAll('_', ' ').toUpperCase() ?? 'N/A',
+                        style: TextStyle(
+                          color: _getStatusColor(report.status),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),

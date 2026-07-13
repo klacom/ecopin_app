@@ -11,6 +11,7 @@ import 'package:ecopin_app/features/lgu/presentation/screens/lgu_reports_screen.
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_response_logs_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cluster_details_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cleanup_task_details_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_report_details_screen.dart';
 import 'package:ecopin_app/features/main_screen.dart';
 import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/features/notifications/presentation/screens/notifications_screen.dart';
@@ -200,7 +201,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: ':id',
                 builder: (context, state) {
                   final id = state.pathParameters['id']!;
-                  return ReportDetailsScreen(reportId: id);
+                  return LguReportDetailsScreen(reportId: id);
                 },
               ),
             ],

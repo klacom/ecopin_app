@@ -62,4 +62,20 @@ class ApiConstants {
   static String updateReportStatus(String reportId) {
     return '/api/reports/$reportId/status';
   }
+
+  static String updateReportLifecycleStage(String reportId) {
+    return '/api/reports/$reportId/lifecycle-stage';
+  }
+
+  static String updateReportNotes(String reportId) {
+    return '/api/reports/$reportId/notes';
+  }
+
+  static String uploadReportBeforePhotos(String reportId) {
+    return '/api/reports/$reportId/before-photos';
+  }
+
+  static String uploadReportAfterPhotos(String reportId) {
+    return '/api/reports/$reportId/after-photos';
+  }
 }

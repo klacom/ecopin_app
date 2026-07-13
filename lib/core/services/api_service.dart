@@ -247,4 +247,40 @@ class ApiClient {
       data: {'status': status},
     );
   }
+
+  Future<dio.Response> updateReportLifecycleStage(String reportId, String stage) async {
+    return _dio.patch(
+      ApiConstants.updateReportLifecycleStage(reportId),
+      data: {'lifecycle_stage': stage},
+    );
+  }
+
+  Future<dio.Response> updateReportNotes(String reportId, String notes) async {
+    return _dio.patch(
+      ApiConstants.updateReportNotes(reportId),
+      data: {'lgu_notes': notes},
+    );
+  }
+
+  Future<dio.Response> uploadReportBeforePhotos(String reportId, List<File> photos) async {
+    final formData = dio.FormData.fromMap({});
+    for (var i = 0; i < photos.length; i++) {
+      formData.files.add(MapEntry(
+        'photos',
+        await dio.MultipartFile.fromFile(photos[i].path),
+      ));
+    }
+    return _dio.post(ApiConstants.uploadReportBeforePhotos(reportId), data: formData);
+  }
+
+  Future<dio.Response> uploadReportAfterPhotos(String reportId, List<File> photos) async {
+    final formData = dio.FormData.fromMap({});
+    for (var i = 0; i < photos.length; i++) {
+      formData.files.add(MapEntry(
+        'photos',
+        await dio.MultipartFile.fromFile(photos[i].path),
+      ));
+    }
+    return _dio.post(ApiConstants.uploadReportAfterPhotos(reportId), data: formData);
+  }
 }

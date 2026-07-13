@@ -60,6 +60,11 @@ class ResponseLogsNotifier extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void reset() {
+    _logs = const AsyncValue.loading();
+    notifyListeners();
+  }
 }
 
 final lguResponseLogsProvider = ChangeNotifierProvider<ResponseLogsNotifier>((ref) {
@@ -76,6 +81,7 @@ class LguResponseLogsScreen extends ConsumerStatefulWidget {
 
 class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
   String _actionTypeFilter = 'all';
+  String _sortBy = 'newest';
 
   @override
   Widget build(BuildContext context) {
@@ -106,14 +112,14 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
                 ),
               ),
               data: (logs) {
-                final filteredLogs = _filterLogs(logs);
+                final filteredLogs = _filterAndSortLogs(logs);
                 if (filteredLogs.isEmpty) {
                   return const Center(
                     child: Text('No response logs found'),
                   );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
                   itemCount: filteredLogs.length,
                   itemBuilder: (context, index) {
                     final log = filteredLogs[index];
@@ -131,31 +137,72 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
   Widget _buildFilters() {
     return Container(
       padding: const EdgeInsets.all(16),
-      child: DropdownButtonFormField<String>(
-        initialValue: _actionTypeFilter,
-        decoration: const InputDecoration(
-          labelText: 'Action Type',
-          border: OutlineInputBorder(),
-        ),
-        items: const [
-          DropdownMenuItem(value: 'all', child: Text('All Actions')),
-          DropdownMenuItem(value: 'status_update', child: Text('Status Update')),
-          DropdownMenuItem(value: 'lifecycle_stage_update', child: Text('Lifecycle Stage Update')),
-          DropdownMenuItem(value: 'acknowledge_complaint', child: Text('Acknowledge Complaint')),
-          DropdownMenuItem(value: 'manual_note', child: Text('Manual Note')),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _actionTypeFilter,
+                  decoration: const InputDecoration(
+                    labelText: 'Action Type',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'all', child: Text('All Actions')),
+                    DropdownMenuItem(value: 'status_update', child: Text('Status Update')),
+                    DropdownMenuItem(value: 'lifecycle_stage_update', child: Text('Lifecycle')),
+                    DropdownMenuItem(value: 'acknowledge_complaint', child: Text('Acknowledge')),
+                    DropdownMenuItem(value: 'manual_note', child: Text('Manual Note')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _actionTypeFilter = value ?? 'all';
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _sortBy,
+                  decoration: const InputDecoration(
+                    labelText: 'Sort By',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'newest', child: Text('Newest First')),
+                    DropdownMenuItem(value: 'oldest', child: Text('Oldest First')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _sortBy = value ?? 'newest';
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
         ],
-        onChanged: (value) {
-          setState(() {
-            _actionTypeFilter = value ?? 'all';
-          });
-        },
       ),
     );
   }
 
-  List<ResponseLog> _filterLogs(List<ResponseLog> logs) {
-    if (_actionTypeFilter == 'all') return logs;
-    return logs.where((log) => log.actionType == _actionTypeFilter).toList();
+  List<ResponseLog> _filterAndSortLogs(List<ResponseLog> logs) {
+    var filtered = logs;
+    if (_actionTypeFilter != 'all') {
+      filtered = logs.where((log) => log.actionType == _actionTypeFilter).toList();
+    }
+
+    // Sort by date
+    filtered.sort((a, b) {
+      if (a.createdAt == null || b.createdAt == null) return 0;
+      return _sortBy == 'newest'
+          ? b.createdAt!.compareTo(a.createdAt!)
+          : a.createdAt!.compareTo(b.createdAt!);
+    });
+
+    return filtered;
   }
 
   Widget _buildLogCard(ResponseLog log) {

@@ -133,7 +133,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                   );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
                   itemCount: filteredReports.length,
                   itemBuilder: (context, index) {
                     final report = filteredReports[index];

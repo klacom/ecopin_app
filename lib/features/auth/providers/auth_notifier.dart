@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/auth/data/models/auth_state.dart';
+import 'package:ecopin_app/features/lgu/providers/lgu_clusters_provider.dart';
+import 'package:ecopin_app/features/lgu/providers/lgu_cleanup_tasks_provider.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_response_logs_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:logging/logging.dart';
@@ -25,6 +28,19 @@ class AuthNotifier extends ChangeNotifier {
 
   AppAuthState get state => _state;
 
+  void _clearCachedData() {
+    // Clear cached data from providers when switching accounts
+    if (_ref.container.exists(lguClustersProvider)) {
+      _ref.read(lguClustersProvider.notifier).reset();
+    }
+    if (_ref.container.exists(lguCleanupTasksProvider)) {
+      _ref.read(lguCleanupTasksProvider.notifier).reset();
+    }
+    if (_ref.container.exists(lguResponseLogsProvider)) {
+      _ref.read(lguResponseLogsProvider.notifier).reset();
+    }
+  }
+
   void _initialize() {
     // Check current session
     final session = _supabase.auth.currentSession;
@@ -34,6 +50,8 @@ class AuthNotifier extends ChangeNotifier {
     _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       if (data.event == AuthChangeEvent.signedIn) {
         _ref.read(notificationServiceProvider).subscribeToNotifications();
+        // Clear cached data when signing in (account switch)
+        _clearCachedData();
       } else if (data.event == AuthChangeEvent.signedOut) {
         _ref.read(notificationServiceProvider).unsubscribe();
       }
@@ -90,14 +108,17 @@ class AuthNotifier extends ChangeNotifier {
 
   Future<void> signOut() async {
     try {
-      // 1. Call backend logout if possible
+      // 1. Clear cached data from providers
+      _clearCachedData();
+
+      // 2. Call backend logout if possible
       final apiClient = _ref.read(apiClientProvider);
       await apiClient.logout();
     } catch (e, stackTrace) {
       // Ignore backend logout errors and proceed with local signout
       _log.severe(e, stackTrace);
     } finally {
-      // 2. Clear Supabase session locally
+      // 3. Clear Supabase session locally
       await _supabase.auth.signOut();
       // _updateState will be triggered by onAuthStateChange listener
     }

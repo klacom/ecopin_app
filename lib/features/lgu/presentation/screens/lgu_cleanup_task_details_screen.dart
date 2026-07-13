@@ -10,8 +10,8 @@ class CleanupTaskDetail {
   final String? description;
   final String? status;
   final DateTime? createdAt;
-  final String? beforePhotoUrl;
-  final String? afterPhotoUrl;
+  final List<String>? beforePhotos;
+  final List<String>? afterPhotos;
   final Map<String, dynamic>? cluster;
 
   CleanupTaskDetail({
@@ -21,8 +21,8 @@ class CleanupTaskDetail {
     this.description,
     this.status,
     this.createdAt,
-    this.beforePhotoUrl,
-    this.afterPhotoUrl,
+    this.beforePhotos,
+    this.afterPhotos,
     this.cluster,
   });
 
@@ -36,8 +36,12 @@ class CleanupTaskDetail {
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'])
           : null,
-      beforePhotoUrl: json['before_photo_url'] as String?,
-      afterPhotoUrl: json['after_photo_url'] as String?,
+      beforePhotos: json['before_photos'] != null
+          ? (json['before_photos'] as List).map((e) => e.toString()).toList()
+          : null,
+      afterPhotos: json['after_photos'] != null
+          ? (json['after_photos'] as List).map((e) => e.toString()).toList()
+          : null,
       cluster: json['clusters'] as Map<String, dynamic>?,
     );
   }
@@ -125,10 +129,13 @@ class _LguCleanupTaskDetailsScreenState extends ConsumerState<LguCleanupTaskDeta
 
   Color _getStatusColor(String? status) {
     switch (status) {
-      case 'completed':
+      case 'resolved':
         return Colors.green;
       case 'in_progress':
         return Colors.orange;
+      case 'closed':
+        return Colors.grey;
+      case 'unresolved':
       default:
         return Colors.red;
     }
@@ -172,7 +179,7 @@ class _LguCleanupTaskDetailsScreenState extends ConsumerState<LguCleanupTaskDeta
           : _task == null
               ? const Center(child: Text('Task not found'))
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -261,9 +268,12 @@ class _LguCleanupTaskDetailsScreenState extends ConsumerState<LguCleanupTaskDeta
                     children: [
                       Icon(Icons.group_work, size: 16, color: Colors.grey[600]),
                       const SizedBox(width: 4),
-                      Text(
-                        'Cluster: ${_task!.clusterId}',
-                        style: TextStyle(color: Colors.grey[600]),
+                      Flexible(
+                        child: Text(
+                          'Cluster: ${_truncateClusterId(_task!.clusterId!)}',
+                          style: TextStyle(color: Colors.grey[600]),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -295,11 +305,14 @@ class _LguCleanupTaskDetailsScreenState extends ConsumerState<LguCleanupTaskDeta
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  '$completedCount / $totalCount completed',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
+                Flexible(
+                  child: Text(
+                    '$completedCount / $totalCount completed',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -391,18 +404,21 @@ class _LguCleanupTaskDetailsScreenState extends ConsumerState<LguCleanupTaskDeta
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(report.status).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                report.status?.replaceAll('_', ' ').toUpperCase() ?? 'N/A',
-                                style: TextStyle(
-                                  color: _getStatusColor(report.status),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(report.status).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  report.status?.replaceAll('_', ' ').toUpperCase() ?? 'N/A',
+                                  style: TextStyle(
+                                    color: _getStatusColor(report.status),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
@@ -427,8 +443,10 @@ class _LguCleanupTaskDetailsScreenState extends ConsumerState<LguCleanupTaskDeta
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildReportInfoSection(report),
+                  const SizedBox(height: 16),
                   const Text(
-                    'Before & After Photos',
+                    'Evidence Photos',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -446,11 +464,74 @@ class _LguCleanupTaskDetailsScreenState extends ConsumerState<LguCleanupTaskDeta
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        context.go('/lgu/reports/${report.id}');
+                      },
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      label: const Text('View Full Report Details'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
         ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildReportInfoSection(TaskReport report) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Report Information',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildInfoRow('Report ID', report.id),
+        _buildInfoRow('Title', report.title ?? 'N/A'),
+        _buildInfoRow('Description', report.description ?? 'N/A'),
+        _buildInfoRow('Issue Type', report.issueType ?? 'N/A'),
+        _buildInfoRow('Status', report.status?.replaceAll('_', ' ').toUpperCase() ?? 'N/A'),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -525,12 +606,58 @@ class _LguCleanupTaskDetailsScreenState extends ConsumerState<LguCleanupTaskDeta
               ),
             ),
             const SizedBox(height: 16),
-            _buildPhotoSection('Before', _task?.beforePhotoUrl),
-            const SizedBox(height: 12),
-            _buildPhotoSection('After', _task?.afterPhotoUrl),
+            if (_task?.beforePhotos != null && _task!.beforePhotos!.isNotEmpty)
+              _buildPhotoGrid('Before Photos', _task!.beforePhotos!),
+            if (_task?.afterPhotos != null && _task!.afterPhotos!.isNotEmpty)
+              _buildPhotoGrid('After Photos', _task!.afterPhotos!),
+            if ((_task?.beforePhotos == null || _task!.beforePhotos!.isEmpty) &&
+                (_task?.afterPhotos == null || _task!.afterPhotos!.isEmpty))
+              const Text('No photos available'),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPhotoGrid(String label, List<String> photoUrls) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemCount: photoUrls.length,
+          itemBuilder: (context, index) {
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                photoUrls[index],
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey[200],
+                    child: const Center(child: Icon(Icons.broken_image)),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+      ],
     );
   }
 
@@ -551,5 +678,10 @@ class _LguCleanupTaskDetailsScreenState extends ConsumerState<LguCleanupTaskDeta
               ),
       ),
     );
+  }
+
+  String _truncateClusterId(String clusterId) {
+    if (clusterId.length <= 8) return clusterId;
+    return '${clusterId.substring(0, 8)}...';
   }
 }

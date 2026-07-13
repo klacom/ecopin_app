@@ -52,7 +52,7 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
                   );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
                   itemCount: filteredClusters.length,
                   itemBuilder: (context, index) {
                     final cluster = filteredClusters[index];

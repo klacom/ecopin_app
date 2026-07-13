@@ -12,6 +12,8 @@ class CleanupTask {
   final DateTime? createdAt;
   final String? createdBy;
   final Map<String, dynamic>? cluster;
+  final List<String>? beforePhotos;
+  final List<String>? afterPhotos;
 
   CleanupTask({
     required this.id,
@@ -22,6 +24,8 @@ class CleanupTask {
     this.createdAt,
     this.createdBy,
     this.cluster,
+    this.beforePhotos,
+    this.afterPhotos,
   });
 
   factory CleanupTask.fromJson(Map<String, dynamic> json) {
@@ -31,11 +35,17 @@ class CleanupTask {
       title: json['title'] as String?,
       description: json['description'] as String?,
       status: json['status'] as String?,
-      createdAt: json['created_at'] != null 
-          ? DateTime.tryParse(json['created_at']) 
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'])
           : null,
       createdBy: json['created_by']?.toString(),
       cluster: json['clusters'] as Map<String, dynamic>?,
+      beforePhotos: json['before_photos'] != null
+          ? (json['before_photos'] as List).map((e) => e.toString()).toList()
+          : null,
+      afterPhotos: json['after_photos'] != null
+          ? (json['after_photos'] as List).map((e) => e.toString()).toList()
+          : null,
     );
   }
 }
@@ -65,6 +75,11 @@ class CleanupTasksNotifier extends ChangeNotifier {
       _tasks = AsyncValue.error(e, stackTrace);
       notifyListeners();
     }
+  }
+
+  void reset() {
+    _tasks = const AsyncValue.loading();
+    notifyListeners();
   }
 }
 

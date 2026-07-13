@@ -60,6 +60,11 @@ class ClustersNotifier extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void reset() {
+    _clusters = const AsyncValue.loading();
+    notifyListeners();
+  }
 }
 
 final lguClustersProvider = ChangeNotifierProvider<ClustersNotifier>((ref) {

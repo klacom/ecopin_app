@@ -59,15 +59,16 @@ class LguProfileScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  profile?['email'] ?? 'Unknown',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
+              if (profile?['email'] != null && profile!['email'].toString().isNotEmpty)
+                Center(
+                  child: Text(
+                    profile!['email'],
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
                   ),
                 ),
-              ),
               const SizedBox(height: 32),
               Card(
                 child: Padding(
@@ -83,11 +84,12 @@ class LguProfileScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildInfoRow('Full Name', profile?['full_name'] ?? 'N/A'),
-                      _buildInfoRow('Email', profile?['email'] ?? 'N/A'),
+                      _buildInfoRow('Full Name', profile?['full_name']),
+                      if (profile != null && profile['email'] != null && profile['email'].toString().isNotEmpty)
+                        _buildInfoRow('Email', profile['email']),
                       _buildInfoRow('Role', profile?['role']?.toString().toUpperCase() ?? 'N/A'),
-                      _buildInfoRow('Phone', profile?['phone'] ?? 'N/A'),
-                      _buildInfoRow('Address', profile?['address'] ?? 'N/A'),
+                      if (profile != null && profile['created_at'] != null)
+                        _buildInfoRow('Joined Date', _formatDate(profile['created_at'])),
                     ],
                   ),
                 ),
@@ -144,7 +146,8 @@ class LguProfileScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String? value) {
+    if (value == null || value.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -169,5 +172,18 @@ class LguProfileScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _formatDate(dynamic date) {
+    if (date == null) return 'N/A';
+    DateTime dateTime;
+    if (date is DateTime) {
+      dateTime = date;
+    } else if (date is String) {
+      dateTime = DateTime.tryParse(date) ?? DateTime.now();
+    } else {
+      return 'N/A';
+    }
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
   }
 }

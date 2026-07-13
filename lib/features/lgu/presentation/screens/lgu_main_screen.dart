@@ -29,8 +29,7 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
     if (location.startsWith(LguAppRoutes.clusters)) return 1;
     if (location.startsWith(LguAppRoutes.cleanupTasks)) return 2;
     if (location.startsWith(LguAppRoutes.reports)) return 3;
-    if (location.startsWith(LguAppRoutes.responseLogs)) return 4;
-    if (location.startsWith(LguAppRoutes.profile)) return 5;
+    // More menu items don't affect index since they open a menu
     return 0;
   }
 
@@ -49,12 +48,134 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
         context.go(LguAppRoutes.reports);
         break;
       case 4:
-        context.go(LguAppRoutes.responseLogs);
-        break;
-      case 5:
-        context.go(LguAppRoutes.profile);
+        _showMoreMenu(context);
         break;
     }
+  }
+
+  void _showMoreMenu(BuildContext context) {
+    final profileAsync = ref.read(profileProvider);
+    final fullName = profileAsync.value?['full_name'] as String?;
+    final avatarUrl = profileAsync.value?['avatar_url'] as String?;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildMoreMenuItem(
+              icon: Icons.map_outlined,
+              activeIcon: Icons.map,
+              label: 'Map',
+              route: LguAppRoutes.maps,
+            ),
+            const Divider(height: 1),
+            _buildMoreMenuItem(
+              icon: Icons.history_outlined,
+              activeIcon: Icons.history,
+              label: 'Logs',
+              route: LguAppRoutes.responseLogs,
+            ),
+            const Divider(height: 1),
+            _buildProfileMoreMenuItem(avatarUrl, fullName),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoreMenuItem({
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+    required String route,
+  }) {
+    final currentLocation = GoRouterState.of(context).matchedLocation;
+    final isSelected = currentLocation.startsWith(route);
+    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        context.go(route);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Row(
+          children: [
+            Icon(isSelected ? activeIcon : icon, color: color, size: 24),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileMoreMenuItem(String? avatarUrl, String? fullName) {
+    final currentLocation = GoRouterState.of(context).matchedLocation;
+    final isSelected = currentLocation.startsWith(LguAppRoutes.profile);
+    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        context.go(LguAppRoutes.profile);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircleAvatar(
+                key: ValueKey(avatarUrl),
+                radius: 12,
+                backgroundColor: color,
+                foregroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                    ? NetworkImage(avatarUrl)
+                    : null,
+                child: avatarUrl == null || avatarUrl.isEmpty
+                    ? Text(
+                        _getInitials(fullName),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      )
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Text(
+              'Profile',
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -121,67 +242,16 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
                   ),
                   _buildNavItem(
                     4,
-                    Icons.history_outlined,
-                    Icons.history,
-                    'Logs',
+                    Icons.menu_outlined,
+                    Icons.menu,
+                    'More',
                     selectedIndex,
                   ),
-                  _buildProfileNavItem(5, selectedIndex, avatarUrl, fullName),
                 ],
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildProfileNavItem(
-    int index,
-    int selectedIndex,
-    String? avatarUrl,
-    String? fullName,
-  ) {
-    final isSelected = index == selectedIndex;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
-
-    return InkWell(
-      onTap: () => _onItemTapped(index, context),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: CircleAvatar(
-              key: ValueKey(avatarUrl),
-              radius: 12,
-              backgroundColor: color,
-              foregroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                  ? NetworkImage(avatarUrl)
-                  : null,
-              child: avatarUrl == null || avatarUrl.isEmpty
-                  ? Text(
-                      _getInitials(fullName),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
-                      ),
-                    )
-                  : null,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Profile',
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
       ),
     );
   }

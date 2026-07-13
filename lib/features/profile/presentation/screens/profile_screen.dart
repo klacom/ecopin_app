@@ -236,8 +236,8 @@ Future<void> _updateDataConsent(bool value) async {
                             backgroundColor: Theme.of(context).primaryColor,
                             foregroundImage:
                                 avatarUrl != null && avatarUrl.isNotEmpty
-                                ? NetworkImage(avatarUrl)
-                                : null,
+                                    ? NetworkImage(avatarUrl)
+                                    : null,
                             child: avatarUrl == null || avatarUrl.isEmpty
                                 ? Text(
                                     _getInitials(fullName),
@@ -278,13 +278,6 @@ Future<void> _updateDataConsent(bool value) async {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: _pickImage,
-                      child: _isUploading
-                          ? const Text('Uploading...')
-                          : const Text('Change Profile Picture'),
                     ),
                     const SizedBox(height: 32),
                     TextFormField(

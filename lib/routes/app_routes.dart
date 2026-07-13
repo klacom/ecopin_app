@@ -24,6 +24,7 @@ class ProtectedAppRoutes {
 // LGU-only routes
 class LguAppRoutes {
   static const String dashboard = '/lgu/dashboard';
+  static const String maps = '/lgu/maps';
   static const String clusters = '/lgu/clusters';
   static const String clusterDetails = '/lgu/clusters/:id';
   static const String cleanupTasks = '/lgu/cleanup-tasks';
@@ -33,7 +34,7 @@ class LguAppRoutes {
   static const String responseLogs = '/lgu/response-logs';
   static const String profile = '/lgu/profile';
 
-  static const lguRoutes = [dashboard, clusters, cleanupTasks, reports, responseLogs, profile];
+  static const lguRoutes = [dashboard, maps, clusters, cleanupTasks, reports, responseLogs, profile];
 }
 
 // Admin-only routes

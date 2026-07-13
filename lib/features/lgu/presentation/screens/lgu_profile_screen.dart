@@ -48,27 +48,6 @@ class LguProfileScreen extends ConsumerWidget {
                       : null,
                 ),
               ),
-              const SizedBox(height: 24),
-              Center(
-                child: Text(
-                  profile?['full_name'] ?? 'Unknown',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (profile?['email'] != null && profile!['email'].toString().isNotEmpty)
-                Center(
-                  child: Text(
-                    profile!['email'],
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
               const SizedBox(height: 32),
               Card(
                 child: Padding(

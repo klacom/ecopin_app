@@ -6,6 +6,7 @@ import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cleanup_tasks_s
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_clusters_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_dashboard_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_main_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_map_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_profile_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_reports_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_response_logs_screen.dart';
@@ -41,7 +42,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final path = state.matchedLocation;
       final role = auth.role;
 
-      print('Redirect check - Path: $path, LoggedIn: $loggedIn, Role: $role, IsLoading: $isLoading');
+      print(
+        'Redirect check - Path: $path, LoggedIn: $loggedIn, Role: $role, IsLoading: $isLoading',
+      );
 
       if (isLoading) return null;
 
@@ -66,7 +69,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLguRoute = path.startsWith('/lgu/');
       final isAdminRoute = path.startsWith('/admin/');
 
-      print('Route checks - IsPublicRoute: $isPublicRoute, IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute');
+      print(
+        'Route checks - IsPublicRoute: $isPublicRoute, IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute',
+      );
 
       if (loggedIn && isPublicRoute) {
         // Route based on role
@@ -93,10 +98,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           return ProtectedAppRoutes.maps;
         }
         if (isAdminRoute && role != UserRole.admin) {
-          return role == UserRole.lgu ? LguAppRoutes.dashboard : ProtectedAppRoutes.maps;
+          return role == UserRole.lgu
+              ? LguAppRoutes.dashboard
+              : ProtectedAppRoutes.maps;
         }
         // Check if path is a protected route (including nested routes)
-        final isProtectedRoute = ProtectedAppRoutes.protectedRoutes.any((route) => path.startsWith(route));
+        final isProtectedRoute = ProtectedAppRoutes.protectedRoutes.any(
+          (route) => path.startsWith(route),
+        );
         if (!isLguRoute && !isAdminRoute && !isProtectedRoute) {
           return ProtectedAppRoutes.maps;
         }
@@ -166,6 +175,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: LguAppRoutes.dashboard,
             builder: (_, _) => const LguDashboardScreen(),
+          ),
+          GoRoute(
+            path: LguAppRoutes.maps,
+            builder: (_, _) => const LguMapScreen(),
           ),
           GoRoute(
             path: LguAppRoutes.clusters,

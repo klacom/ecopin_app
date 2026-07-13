@@ -12,7 +12,7 @@ class LguReportDetail {
   final String? description;
   final String? location;
   final String? status;
-  final String? lifecycleStage;
+  final String? stage;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? reporterId;
@@ -20,11 +20,10 @@ class LguReportDetail {
   final String? reporterEmail;
   final bool? discloseIdentity;
   final bool? dataConsent;
-  final List<String>? evidencePhotos;
-  final List<String>? lguBeforePhotos;
-  final List<String>? lguAfterPhotos;
-  final String? lguNotes;
-  final List<ActivityLog>? activityLogs;
+  final List<EvidencePhoto>? evidencePhotos;
+  final String? beforePhotoUrl;
+  final String? afterPhotoUrl;
+  final List<ResponseLog>? responseLogs;
 
   LguReportDetail({
     required this.id,
@@ -33,7 +32,7 @@ class LguReportDetail {
     this.description,
     this.location,
     this.status,
-    this.lifecycleStage,
+    this.stage,
     this.createdAt,
     this.updatedAt,
     this.reporterId,
@@ -42,80 +41,95 @@ class LguReportDetail {
     this.discloseIdentity,
     this.dataConsent,
     this.evidencePhotos,
-    this.lguBeforePhotos,
-    this.lguAfterPhotos,
-    this.lguNotes,
-    this.activityLogs,
+    this.beforePhotoUrl,
+    this.afterPhotoUrl,
+    this.responseLogs,
   });
 
   factory LguReportDetail.fromJson(Map<String, dynamic> json) {
     return LguReportDetail(
       id: json['id']?.toString() ?? '',
       title: json['title'] as String?,
-      issue: json['issue'] as String?,
+      issue: json['issue_type'] as String?,
       description: json['description'] as String?,
       location: json['location'] as String?,
       status: json['status'] as String?,
-      lifecycleStage: json['lifecycle_stage'] as String?,
+      stage: json['stage'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'])
           : null,
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'])
           : null,
-      reporterId: json['reporter_id']?.toString(),
-      reporterName: json['reporter_name'] as String?,
-      reporterEmail: json['reporter_email'] as String?,
+      reporterId: json['user_id']?.toString(),
+      reporterName: json['profiles']?['full_name'] as String?,
+      reporterEmail: null,
       discloseIdentity: json['disclose_identity'] as bool?,
-      dataConsent: json['profiles'] != null && json['profiles']['data_consent'] != null
-          ? json['profiles']['data_consent'] as bool
-          : null,
-      evidencePhotos: json['evidence_photos'] != null
-          ? (json['evidence_photos'] as List).map((e) => e.toString()).toList()
-          : null,
-      lguBeforePhotos: json['lgu_before_photos'] != null
-          ? (json['lgu_before_photos'] as List).map((e) => e.toString()).toList()
-          : null,
-      lguAfterPhotos: json['lgu_after_photos'] != null
-          ? (json['lgu_after_photos'] as List).map((e) => e.toString()).toList()
-          : null,
-      lguNotes: json['lgu_notes'] as String?,
-      activityLogs: json['activity_logs'] != null
-          ? (json['activity_logs'] as List)
-              .map((e) => ActivityLog.fromJson(e as Map<String, dynamic>))
-              .toList()
+      dataConsent: json['profiles']?['data_consent'] as bool?,
+      evidencePhotos: null, // We'll fetch this separately
+      beforePhotoUrl: json['before_photo_url'] as String?,
+      afterPhotoUrl: json['after_photo_url'] as String?,
+      responseLogs: json['response_logs'] != null
+          ? (json['response_logs'] as List)
+                .map((e) => ResponseLog.fromJson(e as Map<String, dynamic>))
+                .toList()
           : null,
     );
   }
 }
 
-class ActivityLog {
+class EvidencePhoto {
+  final String url;
+  final String name;
+  final int? size;
+  final DateTime? createdAt;
+
+  EvidencePhoto({
+    required this.url,
+    required this.name,
+    this.size,
+    this.createdAt,
+  });
+
+  factory EvidencePhoto.fromJson(Map<String, dynamic> json) {
+    return EvidencePhoto(
+      url: json['url'] as String,
+      name: json['name'] as String,
+      size: json['size'] as int?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'])
+          : null,
+    );
+  }
+}
+
+class ResponseLog {
   final String id;
-  final String? action;
-  final String? details;
+  final String? actionType;
+  final String? actionDetails;
   final DateTime? createdAt;
   final String? userId;
   final String? userName;
 
-  ActivityLog({
+  ResponseLog({
     required this.id,
-    this.action,
-    this.details,
+    this.actionType,
+    this.actionDetails,
     this.createdAt,
     this.userId,
     this.userName,
   });
 
-  factory ActivityLog.fromJson(Map<String, dynamic> json) {
-    return ActivityLog(
+  factory ResponseLog.fromJson(Map<String, dynamic> json) {
+    return ResponseLog(
       id: json['id']?.toString() ?? '',
-      action: json['action'] as String?,
-      details: json['details'] as String?,
+      actionType: json['action_type'] as String?,
+      actionDetails: json['action_details'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'])
           : null,
       userId: json['user_id']?.toString(),
-      userName: json['user_name'] as String?,
+      userName: json['profiles']?['full_name'] as String?,
     );
   }
 }
@@ -126,14 +140,18 @@ class LguReportDetailsScreen extends ConsumerStatefulWidget {
   const LguReportDetailsScreen({super.key, required this.reportId});
 
   @override
-  ConsumerState<LguReportDetailsScreen> createState() => _LguReportDetailsScreenState();
+  ConsumerState<LguReportDetailsScreen> createState() =>
+      _LguReportDetailsScreenState();
 }
 
-class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen> {
+class _LguReportDetailsScreenState
+    extends ConsumerState<LguReportDetailsScreen> {
   LguReportDetail? _report;
+  List<EvidencePhoto> _evidencePhotos = [];
   bool _isLoading = true;
   bool _isUpdating = false;
   bool _isUploading = false;
+  bool _isDeleting = false;
   final TextEditingController _notesController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -152,10 +170,21 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
   Future<void> _loadReportDetails() async {
     try {
       final apiClient = ref.read(apiClientProvider);
+
+      // Load report details
       final response = await apiClient.getReportById(widget.reportId);
+
+      // Load evidence photos
+      final evidenceResponse = await apiClient.getReportEvidence(
+        widget.reportId,
+      );
+      final evidenceList = (evidenceResponse.data as List)
+          .map((e) => EvidencePhoto.fromJson(e as Map<String, dynamic>))
+          .toList();
+
       setState(() {
         _report = LguReportDetail.fromJson(response.data);
-        _notesController.text = _report?.lguNotes ?? '';
+        _evidencePhotos = evidenceList;
         _isLoading = false;
       });
     } catch (e) {
@@ -170,13 +199,17 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
       final apiClient = ref.read(apiClientProvider);
       await apiClient.updateReportLifecycleStage(widget.reportId, stage);
       await _loadReportDetails();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lifecycle stage updated')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lifecycle stage updated')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update lifecycle stage')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update lifecycle stage')),
+        );
+      }
     } finally {
       setState(() => _isUpdating = false);
     }
@@ -185,59 +218,90 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
   Future<void> _saveNotes() async {
     try {
       final apiClient = ref.read(apiClientProvider);
-      await apiClient.updateReportNotes(widget.reportId, _notesController.text);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Notes saved')),
-      );
+      await apiClient.logAgencyResponse(widget.reportId, _notesController.text);
+      _notesController.clear();
+      await _loadReportDetails();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Notes saved')));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save notes')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to save notes')));
+      }
     }
   }
 
-  Future<void> _uploadPhotos(bool isBefore) async {
+  Future<void> _uploadPhoto(bool isBefore) async {
     try {
-      final List<XFile> images = await _imagePicker.pickMultiImage(
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
         imageQuality: 85,
         maxHeight: 1920,
         maxWidth: 1080,
       );
 
-      if (images.isEmpty) return;
-
-      if (images.length > 5) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Maximum 5 photos allowed')),
-        );
-        return;
-      }
+      if (image == null) return;
 
       setState(() => _isUploading = true);
 
-      final files = images.map((xFile) => File(xFile.path)).toList();
-
-      final response = isBefore
-          ? await ref.read(apiClientProvider).uploadReportBeforePhotos(widget.reportId, files)
-          : await ref.read(apiClientProvider).uploadReportAfterPhotos(widget.reportId, files);
+      final apiClient = ref.read(apiClientProvider);
+      await apiClient.uploadReportPhoto(
+        widget.reportId,
+        File(image.path),
+        isBefore ? 'before' : 'after',
+      );
 
       await _loadReportDetails();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photos uploaded successfully')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photo uploaded successfully')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to upload photos')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to upload photo')));
+      }
     } finally {
       setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _deleteReportPhoto(bool isBefore) async {
+    setState(() => _isDeleting = true);
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      await apiClient.deleteReportPhoto(
+        widget.reportId,
+        isBefore ? 'before' : 'after',
+      );
+      await _loadReportDetails();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photo deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to delete photo')));
+      }
+    } finally {
+      setState(() => _isDeleting = false);
     }
   }
 
   Color _getStatusColor(String? status) {
     switch (status) {
       case 'resolved':
+      case 'waiting_for_feedback':
         return Colors.green;
       case 'in_progress':
         return Colors.orange;
@@ -250,37 +314,24 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
   }
 
   List<DropdownMenuItem<String>> _getLifecycleStageItems() {
-    final currentStage = _report?.lifecycleStage;
     final items = <DropdownMenuItem<String>>[];
 
-    // Only show the next available stage based on current stage
-    switch (currentStage) {
-      case null:
-        // Can move to acknowledged
-        items.add(const DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')));
-        break;
-      case 'acknowledged':
-        // Can move to responded
-        items.add(const DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')));
-        items.add(const DropdownMenuItem(value: 'responded', child: Text('Responded')));
-        break;
-      case 'responded':
-        // Can move to resolved
-        items.add(const DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')));
-        items.add(const DropdownMenuItem(value: 'responded', child: Text('Responded')));
-        items.add(const DropdownMenuItem(value: 'resolved', child: Text('Resolved')));
-        break;
-      case 'resolved':
-        // No further stages
-        items.add(const DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')));
-        items.add(const DropdownMenuItem(value: 'responded', child: Text('Responded')));
-        items.add(const DropdownMenuItem(value: 'resolved', child: Text('Resolved')));
-        break;
-      default:
-        items.add(const DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')));
-        items.add(const DropdownMenuItem(value: 'responded', child: Text('Responded')));
-        items.add(const DropdownMenuItem(value: 'resolved', child: Text('Resolved')));
+    // Add "Submitted" option if current stage is null or "submitted"
+    if (_report?.stage == null || _report?.stage == 'submitted') {
+      items.add(
+        const DropdownMenuItem(
+          value: 'submitted',
+          enabled: false,
+          child: Text('Submitted'),
+        ),
+      );
     }
+
+    items.addAll(const [
+      DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')),
+      DropdownMenuItem(value: 'responded', child: Text('Responded')),
+      DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
+    ]);
 
     return items;
   }
@@ -288,35 +339,34 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Report Details'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Report Details'), elevation: 0),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _report == null
-              ? const Center(child: Text('Report not found'))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildReportDetailsSection(),
-                      const SizedBox(height: 24),
-                      _buildActionsSection(),
-                      const SizedBox(height: 24),
-                      _buildLifecycleSection(),
-                      const SizedBox(height: 24),
-                      if (_report?.discloseIdentity == true) _buildReporterSection(),
-                      const SizedBox(height: 24),
-                      _buildEvidencePhotosSection(),
-                      const SizedBox(height: 24),
-                      _buildLguNotesSection(),
-                      const SizedBox(height: 24),
-                      _buildActivityLogSection(),
-                    ],
-                  ),
-                ),
+          ? const Center(child: Text('Report not found'))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildReportDetailsSection(),
+                  const SizedBox(height: 24),
+                  _buildActionsSection(),
+                  const SizedBox(height: 24),
+                  _buildLifecycleSection(),
+                  const SizedBox(height: 24),
+                  if (_report?.discloseIdentity == true ||
+                      _report?.dataConsent == true)
+                    _buildReporterSection(),
+                  const SizedBox(height: 24),
+                  _buildEvidencePhotosSection(),
+                  const SizedBox(height: 24),
+                  _buildLguNotesSection(),
+                  const SizedBox(height: 24),
+                  _buildActivityLogSection(),
+                ],
+              ),
+            ),
     );
   }
 
@@ -332,19 +382,22 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
               children: [
                 const Text(
                   'Report Details',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(_report?.status).withValues(alpha: 0.1),
+                    color: _getStatusColor(
+                      _report?.status,
+                    ).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    _report?.status?.replaceAll('_', ' ').toUpperCase() ?? 'N/A',
+                    _report?.status?.replaceAll('_', ' ').toUpperCase() ??
+                        'N/A',
                     style: TextStyle(
                       color: _getStatusColor(_report?.status),
                       fontSize: 12,
@@ -361,7 +414,6 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
             _buildInfoRow('Title', _report?.title ?? 'N/A'),
             _buildInfoRow('Issue', _report?.issue ?? 'N/A'),
             _buildInfoRow('Description', _report?.description ?? 'N/A'),
-            _buildInfoRow('Location', _report?.location ?? 'N/A'),
           ],
         ),
       ),
@@ -377,20 +429,17 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
           children: [
             const Text(
               'Actions',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _report?.lifecycleStage,
+              value: _report?.stage,
               decoration: const InputDecoration(
                 labelText: 'Update Lifecycle Stage',
                 border: OutlineInputBorder(),
               ),
               items: _getLifecycleStageItems(),
-              onChanged: _isUpdating || _report?.lifecycleStage == 'resolved'
+              onChanged: _isUpdating || _report?.stage == 'resolved'
                   ? null
                   : (value) {
                       if (value != null) {
@@ -413,16 +462,27 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
           children: [
             const Text(
               'Report Lifecycle',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildLifecycleStep('Submitted', true, _report?.lifecycleStage == null),
-            _buildLifecycleStep('Acknowledged', _report?.lifecycleStage == 'acknowledged', _report?.lifecycleStage == 'acknowledged'),
-            _buildLifecycleStep('Responded', _report?.lifecycleStage == 'responded' || _report?.lifecycleStage == 'resolved', _report?.lifecycleStage == 'responded'),
-            _buildLifecycleStep('Resolved', _report?.lifecycleStage == 'resolved', _report?.lifecycleStage == 'resolved'),
+            _buildLifecycleStep('Submitted', true, _report?.stage == null),
+            _buildLifecycleStep(
+              'Acknowledged',
+              _report?.stage == 'acknowledged' ||
+                  _report?.stage == 'responded' ||
+                  _report?.stage == 'resolved',
+              _report?.stage == 'acknowledged',
+            ),
+            _buildLifecycleStep(
+              'Responded',
+              _report?.stage == 'responded' || _report?.stage == 'resolved',
+              _report?.stage == 'responded',
+            ),
+            _buildLifecycleStep(
+              'Resolved',
+              _report?.stage == 'resolved',
+              _report?.stage == 'resolved',
+            ),
           ],
         ),
       ),
@@ -459,7 +519,6 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
   }
 
   Widget _buildReporterSection() {
-    if (_report?.dataConsent != true) return const SizedBox.shrink();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -468,15 +527,11 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
           children: [
             const Text(
               'Reporter Information',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildInfoRow('Reporter Name', _report?.reporterName),
             _buildInfoRow('Reporter ID', _report?.reporterId),
-            _buildInfoRow('Reporter Email', _report?.reporterEmail),
           ],
         ),
       ),
@@ -490,97 +545,137 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Evidence Photos',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            // Reporter's Evidence Photos
+            if (_evidencePhotos.isNotEmpty) ...[
+              const Text(
+                'Reporter\'s Evidence Photos',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
+              const SizedBox(height: 16),
+              _buildPhotoGrid(_evidencePhotos.map((e) => e.url).toList()),
+              const SizedBox(height: 24),
+            ],
+
+            // LGU Before Photos
+            if (_report?.beforePhotoUrl != null)
+              _buildPhotoWithRemove(
+                'LGU Before Photo',
+                _report!.beforePhotoUrl!,
+                true,
+              ),
             const SizedBox(height: 16),
-            if (_report?.evidencePhotos != null && _report!.evidencePhotos!.isNotEmpty)
-              _buildPhotoGrid('Reporter Evidence', _report!.evidencePhotos!),
+            _buildLguPhotoSection('Upload Before Photo', true),
+
             const SizedBox(height: 16),
-            _buildLguPhotoSection('LGU Before Photos', _report?.lguBeforePhotos, true),
+
+            // LGU After Photos
+            if (_report?.afterPhotoUrl != null)
+              _buildPhotoWithRemove(
+                'LGU After Photo',
+                _report!.afterPhotoUrl!,
+                false,
+              ),
             const SizedBox(height: 16),
-            _buildLguPhotoSection('LGU After Photos', _report?.lguAfterPhotos, false),
-            if (_report?.evidencePhotos == null || _report!.evidencePhotos!.isEmpty)
-              const Text('No evidence photos available'),
+            _buildLguPhotoSection('Upload After Photo', false),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildLguPhotoSection(String label, List<String>? photos, bool isBefore) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+  Widget _buildPhotoGrid(List<String> photoUrls) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: photoUrls.length,
+      itemBuilder: (context, index) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            photoUrls[index],
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.grey[200],
+                child: const Center(child: Icon(Icons.broken_image)),
+              );
+            },
           ),
-        ),
-        const SizedBox(height: 8),
-        if (photos != null && photos.isNotEmpty)
-          _buildPhotoGrid(label, photos),
-        const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: () => _uploadPhotos(isBefore),
-          icon: const Icon(Icons.upload, size: 18),
-          label: Text('Upload ${isBefore ? 'Before' : 'After'} Photos'),
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 40),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildPhotoGrid(String label, List<String> photoUrls) {
+  Widget _buildPhotoWithRemove(String label, String photoUrl, bool isBefore) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
         const SizedBox(height: 8),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-          ),
-          itemCount: photoUrls.length,
-          itemBuilder: (context, index) {
-            return ClipRRect(
+        Stack(
+          children: [
+            ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                photoUrls[index],
+                photoUrl,
                 fit: BoxFit.cover,
+                width: double.infinity,
+                height: 200,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
                     color: Colors.grey[200],
+                    height: 200,
+                    width: double.infinity,
                     child: const Center(child: Icon(Icons.broken_image)),
                   );
                 },
               ),
-            );
-          },
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: _isDeleting
+                    ? null
+                    : () => _deleteReportPhoto(isBefore),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
+  Widget _buildLguPhotoSection(String label, bool isBefore) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _isUploading ? null : () => _uploadPhoto(isBefore),
+        icon: const Icon(Icons.upload, size: 18),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 40),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLguNotesSection() {
+    final manualNotes =
+        _report?.responseLogs
+            ?.where((log) => log.actionType == 'manual_note')
+            .toList() ??
+        [];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -589,26 +684,11 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
           children: [
             const Text(
               'LGU Notes',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            if (_report?.lguNotes != null && _report!.lguNotes!.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _report!.lguNotes!,
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
+            if (manualNotes.isNotEmpty)
+              ...manualNotes.map((note) => _buildNoteItem(note)),
             TextField(
               controller: _notesController,
               maxLines: 5,
@@ -631,6 +711,28 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
     );
   }
 
+  Widget _buildNoteItem(ResponseLog note) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(note.actionDetails ?? '', style: const TextStyle(fontSize: 14)),
+          const SizedBox(height: 8),
+          Text(
+            '${note.userName ?? 'Unknown'} • ${_formatDateTime(note.createdAt)}',
+            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActivityLogSection() {
     return Card(
       child: Padding(
@@ -640,19 +742,17 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
           children: [
             const Text(
               'Activity Log',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            if (_report?.activityLogs != null && _report!.activityLogs!.isNotEmpty)
+            if (_report?.responseLogs != null &&
+                _report!.responseLogs!.isNotEmpty)
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _report!.activityLogs!.length,
+                itemCount: _report!.responseLogs!.length,
                 itemBuilder: (context, index) {
-                  final log = _report!.activityLogs![index];
+                  final log = _report!.responseLogs![index];
                   return _buildActivityLogItem(log);
                 },
               )
@@ -664,7 +764,7 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
     );
   }
 
-  Widget _buildActivityLogItem(ActivityLog log) {
+  Widget _buildActivityLogItem(ResponseLog log) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -674,7 +774,7 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                log.action?.toUpperCase() ?? 'UNKNOWN',
+                log.actionType?.toUpperCase() ?? 'UNKNOWN',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
@@ -683,27 +783,18 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
               if (log.createdAt != null)
                 Text(
                   _formatDateTime(log.createdAt!),
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
             ],
           ),
           const SizedBox(height: 4),
-          if (log.details != null && log.details!.isNotEmpty)
-            Text(
-              log.details!,
-              style: const TextStyle(fontSize: 14),
-            ),
+          if (log.actionDetails != null && log.actionDetails!.isNotEmpty)
+            Text(log.actionDetails!, style: const TextStyle(fontSize: 14)),
           if (log.userName != null) ...[
             const SizedBox(height: 4),
             Text(
               'By: ${log.userName}',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           ],
           const Divider(),
@@ -745,7 +836,8 @@ class _LguReportDetailsScreenState extends ConsumerState<LguReportDetailsScreen>
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  String _formatDateTime(DateTime dateTime) {
+  String _formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) return 'N/A';
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

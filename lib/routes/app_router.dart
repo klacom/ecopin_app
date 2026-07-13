@@ -9,6 +9,8 @@ import 'package:ecopin_app/features/lgu/presentation/screens/lgu_main_screen.dar
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_profile_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_reports_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_response_logs_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cluster_details_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cleanup_task_details_screen.dart';
 import 'package:ecopin_app/features/main_screen.dart';
 import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/features/notifications/presentation/screens/notifications_screen.dart';
@@ -60,8 +62,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       final isPublicRoute = PublicAppRoutes.publicRoutes.contains(path);
-      final isLguRoute = LguAppRoutes.lguRoutes.contains(path);
-      final isAdminRoute = AdminAppRoutes.adminRoutes.contains(path);
+      final isLguRoute = path.startsWith('/lgu/');
+      final isAdminRoute = path.startsWith('/admin/');
 
       print('Route checks - IsPublicRoute: $isPublicRoute, IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute');
 
@@ -92,7 +94,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (isAdminRoute && role != UserRole.admin) {
           return role == UserRole.lgu ? LguAppRoutes.dashboard : ProtectedAppRoutes.maps;
         }
-        if (!isLguRoute && !isAdminRoute && !ProtectedAppRoutes.protectedRoutes.contains(path)) {
+        // Check if path is a protected route (including nested routes)
+        final isProtectedRoute = ProtectedAppRoutes.protectedRoutes.any((route) => path.startsWith(route));
+        if (!isLguRoute && !isAdminRoute && !isProtectedRoute) {
           return ProtectedAppRoutes.maps;
         }
       }
@@ -165,14 +169,41 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: LguAppRoutes.clusters,
             builder: (_, _) => const LguClustersScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return LguClusterDetailsScreen(clusterId: id);
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: LguAppRoutes.cleanupTasks,
             builder: (_, _) => const LguCleanupTasksScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return LguCleanupTaskDetailsScreen(taskId: id);
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: LguAppRoutes.reports,
             builder: (_, _) => const LguReportsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return ReportDetailsScreen(reportId: id);
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: LguAppRoutes.responseLogs,

@@ -1,4 +1,6 @@
+import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/features/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/reports/presentation/widgets/report_details_widgets/report_details_body.dart';
 import 'package:ecopin_app/features/reports/providers/report_provider.dart';
@@ -70,6 +72,8 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final reportAsync = ref.watch(reportDetailsProvider(widget.reportId));
+    final authState = ref.watch(authNotifierProvider);
+    final isLguUser = authState.state.role == UserRole.lgu;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Report Details')),
@@ -83,6 +87,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
           onFetchCleanupTask: report.clusterId != null
               ? () => _fetchCleanupTask(report.clusterId!)
               : null,
+          isLguUser: isLguUser,
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),

@@ -50,8 +50,6 @@ class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildStatsGrid(stats),
-                const SizedBox(height: 24),
-                _buildPendingTasksSection(),
               ],
             ),
           ),
@@ -132,37 +130,6 @@ class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPendingTasksSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Pending Tasks',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'View clusters and cleanup tasks to manage pending reports.',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.work),
-              label: const Text('View Tasks'),
             ),
           ],
         ),

@@ -32,6 +32,10 @@ class DashboardStats {
     final reports = json['reports'] as Map<String, dynamic>? ?? {};
     final byStatus = reports['byStatus'] as Map<String, dynamic>? ?? {};
     
+    print('Parsing DashboardStats from: $json');
+    print('Reports object: $reports');
+    print('ByStatus object: $byStatus');
+    
     return DashboardStats(
       totalReports: reports['total'] as int? ?? 0,
       unresolved: byStatus['unresolved'] as int? ?? 0,
@@ -62,10 +66,14 @@ class DashboardNotifier extends ChangeNotifier {
     notifyListeners();
     try {
       final response = await _apiClient.getSystemStats();
+      print('System stats response: ${response.data}');
       final stats = DashboardStats.fromJson(response.data);
+      print('Parsed stats: total=${stats.totalReports}, unresolved=${stats.unresolved}, resolved=${stats.resolved}');
       _stats = AsyncValue.data(stats);
       notifyListeners();
     } catch (e, stackTrace) {
+      print('Error loading stats: $e');
+      print('Stack trace: $stackTrace');
       _stats = AsyncValue.error(e, stackTrace);
       notifyListeners();
     }

@@ -35,7 +35,22 @@ class ApiClient {
         },
         onError: (error, handler) async {
           if (error.response?.statusCode == 401) {
-            // Token refresh is handled by Supabase SDK
+            // Try to refresh the session
+            try {
+              await Supabase.instance.client.auth.refreshSession();
+              final newSession = Supabase.instance.client.auth.currentSession;
+              final newToken = newSession?.accessToken;
+              
+              if (newToken != null) {
+                // Retry the original request with new token
+                final opts = error.requestOptions;
+                opts.headers['Authorization'] = 'Bearer $newToken';
+                final response = await _dio.fetch(opts);
+                return handler.resolve(response);
+              }
+            } catch (refreshError) {
+              // Refresh failed, let the error propagate
+            }
           }
           return handler.next(error);
         },
@@ -106,6 +121,14 @@ class ApiClient {
 
   Future<dio.Response> getPublicReports() async {
     return _dio.get(ApiConstants.getPublicReports);
+  }
+
+  Future<dio.Response> getValidatedReports() async {
+    return _dio.get('/api/reports/validated');
+  }
+
+  Future<dio.Response> getReportsByClusterId(String clusterId) async {
+    return _dio.get('/api/reports/cluster/$clusterId');
   }
 
   Future<dio.Response> getReportById(String id) async {

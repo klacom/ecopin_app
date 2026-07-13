@@ -19,6 +19,7 @@ class ReportDetailsBody extends StatefulWidget {
   final CleanupTaskModel? cleanupTask;
   final bool isLoadingCleanupTask;
   final VoidCallback? onFetchCleanupTask;
+  final bool isLguUser;
 
   const ReportDetailsBody({
     super.key,
@@ -28,6 +29,7 @@ class ReportDetailsBody extends StatefulWidget {
     this.cleanupTask,
     required this.isLoadingCleanupTask,
     this.onFetchCleanupTask,
+    this.isLguUser = false,
   });
 
   @override
@@ -356,8 +358,8 @@ class _ReportDetailsBodyState extends State<ReportDetailsBody> {
               ),
           ],
           const SizedBox(height: 32),
-          // Satisfaction rating button if waiting for feedback
-          if (widget.report.status.toLowerCase() == 'waiting_for_feedback') ...[
+          // Satisfaction rating button if waiting for feedback (citizen only)
+          if (!widget.isLguUser && widget.report.status.toLowerCase() == 'waiting_for_feedback') ...[
             const Text(
               'The issue has been resolved! Please rate the service.',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -391,8 +393,8 @@ class _ReportDetailsBodyState extends State<ReportDetailsBody> {
             ),
             const SizedBox(height: 16),
           ],
-          // Show satisfaction rating if already closed
-          if (widget.report.status.toLowerCase() == 'closed' &&
+          // Show satisfaction rating if already closed (citizen only)
+          if (!widget.isLguUser && widget.report.status.toLowerCase() == 'closed' &&
               widget.report.satisfactionRating != null) ...[
             const Text(
               'Your Satisfaction Rating',
@@ -420,6 +422,59 @@ class _ReportDetailsBodyState extends State<ReportDetailsBody> {
             const SizedBox(height: 16),
           ],
           const SizedBox(height: 100),
+          // LGU-specific actions
+          if (widget.isLguUser) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'LGU Actions',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            if (widget.report.status.toLowerCase() == 'unresolved' ||
+                widget.report.status.toLowerCase() == 'in_progress')
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // TODO: Implement resolve report
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.green,
+                  ),
+                  child: const Text(
+                    'Mark as Resolved',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 12),
+            if (widget.report.status.toLowerCase() == 'unresolved')
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // TODO: Implement mark as in progress
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.orange,
+                  ),
+                  child: const Text(
+                    'Mark as In Progress',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );

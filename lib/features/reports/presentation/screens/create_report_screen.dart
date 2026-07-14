@@ -316,13 +316,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       options: MapOptions(
                         initialCenter: _selectedLocation,
                         initialZoom: 15.0,
-                        minZoom: 12,
+                        minZoom: 3,
                         maxZoom: 18,
                         interactionOptions: const InteractionOptions(
                           flags: InteractiveFlag.all,
-                        ),
-                        cameraConstraint: CameraConstraint.contain(
-                          bounds: pasigBounds,
                         ),
                         onPositionChanged: (MapCamera camera, bool hasGesture) {
                           setState(() {
@@ -335,7 +332,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           urlTemplate:
                               'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.ecopinas.ecopin_app',
-                          tileBounds: pasigBounds,
                         ),
                       ],
                     ),

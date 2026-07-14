@@ -63,13 +63,11 @@ class LocationSearchService {
         'limit': 5,
       };
 
-      // Add viewbox properly - format: "left,top,right,bottom"
-      // For Metro Manila area
-      if (country == 'Philippines') {
-        queryParams['viewbox'] =
-            '120.9,14.8,121.2,14.3'; // Wider area around Manila
-        queryParams['bounded'] = 1;
-      }
+      // Optional: add a viewbox to prioritize Philippines results, but not strictly bound
+      // if (country == 'Philippines') {
+      //   queryParams['viewbox'] =
+      //       '116.0,5.0,127.0,21.0'; // Entire Philippines
+      // }
 
       // Debug: Print the actual URL being called
       final uri = Uri.parse(_baseUrl).replace(

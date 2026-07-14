@@ -47,7 +47,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
-     WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       _runOnce(); // check and ask for user data/location disclosure initially.
     });
     _searchController.addListener(() {
@@ -57,17 +57,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void _runOnce() async {
     final apiClient = ref.read(apiClientProvider);
-    await apiClient.getProfile().then((data){
-        // log.fine('profile in runonce: ', data);
-        Map<String, dynamic> user =  jsonDecode(data.toString());
-        // log.info('USER data consent run once : ', user['profile']['data_consent']);
+    await apiClient.getProfile().then((data) {
+      // log.fine('profile in runonce: ', data);
+      Map<String, dynamic> user = jsonDecode(data.toString());
+      // log.info('USER data consent run once : ', user['profile']['data_consent']);
 
-        // Checking
-        // If user hasn't given their consent yet.
-        if (user['profile']['data_consent'] == null) {
-            // log.info('IS USER CONSENT NULL: ', user['profile']['data_consent'].toString() == "");
-            if (mounted) _dialogBuilder(context);
-        }
+      // Checking
+      // If user hasn't given their consent yet.
+      if (user['profile']['data_consent'] == null) {
+        // log.info('IS USER CONSENT NULL: ', user['profile']['data_consent'].toString() == "");
+        if (mounted) _dialogBuilder(context);
+      }
     });
   }
 
@@ -83,57 +83,57 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   Future<void> _dialogBuilder(BuildContext context) {
     final apiClient = ref.read(apiClientProvider);
-  return showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext dialogContext) {
-      return AlertDialog(
-        icon: const Icon(Icons.privacy_tip_outlined),
-        title: const Text("Data Privacy Consent"),
-        content: const SingleChildScrollView(
-          child: Text(
-            "To help the LGU verify and resolve your reports more efficiently, "
-            "you may allow authorized personnel to access your profile information "
-            "and location (when applicable).\n\n"
-            "Your information will only be used for handling your reports and "
-            "will not be shared with unauthorized parties.\n\n"
-            "Your consent is optional, and you can continue using the app even if you decline.",
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          icon: const Icon(Icons.privacy_tip_outlined),
+          title: const Text("Data Privacy Consent"),
+          content: const SingleChildScrollView(
+            child: Text(
+              "To help the LGU verify and resolve your reports more efficiently, "
+              "you may allow authorized personnel to access your profile information "
+              "and location (when applicable).\n\n"
+              "Your information will only be used for handling your reports and "
+              "will not be shared with unauthorized parties.\n\n"
+              "Your consent is optional, and you can continue using the app even if you decline.",
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            child: const Text("Disagree"),
-            onPressed: () async {
-              try {
-                await apiClient.updateDataConsent(false);
-              } catch (e) {
-                log.severe("Failed to update consent: $e");
-              }
+          actions: [
+            TextButton(
+              child: const Text("Disagree"),
+              onPressed: () async {
+                try {
+                  await apiClient.updateDataConsent(false);
+                } catch (e) {
+                  log.severe("Failed to update consent: $e");
+                }
 
-              if (dialogContext.mounted) {
-                Navigator.of(dialogContext).pop();
-              }
-            },
-          ),
-          FilledButton(
-            child: const Text("Agree"),
-            onPressed: () async {
-              try {
-                await apiClient.updateDataConsent(true);
-              } catch (e) {
-                log.severe("Failed to update consent: $e");
-              }
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+            ),
+            FilledButton(
+              child: const Text("Agree"),
+              onPressed: () async {
+                try {
+                  await apiClient.updateDataConsent(true);
+                } catch (e) {
+                  log.severe("Failed to update consent: $e");
+                }
 
-              if (dialogContext.mounted) {
-                Navigator.of(dialogContext).pop();
-              }
-            },
-          ),
-        ],
-      );
-    },
-  );
-}
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _getCurrentLocation() async {
     setState(() {
@@ -222,10 +222,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (query.length >= 2) {
-        final results = await _searchService.searchLocations(
-          query,
-          city: 'Pasig',
-        );
+        final results = await _searchService.searchLocations(query);
         setState(() {
           _suggestions = results;
           _showSuggestions = results.isNotEmpty;
@@ -254,7 +251,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(reportsStreamProvider);
-    
+
     return Scaffold(
       body: reportsAsync.when(
         data: (reports) => Stack(
@@ -265,12 +262,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               options: MapOptions(
                 initialCenter: pasigInitialCenter,
                 initialZoom: 15.0,
-                minZoom: 14,
+                minZoom: 3,
                 maxZoom: 18,
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.all,
                 ),
-                cameraConstraint: CameraConstraint.contain(bounds: pasigBounds),
                 onTap: (tapPosition, point) {
                   context.push(ProtectedAppRoutes.createReport, extra: point);
                 },
@@ -279,7 +275,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'dev.ecopinas.ecopin_app',
-                  tileBounds: pasigBounds,
                 ),
                 if (_showHeatmap)
                   HeatMapLayer(
@@ -306,10 +301,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         return WeightedLatLng(report.location, weight);
                       }).toList(),
                     ),
-                    heatMapOptions: HeatMapOptions(
-                      radius: 50,
-                      minOpacity: 0.6,
-                    ),
+                    heatMapOptions: HeatMapOptions(radius: 50, minOpacity: 0.6),
                   ),
                 CurrentLocationLayer(
                   alignPositionOnUpdate: AlignOnUpdate.never,

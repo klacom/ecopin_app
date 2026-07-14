@@ -143,10 +143,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
 
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (query.length >= 2) {
-        final results = await _searchService.searchLocations(
-          query,
-          city: 'Pasig',
-        );
+        final results = await _searchService.searchLocations(query);
         setState(() {
           _suggestions = results;
           _showSuggestions = results.isNotEmpty;
@@ -175,7 +172,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(reportsStreamProvider);
-    
+
     return Scaffold(
       body: reportsAsync.when(
         data: (reports) => Stack(
@@ -186,18 +183,16 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
               options: MapOptions(
                 initialCenter: pasigInitialCenter,
                 initialZoom: 15.0,
-                minZoom: 14,
+                minZoom: 3,
                 maxZoom: 18,
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.all,
                 ),
-                cameraConstraint: CameraConstraint.contain(bounds: pasigBounds),
               ),
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'dev.ecopinas.ecopin_app',
-                  tileBounds: pasigBounds,
                 ),
                 if (_showHeatmap)
                   HeatMapLayer(
@@ -224,10 +219,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
                         return WeightedLatLng(report.location, weight);
                       }).toList(),
                     ),
-                    heatMapOptions: HeatMapOptions(
-                      radius: 50,
-                      minOpacity: 0.6,
-                    ),
+                    heatMapOptions: HeatMapOptions(radius: 50, minOpacity: 0.6),
                   ),
                 CurrentLocationLayer(
                   alignPositionOnUpdate: AlignOnUpdate.never,

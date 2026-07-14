@@ -279,15 +279,13 @@ class _LguCreateCustomCleanupTaskScreenState
                 options: MapOptions(
                   initialCenter: initialCenter,
                   initialZoom: 15.0,
-                  minZoom: 14,
+                  minZoom: 3,
                   maxZoom: 18,
-                  cameraConstraint: CameraConstraint.contain(bounds: pasigBounds),
                 ),
                 children: [
                   TileLayer(
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
-                    tileBounds: pasigBounds,
                   ),
                   MarkerLayer(
                     markers: _reports.map((report) {

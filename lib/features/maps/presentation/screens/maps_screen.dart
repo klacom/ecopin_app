@@ -264,8 +264,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               mapController: _mapController,
               options: MapOptions(
                 initialCenter: pasigInitialCenter,
-                initialZoom: 14.0,
-                minZoom: 12,
+                initialZoom: 15.0,
+                minZoom: 14,
                 maxZoom: 18,
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.all,

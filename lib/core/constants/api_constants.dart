@@ -48,8 +48,10 @@ class ApiConstants {
   static const String systemStats = '/api/admin/stats';
   static const String clusters = '/api/clusters';
   static const String cleanupTasks = '/api/cleanup-tasks';
+  static const String createCustomCleanupTask = '/api/cleanup-tasks/custom';
   static const String responseLogs = '/api/response-logs';
   static const String reports = '/api/reports';
+  static const String satisfactionAnalytics = '/api/reports/analytics/satisfaction';
 
   static String clusterById(String clusterId) {
     return '/api/clusters/$clusterId';
@@ -59,23 +61,43 @@ class ApiConstants {
     return '/api/cleanup-tasks/$taskId';
   }
 
+  static String cleanupTaskUploadPhoto(String taskId) {
+    return '/api/cleanup-tasks/$taskId/photo';
+  }
+
+  static String markCleanupTaskComplete(String taskId) {
+    return '/api/cleanup-tasks/$taskId/complete';
+  }
+
   static String updateReportStatus(String reportId) {
     return '/api/reports/$reportId/status';
+  }
+
+  static String updateReportValidation(String reportId) {
+    return '/api/reports/$reportId/validation';
   }
 
   static String updateReportLifecycleStage(String reportId) {
     return '/api/reports/$reportId/lifecycle-stage';
   }
 
+  static String acknowledgeComplaint(String reportId) {
+    return '/api/reports/$reportId/acknowledge';
+  }
+
+  static String agencyResponses(String reportId) {
+    return '/api/reports/$reportId/agency-responses';
+  }
+
   static String updateReportNotes(String reportId) {
     return '/api/reports/$reportId/notes';
   }
 
-  static String uploadReportBeforePhotos(String reportId) {
-    return '/api/reports/$reportId/before-photos';
+  static String uploadReportPhoto(String reportId) {
+    return '/api/reports/$reportId/photo';
   }
 
-  static String uploadReportAfterPhotos(String reportId) {
-    return '/api/reports/$reportId/after-photos';
+  static String batchCompleteReportsByCluster(String clusterId) {
+    return '/api/reports/cluster/$clusterId/complete';
   }
 }

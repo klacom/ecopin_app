@@ -14,6 +14,8 @@ class CleanupTask {
   final Map<String, dynamic>? cluster;
   final List<String>? beforePhotos;
   final List<String>? afterPhotos;
+  final bool isCustom;
+  final List<String>? reportIds;
 
   CleanupTask({
     required this.id,
@@ -26,6 +28,8 @@ class CleanupTask {
     this.cluster,
     this.beforePhotos,
     this.afterPhotos,
+    this.isCustom = false,
+    this.reportIds,
   });
 
   factory CleanupTask.fromJson(Map<String, dynamic> json) {
@@ -45,6 +49,10 @@ class CleanupTask {
           : null,
       afterPhotos: json['after_photos'] != null
           ? (json['after_photos'] as List).map((e) => e.toString()).toList()
+          : null,
+      isCustom: json['is_custom'] as bool? ?? false,
+      reportIds: json['report_ids'] != null
+          ? (json['report_ids'] as List).map((e) => e.toString()).toList()
           : null,
     );
   }

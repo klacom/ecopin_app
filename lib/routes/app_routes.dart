@@ -29,6 +29,7 @@ class LguAppRoutes {
   static const String clusterDetails = '/lgu/clusters/:id';
   static const String cleanupTasks = '/lgu/cleanup-tasks';
   static const String taskDetails = '/lgu/cleanup-tasks/:id';
+  static const String createCustomTask = '/lgu/cleanup-tasks/create';
   static const String reports = '/lgu/reports';
   static const String reportDetails = '/lgu/reports/:id';
   static const String responseLogs = '/lgu/response-logs';

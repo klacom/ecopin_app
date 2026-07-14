@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -24,6 +23,7 @@ class LguReportDetail {
   final String? beforePhotoUrl;
   final String? afterPhotoUrl;
   final List<ResponseLog>? responseLogs;
+  final String? validationStatus;
 
   LguReportDetail({
     required this.id,
@@ -44,6 +44,7 @@ class LguReportDetail {
     this.beforePhotoUrl,
     this.afterPhotoUrl,
     this.responseLogs,
+    this.validationStatus,
   });
 
   factory LguReportDetail.fromJson(Map<String, dynamic> json) {
@@ -54,7 +55,7 @@ class LguReportDetail {
       description: json['description'] as String?,
       location: json['location'] as String?,
       status: json['status'] as String?,
-      stage: json['stage'] as String?,
+      stage: json['stage'] as String? ?? json['lifecycle_stage'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'])
           : null,
@@ -62,18 +63,19 @@ class LguReportDetail {
           ? DateTime.tryParse(json['updated_at'])
           : null,
       reporterId: json['user_id']?.toString(),
-      reporterName: json['profiles']?['full_name'] as String?,
+      reporterName: json['profiles']?['full_name'] as String? ?? json['user_full_name'] as String?,
       reporterEmail: null,
       discloseIdentity: json['disclose_identity'] as bool?,
       dataConsent: json['profiles']?['data_consent'] as bool?,
-      evidencePhotos: null, // We'll fetch this separately
+      evidencePhotos: null,
       beforePhotoUrl: json['before_photo_url'] as String?,
       afterPhotoUrl: json['after_photo_url'] as String?,
       responseLogs: json['response_logs'] != null
           ? (json['response_logs'] as List)
-                .map((e) => ResponseLog.fromJson(e as Map<String, dynamic>))
-                .toList()
+              .map((e) => ResponseLog.fromJson(e as Map<String, dynamic>))
+              .toList()
           : null,
+      validationStatus: json['validation_status'] as String?,
     );
   }
 }
@@ -149,6 +151,8 @@ class _LguReportDetailsScreenState
   LguReportDetail? _report;
   List<EvidencePhoto> _evidencePhotos = [];
   bool _isLoading = true;
+  bool _hasError = false;
+  String? _errorMessage;
   bool _isUpdating = false;
   bool _isUploading = false;
   bool _isDeleting = false;
@@ -168,28 +172,43 @@ class _LguReportDetailsScreenState
   }
 
   Future<void> _loadReportDetails() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+    });
     try {
       final apiClient = ref.read(apiClientProvider);
 
-      // Load report details
       final response = await apiClient.getReportById(widget.reportId);
 
-      // Load evidence photos
-      final evidenceResponse = await apiClient.getReportEvidence(
-        widget.reportId,
-      );
-      final evidenceList = (evidenceResponse.data as List)
-          .map((e) => EvidencePhoto.fromJson(e as Map<String, dynamic>))
-          .toList();
+      List<EvidencePhoto> evidenceList = [];
+      try {
+        final evidenceResponse = await apiClient.getReportEvidence(widget.reportId);
+        if (evidenceResponse.data is List) {
+          evidenceList = (evidenceResponse.data as List)
+              .map((e) => EvidencePhoto.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
+      } catch (e) {
+        print('Error loading evidence: $e');
+      }
 
       setState(() {
-        _report = LguReportDetail.fromJson(response.data);
+        _report = LguReportDetail.fromJson(response.data is Map<String, dynamic> 
+            ? response.data as Map<String, dynamic> 
+            : {});
         _evidencePhotos = evidenceList;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error loading report details: $e');
-      setState(() => _isLoading = false);
+      print('Stack trace: $stackTrace');
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = e.toString();
+      });
     }
   }
 
@@ -222,15 +241,15 @@ class _LguReportDetailsScreenState
       _notesController.clear();
       await _loadReportDetails();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Notes saved')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notes saved')),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to save notes')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save notes')),
+        );
       }
     }
   }
@@ -264,9 +283,9 @@ class _LguReportDetailsScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to upload photo')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to upload photo')),
+        );
       }
     } finally {
       setState(() => _isUploading = false);
@@ -289,12 +308,34 @@ class _LguReportDetailsScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to delete photo')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete photo')),
+        );
       }
     } finally {
       setState(() => _isDeleting = false);
+    }
+  }
+
+  Future<void> _updateValidationStatus(String status) async {
+    setState(() => _isUpdating = true);
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      await apiClient.updateReportValidation(widget.reportId, status);
+      await _loadReportDetails();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Validation status updated')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update validation status')),
+        );
+      }
+    } finally {
+      setState(() => _isUpdating = false);
     }
   }
 
@@ -315,9 +356,22 @@ class _LguReportDetailsScreenState
 
   List<DropdownMenuItem<String>> _getLifecycleStageItems() {
     final items = <DropdownMenuItem<String>>[];
+    final currentStage = _report?.stage;
+    final validStages = ['submitted', 'acknowledged', 'responded', 'resolved'];
 
-    // Add "Submitted" option if current stage is null or "submitted"
-    if (_report?.stage == null || _report?.stage == 'submitted') {
+    // Always add the current stage first (disabled if it's the final stage)
+    if (currentStage != null && !validStages.contains(currentStage)) {
+      items.add(
+        DropdownMenuItem(
+          value: currentStage,
+          enabled: false,
+          child: Text(currentStage.replaceAll('_', ' ')),
+        ),
+      );
+    }
+
+    // Add submitted if needed
+    if (currentStage == null || currentStage == 'submitted' || !validStages.contains(currentStage)) {
       items.add(
         const DropdownMenuItem(
           value: 'submitted',
@@ -327,13 +381,20 @@ class _LguReportDetailsScreenState
       );
     }
 
+    // Add the rest of the stages
     items.addAll(const [
       DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')),
       DropdownMenuItem(value: 'responded', child: Text('Responded')),
       DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
     ]);
 
-    return items;
+    // Ensure no duplicate values
+    final seenValues = <String>{};
+    return items.where((item) {
+      if (seenValues.contains(item.value)) return false;
+      seenValues.add(item.value!);
+      return true;
+    }).toList();
   }
 
   @override
@@ -342,31 +403,56 @@ class _LguReportDetailsScreenState
       appBar: AppBar(title: const Text('Report Details'), elevation: 0),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _report == null
-          ? const Center(child: Text('Report not found'))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildReportDetailsSection(),
-                  const SizedBox(height: 24),
-                  _buildActionsSection(),
-                  const SizedBox(height: 24),
-                  _buildLifecycleSection(),
-                  const SizedBox(height: 24),
-                  if (_report?.discloseIdentity == true ||
-                      _report?.dataConsent == true)
-                    _buildReporterSection(),
-                  const SizedBox(height: 24),
-                  _buildEvidencePhotosSection(),
-                  const SizedBox(height: 24),
-                  _buildLguNotesSection(),
-                  const SizedBox(height: 24),
-                  _buildActivityLogSection(),
-                ],
-              ),
-            ),
+          : _hasError
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Error loading report',
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(_errorMessage ?? 'Unknown error'),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _loadReportDetails,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : _report == null
+                  ? const Center(child: Text('Report not found'))
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildReportDetailsSection(),
+                          const SizedBox(height: 24),
+                          _buildActionsSection(),
+                          const SizedBox(height: 24),
+                          _buildLifecycleSection(),
+                          const SizedBox(height: 24),
+                          if (_report?.discloseIdentity == true ||
+                              _report?.dataConsent == true)
+                            _buildReporterSection(),
+                          const SizedBox(height: 24),
+                          _buildEvidencePhotosSection(),
+                          const SizedBox(height: 24),
+                          _buildLguNotesSection(),
+                          const SizedBox(height: 24),
+                          _buildActivityLogSection(),
+                        ],
+                      ),
+                    ),
     );
   }
 
@@ -380,28 +466,76 @@ class _LguReportDetailsScreenState
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Report Details',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Report Details',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      if (_report?.validationStatus != null)
+                        Wrap(
+                          spacing: 4,
+                          children: [
+                            Text(
+                              'Validation: ',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getValidationColor(_report?.validationStatus)
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _report?.validationStatus
+                                        ?.replaceAll('_', ' ')
+                                        .toUpperCase() ??
+                                    'N/A',
+                                style: TextStyle(
+                                  color: _getValidationColor(_report?.validationStatus),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(
-                      _report?.status,
-                    ).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _report?.status?.replaceAll('_', ' ').toUpperCase() ??
-                        'N/A',
-                    style: TextStyle(
-                      color: _getStatusColor(_report?.status),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                SizedBox(width: 8),
+                Flexible(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(
+                        _report?.status,
+                      ).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _report?.status?.replaceAll('_', ' ').toUpperCase() ??
+                          'N/A',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _getStatusColor(_report?.status),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -420,7 +554,37 @@ class _LguReportDetailsScreenState
     );
   }
 
+  Color _getValidationColor(String? status) {
+    switch (status) {
+      case 'automatically_valid':
+        return Colors.green;
+      case 'manual_review':
+        return Colors.orange;
+      case 'rejected':
+        return Colors.red;
+      case 'pending':
+      default:
+        return Colors.grey;
+    }
+  }
+
   Widget _buildActionsSection() {
+    // Get valid lifecycle items first
+    final lifecycleItems = _getLifecycleStageItems();
+    final validLifecycleValues = lifecycleItems.map((item) => item.value).toSet();
+    // Ensure current stage is in the list, fallback to null or first valid value
+    String? currentLifecycleValue = _report?.stage;
+    if (currentLifecycleValue != null && !validLifecycleValues.contains(currentLifecycleValue)) {
+      currentLifecycleValue = null;
+    }
+
+    // Handle validation status similarly
+    const validValidationValues = {'pending', 'automatically_valid', 'manual_review', 'rejected'};
+    String? currentValidationValue = _report?.validationStatus;
+    if (currentValidationValue != null && !validValidationValues.contains(currentValidationValue)) {
+      currentValidationValue = null;
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -433,17 +597,48 @@ class _LguReportDetailsScreenState
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _report?.stage,
+              value: currentLifecycleValue,
               decoration: const InputDecoration(
                 labelText: 'Update Lifecycle Stage',
                 border: OutlineInputBorder(),
               ),
-              items: _getLifecycleStageItems(),
+              items: lifecycleItems,
               onChanged: _isUpdating || _report?.stage == 'resolved'
                   ? null
                   : (value) {
                       if (value != null) {
                         _updateLifecycleStage(value);
+                      }
+                    },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: currentValidationValue,
+              decoration: const InputDecoration(
+                labelText: 'Update Validation Status',
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                // Add current validation status if it's not in the list
+                if (currentValidationValue != null && !validValidationValues.contains(currentValidationValue))
+                  DropdownMenuItem(
+                    value: currentValidationValue,
+                    enabled: false,
+                    child: Text(currentValidationValue.replaceAll('_', ' ')),
+                  ),
+                const DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                const DropdownMenuItem(
+                    value: 'automatically_valid',
+                    child: Text('Automatically Valid')),
+                const DropdownMenuItem(
+                    value: 'manual_review', child: Text('Manual Review')),
+                const DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+              ],
+              onChanged: _isUpdating
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        _updateValidationStatus(value);
                       }
                     },
             ),
@@ -545,7 +740,6 @@ class _LguReportDetailsScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Reporter's Evidence Photos
             if (_evidencePhotos.isNotEmpty) ...[
               const Text(
                 'Reporter\'s Evidence Photos',
@@ -555,8 +749,6 @@ class _LguReportDetailsScreenState
               _buildPhotoGrid(_evidencePhotos.map((e) => e.url).toList()),
               const SizedBox(height: 24),
             ],
-
-            // LGU Before Photos
             if (_report?.beforePhotoUrl != null)
               _buildPhotoWithRemove(
                 'LGU Before Photo',
@@ -565,10 +757,7 @@ class _LguReportDetailsScreenState
               ),
             const SizedBox(height: 16),
             _buildLguPhotoSection('Upload Before Photo', true),
-
             const SizedBox(height: 16),
-
-            // LGU After Photos
             if (_report?.afterPhotoUrl != null)
               _buildPhotoWithRemove(
                 'LGU After Photo',

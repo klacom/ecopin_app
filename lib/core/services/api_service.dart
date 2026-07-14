@@ -135,6 +135,18 @@ class ApiClient {
     return _dio.get(ApiConstants.getReportById(id));
   }
 
+  Future<dio.Response> getReportsByIds(List<String> reportIds) async {
+    // Fetch reports directly from Supabase for now
+    final response = await Supabase.instance.client
+        .from('reports_view')
+        .select()
+        .inFilter('id', reportIds);
+    return dio.Response(
+      data: response,
+      requestOptions: dio.RequestOptions(path: ''),
+    );
+  }
+
   // Evidences Methods
 
   Future<dio.Response> uploadEvidence({
@@ -149,7 +161,7 @@ class ApiClient {
       'longitude': longitude,
     });
 
-    log.fine("EVIDENCE FORM DATA: ", formData);
+    log.finer("EVIDENCE FORM DATA: ", formData);
 
     return _dio.post(ApiConstants.evidenceByReportId(reportId), data: formData);
   }
@@ -198,6 +210,50 @@ class ApiClient {
 
   Future<dio.Response> getCleanupTasksByCluster(String clusterId) async {
     return _dio.get(ApiConstants.getCleanupTasksByCluster(clusterId));
+  }
+
+  Future<dio.Response> createCustomCleanupTask({
+    required List<String> reportIds,
+    required String title,
+    String? description,
+  }) async {
+    return _dio.post(
+      ApiConstants.createCustomCleanupTask,
+      data: {
+        'report_ids': reportIds,
+        'title': title,
+        'description': description,
+      },
+    );
+  }
+
+  Future<dio.Response> uploadCleanupPhoto({
+    required String taskId,
+    required String photoType,
+    required File image,
+  }) async {
+    final formData = dio.FormData.fromMap({
+      'photo_type': photoType,
+      'image': await dio.MultipartFile.fromFile(image.path),
+    });
+    return _dio.post(
+      ApiConstants.cleanupTaskUploadPhoto(taskId),
+      data: formData,
+    );
+  }
+
+  Future<dio.Response> deleteCleanupPhoto({
+    required String taskId,
+    required String photoType,
+  }) async {
+    return _dio.delete(
+      ApiConstants.cleanupTaskUploadPhoto(taskId),
+      data: {'photo_type': photoType},
+    );
+  }
+
+  Future<dio.Response> markCleanupTaskComplete(String taskId) async {
+    return _dio.patch(ApiConstants.markCleanupTaskComplete(taskId));
   }
 
   // New report lifecycle methods
@@ -251,6 +307,16 @@ class ApiClient {
     );
   }
 
+  Future<dio.Response> updateReportValidation(
+    String reportId,
+    String validationStatus,
+  ) async {
+    return _dio.patch(
+      ApiConstants.updateReportValidation(reportId),
+      data: {'validation_status': validationStatus},
+    );
+  }
+
   Future<dio.Response> updateReportLifecycleStage(
     String reportId,
     String stage,
@@ -261,11 +327,23 @@ class ApiClient {
     );
   }
 
+  Future<dio.Response> acknowledgeComplaint(String reportId) async {
+    return _dio.post(ApiConstants.acknowledgeComplaint(reportId));
+  }
+
   Future<dio.Response> logAgencyResponse(String reportId, String action) async {
     return _dio.post(
       '/api/reports/$reportId/agency-response',
       data: {'action': action},
     );
+  }
+
+  Future<dio.Response> getAgencyResponses(String reportId) async {
+    return _dio.get(ApiConstants.agencyResponses(reportId));
+  }
+
+  Future<dio.Response> getSatisfactionAnalytics() async {
+    return _dio.get(ApiConstants.satisfactionAnalytics);
   }
 
   Future<dio.Response> uploadReportPhoto(
@@ -277,7 +355,7 @@ class ApiClient {
       'photo_type': photoType,
       'image': await dio.MultipartFile.fromFile(photo.path),
     });
-    return _dio.post('/api/reports/$reportId/photo', data: formData);
+    return _dio.post(ApiConstants.uploadReportPhoto(reportId), data: formData);
   }
 
   Future<dio.Response> deleteReportPhoto(
@@ -285,7 +363,7 @@ class ApiClient {
     String photoType,
   ) async {
     return _dio.delete(
-      '/api/reports/$reportId/photo',
+      ApiConstants.uploadReportPhoto(reportId),
       data: {'photo_type': photoType},
     );
   }

@@ -71,6 +71,17 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.go('${LguAppRoutes.cleanupTasks}/create');
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Create Custom Cleanup Task'),
+            ),
+          ),
+          const SizedBox(height: 16),
           TextField(
             decoration: InputDecoration(
               hintText: 'Search tasks...',
@@ -138,12 +149,24 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      task.title ?? 'Untitled Task',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      children: [
+                        Text(
+                          task.title ?? 'Untitled Task',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (task.isCustom)
+                          Chip(
+                            label: const Text('Custom'),
+                            labelStyle: const TextStyle(fontSize: 10),
+                            padding: const EdgeInsets.all(0),
+                          ),
+                      ],
                     ),
                   ),
                   _buildStatusBadge(task.status),

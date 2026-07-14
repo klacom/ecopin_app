@@ -14,6 +14,7 @@ class LguReport {
   final DateTime? createdAt;
   final String? validationStatus;
   final bool? isOverdue;
+  final String? lifecycleStage;
 
   LguReport({
     required this.id,
@@ -24,6 +25,7 @@ class LguReport {
     this.createdAt,
     this.validationStatus,
     this.isOverdue,
+    this.lifecycleStage,
   });
 
   factory LguReport.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class LguReport {
           : null,
       validationStatus: json['validation_status'] as String?,
       isOverdue: json['is_overdue'] as bool?,
+      lifecycleStage: json['lifecycle_stage'] as String?,
     );
   }
 }
@@ -95,7 +98,11 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
   String _searchQuery = '';
   String _statusFilter = 'all';
   String _issueTypeFilter = 'all';
+  String _validationStatusFilter = 'all';
+  String _lifecycleStageFilter = 'all';
   String _sortBy = 'newest'; // 'newest' or 'oldest'
+  int _currentPage = 1;
+  static const int _pageSize = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +134,8 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
               ),
               data: (reports) {
                 final filteredReports = _filterReports(reports);
+                final paginatedReports = _paginateReports(filteredReports);
+                
                 if (filteredReports.isEmpty) {
                   return const Center(
                     child: Text('No reports found'),
@@ -134,9 +143,12 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
-                  itemCount: filteredReports.length,
+                  itemCount: paginatedReports.length + 1,
                   itemBuilder: (context, index) {
-                    final report = filteredReports[index];
+                    if (index == paginatedReports.length) {
+                      return _buildPaginationControls(filteredReports.length);
+                    }
+                    final report = paginatedReports[index];
                     return _buildReportCard(report);
                   },
                 );
@@ -164,19 +176,23 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
             onChanged: (value) {
               setState(() {
                 _searchQuery = value;
+                _currentPage = 1;
               });
             },
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(
+              Flexible(
+                flex: 1,
                 child: DropdownButtonFormField<String>(
-                  initialValue: _statusFilter,
+                  value: _statusFilter,
                   decoration: const InputDecoration(
                     labelText: 'Status',
                     border: OutlineInputBorder(),
+                    isDense: true,
                   ),
+                  isExpanded: true,
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
                     DropdownMenuItem(value: 'unresolved', child: Text('Unresolved')),
@@ -187,18 +203,22 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                   onChanged: (value) {
                     setState(() {
                       _statusFilter = value ?? 'all';
+                      _currentPage = 1;
                     });
                   },
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
+              Flexible(
+                flex: 1,
                 child: DropdownButtonFormField<String>(
-                  initialValue: _issueTypeFilter,
+                  value: _issueTypeFilter,
                   decoration: const InputDecoration(
                     labelText: 'Issue Type',
                     border: OutlineInputBorder(),
+                    isDense: true,
                   ),
+                  isExpanded: true,
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
                     DropdownMenuItem(value: 'Waste', child: Text('Waste')),
@@ -210,6 +230,64 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                   onChanged: (value) {
                     setState(() {
                       _issueTypeFilter = value ?? 'all';
+                      _currentPage = 1;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Flexible(
+                flex: 1,
+                child: DropdownButtonFormField<String>(
+                  value: _validationStatusFilter,
+                  decoration: const InputDecoration(
+                    labelText: 'Validation',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(value: 'all', child: Text('All')),
+                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                    DropdownMenuItem(value: 'automatically_valid', child: Text('Auto Valid')),
+                    DropdownMenuItem(value: 'manual_review', child: Text('Manual Review')),
+                    DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _validationStatusFilter = value ?? 'all';
+                      _currentPage = 1;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Flexible(
+                flex: 1,
+                child: DropdownButtonFormField<String>(
+                  value: _lifecycleStageFilter,
+                  decoration: const InputDecoration(
+                    labelText: 'Lifecycle',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(value: 'all', child: Text('All')),
+                    DropdownMenuItem(value: 'reported', child: Text('Reported')),
+                    DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')),
+                    DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
+                    DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
+                    DropdownMenuItem(value: 'closed', child: Text('Closed')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _lifecycleStageFilter = value ?? 'all';
+                      _currentPage = 1;
                     });
                   },
                 ),
@@ -230,6 +308,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
             onChanged: (value) {
               setState(() {
                 _sortBy = value ?? 'newest';
+                _currentPage = 1;
               });
             },
           ),
@@ -250,7 +329,13 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
       final matchesIssueType = _issueTypeFilter == 'all' ||
           report.issueType == _issueTypeFilter;
       
-      return matchesSearch && matchesStatus && matchesIssueType;
+      final matchesValidationStatus = _validationStatusFilter == 'all' ||
+          report.validationStatus == _validationStatusFilter;
+      
+      final matchesLifecycleStage = _lifecycleStageFilter == 'all' ||
+          report.lifecycleStage == _lifecycleStageFilter;
+      
+      return matchesSearch && matchesStatus && matchesIssueType && matchesValidationStatus && matchesLifecycleStage;
     }).toList();
 
     // Sort by date
@@ -262,6 +347,48 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
     });
 
     return filtered;
+  }
+
+  List<LguReport> _paginateReports(List<LguReport> reports) {
+    final start = (_currentPage - 1) * _pageSize;
+    final end = start + _pageSize;
+    if (start >= reports.length) return [];
+    return reports.sublist(start, end > reports.length ? reports.length : end);
+  }
+
+  Widget _buildPaginationControls(int totalReports) {
+    final totalPages = (totalReports / _pageSize).ceil();
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+            child: const Text('Previous'),
+          ),
+          const SizedBox(width: 16),
+          Text('Page $_currentPage of $totalPages'),
+          const SizedBox(width: 16),
+          ElevatedButton(
+            onPressed: _currentPage < totalPages
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+            child: const Text('Next'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildReportCard(LguReport report) {
@@ -342,8 +469,18 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildStatusBadge(report.status),
-                  _buildValidationBadge(report.validationStatus),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        _buildStatusBadge(report.status),
+                        _buildValidationBadge(report.validationStatus),
+                        if (report.lifecycleStage != null)
+                          _buildLifecycleBadge(report.lifecycleStage!),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -410,6 +547,40 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
       ),
       child: Text(
         validationStatus?.replaceAll('_', ' ').toUpperCase() ?? 'N/A',
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLifecycleBadge(String lifecycleStage) {
+    Color color;
+    switch (lifecycleStage) {
+      case 'resolved':
+      case 'closed':
+        color = Colors.green;
+        break;
+      case 'in_progress':
+        color = Colors.orange;
+        break;
+      case 'acknowledged':
+        color = Colors.blue;
+        break;
+      case 'reported':
+      default:
+        color = Colors.grey;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        lifecycleStage.replaceAll('_', ' ').toUpperCase(),
         style: TextStyle(
           color: color,
           fontSize: 10,

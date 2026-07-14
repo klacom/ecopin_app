@@ -68,6 +68,9 @@ class AuthNotifier extends ChangeNotifier {
       _state = AppAuthState.unauthenticated();
       notifyListeners();
     } else {
+      // First set state to loading while fetching user/role
+      _state = const AppAuthState(isAuthenticated: true, isLoading: true);
+      notifyListeners();
       try {
         // Fetch user and role from backend (database-driven)
         final apiClient = _ref.read(apiClientProvider);

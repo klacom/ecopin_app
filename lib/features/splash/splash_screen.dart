@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:ecopin_app/routes/app_routes.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,22 +11,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkSession();
-  }
-
-  Future<void> _checkSession() async {
-    // Simulate a short delay for the splash screen
-    await Future.delayed(const Duration(seconds: 2));
-
-    final session = Supabase.instance.client.auth.currentSession;
-    
-    if (mounted) {
-      if (session != null) {
-        context.go(ProtectedAppRoutes.maps);
-      } else {
-        context.go(PublicAppRoutes.login);
-      }
-    }
+    // No more navigation here - GoRouter handles it via redirect
   }
 
   @override

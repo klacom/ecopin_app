@@ -58,12 +58,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           } else if (role == UserRole.admin) {
             print('Redirecting from splash to Admin Dashboard');
             return AdminAppRoutes.dashboard;
-          } else {
+          } else if (role == UserRole.citizen){
             print('Redirecting from splash to Maps (Citizen)');
             return ProtectedAppRoutes.maps;
+          }else{
+            print('Redirecting from splash to Login (Logout)');
+            return PublicAppRoutes.login;
           }
+        } else {
+          // Not logged in: go to login screen
+          return PublicAppRoutes.login;
         }
-        return null;
       }
 
       final isPublicRoute = PublicAppRoutes.publicRoutes.contains(path);

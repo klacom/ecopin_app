@@ -6,6 +6,7 @@ import 'package:ecopin_app/features/auth/data/models/auth_state.dart';
 import 'package:ecopin_app/features/lgu/providers/lgu_clusters_provider.dart';
 import 'package:ecopin_app/features/lgu/providers/lgu_cleanup_tasks_provider.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_response_logs_screen.dart';
+import 'package:ecopin_app/features/profile/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:logging/logging.dart';
@@ -39,6 +40,8 @@ class AuthNotifier extends ChangeNotifier {
     if (_ref.container.exists(lguResponseLogsProvider)) {
       _ref.read(lguResponseLogsProvider.notifier).reset();
     }
+    // Invalidate profile provider to reset it
+    _ref.invalidate(profileProvider);
   }
 
   void _initialize() {
@@ -87,7 +90,9 @@ class AuthNotifier extends ChangeNotifier {
           role = UserRole.values.firstWhere(
             (r) => r.name == roleString,
             orElse: () {
-              _log.warning('Role "$roleString" not found in UserRole enum, defaulting to citizen');
+              _log.warning(
+                'Role "$roleString" not found in UserRole enum, defaulting to citizen',
+              );
               return UserRole.citizen;
             },
           );

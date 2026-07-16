@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class ValidationBadge extends StatelessWidget {
   final String status;
@@ -13,22 +14,22 @@ class ValidationBadge extends StatelessWidget {
 
     switch (status.toLowerCase()) {
       case 'pending_ai_validation':
-        color = Colors.blue;
+        color = AppColors.info;
         label = 'PENDING AI';
         icon = Icons.hourglass_empty;
         break;
       case 'approved':
-        color = Colors.green;
+        color = AppColors.success;
         label = 'APPROVED';
         icon = Icons.verified;
         break;
       case 'manual_review':
-        color = Colors.orange;
+        color = AppColors.warning;
         label = 'MANUAL REVIEW';
         icon = Icons.rate_review;
         break;
       case 'rejected':
-        color = Colors.red;
+        color = AppColors.error;
         label = 'REJECTED';
         icon = Icons.error_outline;
         break;
@@ -45,17 +46,17 @@ class ValidationBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceMD, vertical: AppColors.spaceSM),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
         border: Border.all(color: color),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppColors.spaceXS),
           Text(
             label,
             style: TextStyle(

@@ -45,7 +45,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         // Multiple Pictures
         final List<XFile> images = await _picker.pickMultiImage();
         if (images.isNotEmpty) {
-            _log.info("Images are not empty, now beginning to check images");
+          _log.info("Images are not empty, now beginning to check images");
           for (final XFile xFile in images) {
             final File file = File(xFile.path);
             if (!_capturedImages.any((img) => img.path == file.path)) {
@@ -64,7 +64,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 (sum, img) => sum + img.lengthSync(),
               );
               final newFileSize = await file.length();
-            // Check if exceeds limit
+              // Check if exceeds limit
               if (currentTotalSize + newFileSize > reportTotalPhotosSize) {
                 if (mounted) {
                   SnackbarHelper.showError(
@@ -187,8 +187,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           _selectedImage ??
           (_capturedImages.isNotEmpty ? _capturedImages.first : null);
 
-    // _log.info("Main image: ", mainImage);
-    // _log.info("Main image path: ", mainImage?.path);
+      // _log.info("Main image: ", mainImage);
+      // _log.info("Main image path: ", mainImage?.path);
 
       final response = await apiClient.createReport(
         title: _titleController.text.trim(),
@@ -200,7 +200,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         onPrivateProperty: _onPrivateProperty,
       );
 
-      _log.fine("CREATE REPORT RESPONSE: ",response);
+      _log.fine("CREATE REPORT RESPONSE: ", response);
 
       final reportId = response.data['report']['id'];
       final aiScore = response.data['ai_score'] as num?;
@@ -208,19 +208,18 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
       // Upload remaining images as evidence if any
 
-        // _log.info('IS CAPTURED IMAGES NOT EMPTY?:', _capturedImages.isNotEmpty);
+      // _log.info('IS CAPTURED IMAGES NOT EMPTY?:', _capturedImages.isNotEmpty);
 
       if (_capturedImages.isNotEmpty) {
-        
         // eto may problem
         // final remainingImages = _capturedImages
         //     .where((img) => img.path != mainImage?.path)
-            // .toList();
+        // .toList();
 
         // _log.info('REMAINING IMAGES COUNT: ', remainingImages);
 
         for (final img in _capturedImages) {
-            await apiClient.uploadEvidence(
+          await apiClient.uploadEvidence(
             reportId: reportId,
             imageFile: img,
             latitude: _selectedLocation.latitude,
@@ -235,13 +234,15 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       }
 
       if (mounted) {
-          // Close loading dialog
-          Navigator.pop(context);
-          // Show success message indicating AI validation is in progress
-          SnackbarHelper.showSuccessMessage('Report submitted successfully! AI validation is in progress.');
+        // Close loading dialog
+        Navigator.pop(context);
+        // Show success message indicating AI validation is in progress
+        SnackbarHelper.showSuccessMessage(
+          'Report submitted successfully! AI validation is in progress.',
+        );
 
-          context.pop(); // Go back after success
-        }
+        context.pop(); // Go back after success
+      }
     } on DioException catch (e, stackTrace) {
       _log.severe(e, stackTrace);
       if (mounted) Navigator.pop(context); // Close loading dialog
@@ -276,6 +277,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Create Report')),
       body: SingleChildScrollView(
@@ -340,9 +342,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: Colors.grey.shade800),
               ),
               child: Row(
                 children: [
@@ -350,10 +352,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                   const SizedBox(width: 8),
                   Text(
                     'Coordinates: ${_selectedLocation.latitude.toStringAsFixed(6)}, ${_selectedLocation.longitude.toStringAsFixed(6)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontFamily: 'monospace',
-                      color: Colors.black87,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 ],
@@ -491,6 +493,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               text: 'Submit Report',
               isLoading: _isLoading,
               onPressed: _isLoading ? null : _submitReport,
+              variant: ButtonVariant.primary,
             ),
             const SizedBox(height: 24),
           ],
@@ -511,7 +514,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         width: 100,
         height: 100,
         decoration: BoxDecoration(
-          color: onTap == null ? Colors.grey.shade200 : Colors.grey.shade100,
+          color: onTap == null
+              ? Theme.of(context).colorScheme.surface
+              : Theme.of(context).colorScheme.surfaceDim,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade300),
         ),

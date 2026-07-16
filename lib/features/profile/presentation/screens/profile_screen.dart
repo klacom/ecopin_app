@@ -10,6 +10,8 @@ import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ecopin_app/core/providers/theme_mode_provider.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -48,7 +50,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       try {
         final apiClient = ref.read(apiClientProvider);
         await apiClient.uploadAvatar(filePath: image.path);
- 
+
         // Invalidate provider to refresh data
         ref.invalidate(profileProvider);
         await ref.read(profileProvider.future);
@@ -57,7 +59,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           SnackbarHelper.showMessage('Avatar uploaded successfully');
         }
       } on dio.DioException catch (e, stackTrace) {
-
         _log.severe('DioException during avatar upload: $e', stackTrace);
         String errorMsg = 'Failed to upload avatar';
 
@@ -70,7 +71,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         if (mounted) {
           SnackbarHelper.showError(errorMsg);
         }
-
       } catch (e, stackTrace) {
         _log.severe('Error uploading avatar: $e', stackTrace);
         if (mounted) {
@@ -93,7 +93,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       });
 
       try {
-
         final apiClient = ref.read(apiClientProvider);
         await apiClient.updateProfile(fullName: _fullNameController.text);
 
@@ -104,7 +103,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         if (mounted) {
           SnackbarHelper.showMessage('Profile updated successfully!');
         }
-
       } catch (e, stackTrace) {
         if (mounted) {
           _log.severe(e, stackTrace);
@@ -133,7 +131,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Log Out'),
           ),
         ],
@@ -148,7 +146,139 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-Future<void> _updateDataConsent(bool value) async {
+  Future<void> _changePassword() async {
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool isObscureOld = true;
+    bool isObscureNew = true;
+    bool isObscureConfirm = true;
+    bool isLoading = false;
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Change Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: oldPasswordController,
+                obscureText: isObscureOld,
+                decoration: InputDecoration(
+                  labelText: 'Current Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      isObscureOld ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () =>
+                        setStateDialog(() => isObscureOld = !isObscureOld),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppColors.spaceMD),
+              TextField(
+                controller: newPasswordController,
+                obscureText: isObscureNew,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      isObscureNew ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () =>
+                        setStateDialog(() => isObscureNew = !isObscureNew),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppColors.spaceMD),
+              TextField(
+                controller: confirmPasswordController,
+                obscureText: isObscureConfirm,
+                decoration: InputDecoration(
+                  labelText: 'Confirm New Password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      isObscureConfirm
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () => setStateDialog(
+                      () => isObscureConfirm = !isObscureConfirm,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            isLoading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: () async {
+                      if (newPasswordController.text !=
+                          confirmPasswordController.text) {
+                        SnackbarHelper.showError('Passwords do not match!');
+                        return;
+                      }
+                      if (newPasswordController.text.length < 6) {
+                        SnackbarHelper.showError(
+                          'Password must be at least 6 characters!',
+                        );
+                        return;
+                      }
+
+                      setStateDialog(() => isLoading = true);
+                      try {
+                        final apiClient = ref.read(apiClientProvider);
+                        await apiClient.changePassword(
+                          oldPassword: oldPasswordController.text,
+                          newPassword: newPasswordController.text,
+                        );
+                        if (context.mounted) {
+                          SnackbarHelper.showValidMessage(
+                            'Password changed successfully!',
+                          );
+                          Navigator.pop(context);
+                        }
+                      } on dio.DioException catch (e) {
+                        if (context.mounted) {
+                          SnackbarHelper.showError(
+                            e.response?.data['message'] ??
+                                'Failed to change password!',
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          SnackbarHelper.showError(
+                            'Failed to change password!',
+                          );
+                        }
+                      } finally {
+                        if (context.mounted) {
+                          setStateDialog(() => isLoading = false);
+                        }
+                      }
+                    },
+                    child: const Text('Save'),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateDataConsent(bool value) async {
     if (_isUpdatingConsent) return;
 
     setState(() {
@@ -236,8 +366,8 @@ Future<void> _updateDataConsent(bool value) async {
                             backgroundColor: Theme.of(context).primaryColor,
                             foregroundImage:
                                 avatarUrl != null && avatarUrl.isNotEmpty
-                                    ? NetworkImage(avatarUrl)
-                                    : null,
+                                ? NetworkImage(avatarUrl)
+                                : null,
                             child: avatarUrl == null || avatarUrl.isEmpty
                                 ? Text(
                                     _getInitials(fullName),
@@ -307,55 +437,131 @@ Future<void> _updateDataConsent(bool value) async {
                     const SizedBox(height: 16),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppColors.spaceMD),
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(
+                          AppColors.radiusCard,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Member Since',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppColors.spaceXS),
                           Text(
                             createdAt != null
                                 ? DateTime.parse(
                                     createdAt,
                                   ).toLocal().toString().split(' ')[0]
                                 : 'N/A',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppColors.spaceMD),
+
+                    // Dark Mode Switch
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(
+                          AppColors.radiusCard,
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(
+                          AppColors.radiusCard,
+                        ),
+                        child: Consumer(
+                          builder: (context, ref, child) {
+                            final themeMode = ref.watch(themeModeProvider);
+                            final isDarkMode =
+                                themeMode == ThemeMode.dark ||
+                                (themeMode == ThemeMode.system &&
+                                    MediaQuery.platformBrightnessOf(context) ==
+                                        Brightness.dark);
+
+                            return SwitchListTile(
+                              secondary: const Icon(Icons.dark_mode_outlined),
+                              title: const Text(
+                                "Dark Mode",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Text(
+                                isDarkMode
+                                    ? "Using dark theme."
+                                    : "Using light theme.",
+                              ),
+                              value: isDarkMode,
+                              onChanged: (value) {
+                                ref
+                                    .read(themeModeProvider.notifier)
+                                    .setThemeMode(
+                                      value ? ThemeMode.dark : ThemeMode.light,
+                                    );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppColors.spaceMD),
+
+                    // Change Password Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _changePassword,
+                        icon: const Icon(Icons.lock_reset),
+                        label: const Text('Change Password'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppColors.spaceMD,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppColors.spaceMD),
 
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(
+                          AppColors.radiusCard,
+                        ),
                       ),
-                      child: SwitchListTile(
-                        secondary: const Icon(Icons.privacy_tip_outlined),
-                        title: const Text(
-                          "Share Personal Information",
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(
+                          AppColors.radiusCard,
                         ),
-                        subtitle: Text(
-                          dataConsent
-                              ? "The LGU may access your profile information when handling your reports."
-                              : "Your identity will remain hidden when possible.",
+                        child: SwitchListTile(
+                          secondary: const Icon(Icons.privacy_tip_outlined),
+                          title: const Text(
+                            "Share Personal Information",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            dataConsent
+                                ? "The LGU may access your profile information when handling your reports."
+                                : "Your identity will remain hidden when possible.",
+                          ),
+                          value: dataConsent,
+                          onChanged: _isUpdatingConsent
+                              ? null
+                              : (value) => _updateDataConsent(value),
                         ),
-                        value: dataConsent,
-                        onChanged: _isUpdatingConsent
-                            ? null
-                            : (value) => _updateDataConsent(value),
                       ),
                     ),
 

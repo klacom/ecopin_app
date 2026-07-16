@@ -21,10 +21,7 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
     final clustersAsync = ref.watch(lguClustersProvider).clusters;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Clusters'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Clusters'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),
@@ -38,7 +35,8 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
                     Text('Error: $error'),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () => ref.read(lguClustersProvider).loadClusters(),
+                      onPressed: () =>
+                          ref.read(lguClustersProvider).loadClusters(),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -47,12 +45,15 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
               data: (clusters) {
                 final filteredClusters = _filterClusters(clusters);
                 if (filteredClusters.isEmpty) {
-                  return const Center(
-                    child: Text('No clusters found'),
-                  );
+                  return const Center(child: Text('No clusters found'));
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 80,
+                  ),
                   itemCount: filteredClusters.length,
                   itemBuilder: (context, index) {
                     final cluster = filteredClusters[index];
@@ -92,6 +93,7 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: _severityFilter,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Severity',
                     border: OutlineInputBorder(),
@@ -113,15 +115,25 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: _statusFilter,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Status',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
-                    DropdownMenuItem(value: 'unresolved', child: Text('Unresolved')),
-                    DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
-                    DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
+                    DropdownMenuItem(
+                      value: 'unresolved',
+                      child: Text('Unresolved'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'in_progress',
+                      child: Text('In Progress'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'resolved',
+                      child: Text('Resolved'),
+                    ),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -139,16 +151,20 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
 
   List<Cluster> _filterClusters(List<Cluster> clusters) {
     return clusters.where((cluster) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          (cluster.issueType?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
+          (cluster.issueType?.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ??
+              false) ||
           cluster.id.toLowerCase().contains(_searchQuery.toLowerCase());
-      
-      final matchesSeverity = _severityFilter == 'all' ||
-          cluster.severity == _severityFilter;
-      
-      final matchesStatus = _statusFilter == 'all' ||
-          cluster.status == _statusFilter;
-      
+
+      final matchesSeverity =
+          _severityFilter == 'all' || cluster.severity == _severityFilter;
+
+      final matchesStatus =
+          _statusFilter == 'all' || cluster.status == _statusFilter;
+
       return matchesSearch && matchesSeverity && matchesStatus;
     }).toList();
   }

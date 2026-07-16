@@ -206,6 +206,19 @@ class ApiClient {
     return response.data;
   }
 
+  Future<dio.Response> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    return _dio.post(
+      ApiConstants.changePassword,
+      data: {
+        'oldPassword': oldPassword,
+        'newPassword': newPassword,
+      },
+    );
+  }
+
   // Cleanup Task methods
 
   Future<dio.Response> getCleanupTasksByCluster(String clusterId) async {

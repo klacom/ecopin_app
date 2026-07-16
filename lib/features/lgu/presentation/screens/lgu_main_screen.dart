@@ -65,7 +65,7 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
@@ -100,7 +100,9 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
   }) {
     final currentLocation = GoRouterState.of(context).matchedLocation;
     final isSelected = currentLocation.startsWith(route);
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+    final color = isSelected
+        ? Theme.of(context).colorScheme.primary
+        : Colors.grey;
 
     return InkWell(
       onTap: () {
@@ -193,7 +195,7 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           height: 70,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
@@ -207,7 +209,7 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
             borderRadius: BorderRadius.circular(24),
             child: BottomAppBar(
               elevation: 0,
-              color: Colors.transparent,
+              color: Theme.of(context).colorScheme.surface,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -264,7 +266,9 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
     int selectedIndex,
   ) {
     final isSelected = index == selectedIndex;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+    final color = isSelected
+        ? Theme.of(context).colorScheme.primary
+        : Colors.grey;
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),

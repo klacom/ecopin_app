@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:badges/badges.dart' as badges;
 
-// The layout that houses all the components that also goes wherever the user navigates to. 
+// The layout that houses all the components that also goes wherever the user navigates to.
 // It currently contains the NavBar.
 
 class MainScreen extends ConsumerStatefulWidget {
@@ -85,7 +85,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           height: 70,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
@@ -145,7 +145,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     String? fullName,
   ) {
     final isSelected = index == selectedIndex;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+    final color = isSelected
+        ? Theme.of(context).colorScheme.primary
+        : Colors.grey;
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),
@@ -197,7 +199,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   ) {
     final unreadCount = ref.watch(unreadNotificationsCountProvider).value ?? 0;
     final isSelected = index == selectedIndex;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+    final color = isSelected
+        ? Theme.of(context).colorScheme.primary
+        : Colors.grey;
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),
@@ -235,7 +239,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     int selectedIndex,
   ) {
     final isSelected = index == selectedIndex;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+    final color = isSelected
+        ? Theme.of(context).colorScheme.primary
+        : Colors.grey;
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),

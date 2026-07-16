@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class StatusBadge extends StatelessWidget {
   final String status;
@@ -11,40 +12,35 @@ class StatusBadge extends StatelessWidget {
     String displayText;
     switch (status.toLowerCase()) {
       case 'resolved':
-        color = Colors.green;
-        displayText = 'Resolved';
-        break;
       case 'closed':
-        color = Colors.green;
-        displayText = 'Closed';
+        color = AppColors.success;
+        displayText = status == 'resolved' ? 'Resolved' : 'Closed';
         break;
       case 'in progress':
-        color = Colors.orange;
-        displayText = 'In Progress';
-        break;
       case 'acknowledged':
-        color = Colors.orange;
-        displayText = 'Acknowledged';
-        break;
       case 'waiting_for_feedback':
-        color = Colors.orange;
-        displayText = 'Waiting for Feedback';
+        color = AppColors.warning;
+        displayText = {
+          'in progress': 'In Progress',
+          'acknowledged': 'Acknowledged',
+          'waiting_for_feedback': 'Waiting for Feedback'
+        }[status.toLowerCase()]!;
         break;
       case 'pending_owner_consent':
-        color = Colors.yellow;
+        color = AppColors.warning;
         displayText = 'Pending Owner Consent';
         break;
       default:
-        color = Colors.red;
+        color = AppColors.error;
         displayText = status.toUpperCase();
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceSM, vertical: AppColors.spaceXS),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
         border: Border.all(color: color),
       ),
       child: Text(

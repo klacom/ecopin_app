@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/theme/typography.dart';
+
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -16,8 +19,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      backgroundColor: Colors.green,
+      backgroundColor: colors.primary,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -25,20 +31,18 @@ class _SplashScreenState extends State<SplashScreen> {
             Icon(
               Icons.eco,
               size: 100,
-              color: Colors.white,
+              color: colors.onPrimary,
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'EcoPin',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+              style: textTheme.headlineMedium?.copyWith(
+                color: colors.onPrimary,
               ),
             ),
             const SizedBox(height: 40),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(colors.tertiary),
             ),
           ],
         ),

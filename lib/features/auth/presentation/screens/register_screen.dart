@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -18,7 +19,8 @@ class RegisterScreen extends ConsumerStatefulWidget {
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final Logger _log = Logger("Register Screen");
   bool _isLoading = false;
 
@@ -50,7 +52,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-
       final apiClient = ref.read(apiClientProvider);
       // TODO: Lagyan ng Confirm Email
       final response = await apiClient.register(
@@ -65,7 +66,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         context.go('/login');
       }
     } on DioException catch (e, stackTrace) {
-
       String errorMessage = 'Registration failed';
       // String errorMessage = 'RF: $e';
 
@@ -83,7 +83,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
       SnackbarHelper.showError(errorMessage);
     } catch (e, stackTrace) {
-       _log.severe(e, stackTrace);
+      _log.severe(e, stackTrace);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -96,29 +96,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Register')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(AppColors.spaceMD),
         child: Column(
           children: [
             AppTextField(controller: _emailController, labelText: 'Email'),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppColors.spaceMD),
             AppTextField(
               controller: _passwordController,
               labelText: 'Password',
               inputType: 'password',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppColors.spaceMD),
             AppTextField(
               controller: _confirmPasswordController,
               labelText: 'Confirm Password',
               inputType: 'password',
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppColors.spaceXXL),
             AppButton(
               text: 'Register',
               isLoading: _isLoading,
               onPressed: _isLoading ? null : signUp,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppColors.spaceMD),
             TextButton(
               onPressed: () {
                 context.go('/login');

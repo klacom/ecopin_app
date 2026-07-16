@@ -1,5 +1,6 @@
 {
     "editor.detectIndentation": false,
     "editor.formatOnPaste": true,
-    "editor.defaultFormatter": null
+    "editor.defaultFormatter": null,
+    "postman.settings.dotenv-detection-notification-visibility": false
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class SnackbarHelper {
 
@@ -13,25 +14,28 @@ class SnackbarHelper {
   
    static void showError(String message) {
      messengerKey.currentState?.showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
     );
   }
 
   static void showValidMessage(String message){
      messengerKey.currentState?.showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
+      SnackBar(content: Text(message), backgroundColor: AppColors.success),
     );
   }
 
   static void showSemiValidMessage(String message){
      messengerKey.currentState?.showSnackBar(
-      SnackBar(content: Text(message, style: TextStyle(color: Colors.black),), backgroundColor: Colors.yellow,),
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.black)), 
+        backgroundColor: AppColors.warning
+      ),
     );
   }
 
   static void showSuccessMessage(String message){
      messengerKey.currentState?.showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.blue),
+      SnackBar(content: Text(message), backgroundColor: AppColors.info),
     );
   }
 

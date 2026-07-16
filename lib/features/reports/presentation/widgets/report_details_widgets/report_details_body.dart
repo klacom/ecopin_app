@@ -10,6 +10,7 @@ import 'package:ecopin_app/features/reports/presentation/widgets/report_details_
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:ecopin_app/shared/widgets/app_button.dart';
 
 import '../reports_screen_widgets/status_badge.dart';
 import '../reports_screen_widgets/validation_badge.dart';
@@ -45,8 +46,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
     setState(() => _isCreatingNewReport = true);
     try {
       final apiClient = ref.read(apiClientProvider);
-      final response = await apiClient.createReportFromRejected(widget.report.id);
-      
+      final response = await apiClient.createReportFromRejected(
+        widget.report.id,
+      );
+
       if (response.statusCode == 201) {
         final newReportId = response.data['report']['id'];
         if (mounted) {
@@ -57,10 +60,9 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             ),
           );
           // Navigate to the new report
-          Navigator.of(context).pushReplacementNamed(
-            '/report-details',
-            arguments: newReportId,
-          );
+          Navigator.of(
+            context,
+          ).pushReplacementNamed('/report-details', arguments: newReportId);
         }
       }
     } catch (e) {
@@ -122,7 +124,8 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             ],
           ),
           // Show rejection reason if report is rejected
-          if (widget.report.validationStatus.toLowerCase() == 'rejected' && widget.report.rejectionReason != null) ...[
+          if (widget.report.validationStatus.toLowerCase() == 'rejected' &&
+              widget.report.rejectionReason != null) ...[
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
@@ -146,10 +149,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                   const SizedBox(height: 8),
                   Text(
                     widget.report.rejectionReason!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.red.shade700,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.red.shade700),
                   ),
                   if (widget.report.rejectedAt != null) ...[
                     const SizedBox(height: 8),
@@ -166,33 +166,16 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             ),
           ],
           // Show Create New Report button for rejected reports
-          if (widget.report.validationStatus.toLowerCase() == 'rejected' && !widget.isLguUser) ...[
+          if (widget.report.validationStatus.toLowerCase() == 'rejected' &&
+              !widget.isLguUser) ...[
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isCreatingNewReport ? null : () => _handleCreateNewReport(),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.blue,
-                ),
-                child: _isCreatingNewReport
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Create New Report',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+              child: AppButton(
+                onPressed: _isCreatingNewReport
+                    ? null
+                    : () => _handleCreateNewReport(),
+                text: 'Create New Report',
               ),
             ),
             const SizedBox(height: 8),
@@ -317,7 +300,9 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 },
               ),
             ),
-          if (widget.report.status.toLowerCase() == 'resolved' || widget.report.status.toLowerCase() == 'waiting_for_feedback' || widget.report.status.toLowerCase() == 'closed') ...[
+          if (widget.report.status.toLowerCase() == 'resolved' ||
+              widget.report.status.toLowerCase() == 'waiting_for_feedback' ||
+              widget.report.status.toLowerCase() == 'closed') ...[
             const SizedBox(height: 24),
             const Text(
               'Before & After',
@@ -326,17 +311,22 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             const SizedBox(height: 8),
             if (widget.isLoadingCleanupTask)
               const Center(child: CircularProgressIndicator())
-            else if (widget.report.beforePhotoUrl != null || widget.report.afterPhotoUrl != null || widget.cleanupTask != null)
+            else if (widget.report.beforePhotoUrl != null ||
+                widget.report.afterPhotoUrl != null ||
+                widget.cleanupTask != null)
               Row(
                 children: [
                   Expanded(
                     child: Column(
                       children: [
-                        if ((widget.cleanupTask?.beforePhotoUrl != null) || (widget.report.beforePhotoUrl != null))
+                        if ((widget.cleanupTask?.beforePhotoUrl != null) ||
+                            (widget.report.beforePhotoUrl != null))
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: CachedNetworkImage(
-                              imageUrl: widget.cleanupTask?.beforePhotoUrl ?? widget.report.beforePhotoUrl!,
+                              imageUrl:
+                                  widget.cleanupTask?.beforePhotoUrl ??
+                                  widget.report.beforePhotoUrl!,
                               height: 150,
                               width: double.infinity,
                               fit: BoxFit.cover,
@@ -406,11 +396,14 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                   Expanded(
                     child: Column(
                       children: [
-                        if ((widget.cleanupTask?.afterPhotoUrl != null) || (widget.report.afterPhotoUrl != null))
+                        if ((widget.cleanupTask?.afterPhotoUrl != null) ||
+                            (widget.report.afterPhotoUrl != null))
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: CachedNetworkImage(
-                              imageUrl: widget.cleanupTask?.afterPhotoUrl ?? widget.report.afterPhotoUrl!,
+                              imageUrl:
+                                  widget.cleanupTask?.afterPhotoUrl ??
+                                  widget.report.afterPhotoUrl!,
                               height: 150,
                               width: double.infinity,
                               fit: BoxFit.cover,
@@ -486,7 +479,8 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
           ],
           const SizedBox(height: 32),
           // Satisfaction rating button if waiting for feedback (citizen only)
-          if (!widget.isLguUser && widget.report.status.toLowerCase() == 'waiting_for_feedback') ...[
+          if (!widget.isLguUser &&
+              widget.report.status.toLowerCase() == 'waiting_for_feedback') ...[
             const Text(
               'The issue has been resolved! Please rate the service.',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -494,7 +488,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: AppButton(
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -504,24 +498,14 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                     ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.blue,
-                ),
-                child: const Text(
-                  'Rate & Close Report',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                text: 'Rate & Close Report',
               ),
             ),
             const SizedBox(height: 16),
           ],
           // Show satisfaction rating if already closed (citizen only)
-          if (!widget.isLguUser && widget.report.status.toLowerCase() == 'closed' &&
+          if (!widget.isLguUser &&
+              widget.report.status.toLowerCase() == 'closed' &&
               widget.report.satisfactionRating != null) ...[
             const Text(
               'Your Satisfaction Rating',

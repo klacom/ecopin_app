@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 enum ButtonVariant { primary, secondary, danger, link }
 
@@ -23,15 +24,16 @@ class AppButton extends StatelessWidget {
   });
 
   Color _backgroundColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (variant) {
       case ButtonVariant.primary:
-        return Theme.of(context).primaryColor;
+        return isDark ? AppColors.primaryDark : AppColors.primaryLight;
 
       case ButtonVariant.secondary:
-        return Colors.grey.shade200;
+        return isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
 
       case ButtonVariant.danger:
-        return Colors.red;
+        return AppColors.error;
 
       case ButtonVariant.link:
         return Colors.transparent;
@@ -39,14 +41,16 @@ class AppButton extends StatelessWidget {
   }
 
   Color _textColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (variant) {
-        case ButtonVariant.primary:
-        case ButtonVariant.danger:
-          return Colors.white;
-    
-        case ButtonVariant.secondary:
-        case ButtonVariant.link:
-            return Colors.black;
+      case ButtonVariant.primary:
+        return isDark ? AppColors.textPrimaryLight : AppColors.textPrimaryDark;
+      case ButtonVariant.danger:
+        return Colors.white;
+
+      case ButtonVariant.secondary:
+      case ButtonVariant.link:
+        return isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
     }
   }
 
@@ -55,36 +59,44 @@ class AppButton extends StatelessWidget {
     final disabled = onPressed == null || isLoading;
 
     return SizedBox(
-        width: width,
-        height: height,
-        child: TextButton(
-            onPressed: disabled ? null : onPressed,
-            style: TextButton.styleFrom(
-                backgroundColor: _backgroundColor(context),
-                foregroundColor: _textColor(context),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                ),
+      width: width,
+      height: height,
+      child: TextButton(
+        onPressed: disabled ? null : onPressed,
+        style: TextButton.styleFrom(
+          backgroundColor: _backgroundColor(context),
+          foregroundColor: _textColor(context),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(AppColors.radiusButton),
             ),
-            child: isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                    ),
-                )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                        if (icon != null) ...[
-                            Icon(icon),
-                            const SizedBox(width:8),
-                        ],
-                        Text(text),
-                    ],
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppColors.spaceLG,
+            vertical: AppColors.spaceMD,
+          ),
+          textStyle: Theme.of(context).textTheme.labelLarge,
+        ),
+        child: isLoading
+            ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _textColor(context),
                 ),
-        )
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon),
+                    const SizedBox(width: AppColors.spaceSM),
+                  ],
+                  Text(text),
+                ],
+              ),
+      ),
     );
   }
 }

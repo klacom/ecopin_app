@@ -43,6 +43,7 @@ class ApiConstants {
   }
 
   static const String updateDataConsent = '/api/profile/data-consent';
+  static const String changePassword = '/api/auth/change-password';
 
   // LGU API Constants
   static const String systemStats = '/api/admin/stats';

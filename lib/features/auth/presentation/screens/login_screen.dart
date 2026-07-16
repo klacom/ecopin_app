@@ -8,6 +8,7 @@ import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -75,7 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceXL),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -85,38 +86,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineLarge,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppColors.spaceSM),
               Text(
                 'Login',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppColors.spaceXXL),
               AppTextField(
                 controller: _emailController,
                 labelText: 'Email',
                 // keyboardType: TextInputType.emailAddress,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppColors.spaceMD),
               AppTextField(
                 controller: _passwordController,
                 labelText: 'Password',
                 inputType: 'password',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppColors.spaceLG),
               AppButton(
                 text: 'Login',
                 isLoading: _isLoading,
                 variant: ButtonVariant.primary,
                 onPressed: _isLoading ? null : _login,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppColors.spaceMD),
               GestureDetector(
                 onTap: () => context.go('/register'),
-                child: const Text(
+                child: Text(
                   "Don't have an account? Sign Up",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.blue),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
             ],

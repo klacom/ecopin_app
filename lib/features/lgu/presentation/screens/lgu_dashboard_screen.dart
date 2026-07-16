@@ -15,10 +15,7 @@ class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
     final statsAsync = ref.watch(lguDashboardProvider).stats;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('LGU Dashboard'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('LGU Dashboard'), elevation: 0),
       body: RefreshIndicator(
         onRefresh: () => ref.read(lguDashboardProvider).loadStats(),
         child: statsAsync.when(
@@ -43,10 +40,7 @@ class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
               children: [
                 const Text(
                   'Overview',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
                 _buildStatsGrid(stats),
@@ -97,7 +91,7 @@ class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
           Colors.grey,
         ),
         _buildStatCard(
-          'Waiting for Feedback',
+          'Feedback Waiting',
           stats.waitingForFeedback.toString(),
           Icons.feedback,
           Colors.purple,
@@ -106,7 +100,12 @@ class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       elevation: 2,
       child: Padding(
@@ -118,18 +117,12 @@ class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ],
         ),

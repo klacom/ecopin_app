@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class StatusBadge extends StatelessWidget {
   final String status;
@@ -10,22 +11,23 @@ class StatusBadge extends StatelessWidget {
     Color color;
     switch (status.toLowerCase()) {
       case 'resolved':
-        color = Colors.green;
+        color = AppColors.success;
         break;
       case 'in progress':
-        color = Colors.orange;
+        color = AppColors.warning;
         break;
       case 'unresolved':
+      case 'rejected':
       default:
-        color = Colors.red;
+        color = AppColors.error;
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceSM, vertical: AppColors.spaceXS),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
         border: Border.all(color: color),
       ),
       child: Text(

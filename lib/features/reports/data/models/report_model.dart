@@ -23,6 +23,8 @@ class ReportModel {
   final bool isOverdue;
   final String? beforePhotoUrl;
   final String? afterPhotoUrl;
+  final String? rejectionReason;
+  final DateTime? rejectedAt;
 
   ReportModel({
     required this.id,
@@ -45,6 +47,8 @@ class ReportModel {
     this.isOverdue = false,
     this.beforePhotoUrl,
     this.afterPhotoUrl,
+    this.rejectionReason,
+    this.rejectedAt,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -124,6 +128,10 @@ class ReportModel {
       isOverdue: json['is_overdue'] ?? false,
       beforePhotoUrl: json['before_photo_url']?.toString(),
       afterPhotoUrl: json['after_photo_url']?.toString(),
+      rejectionReason: json['rejection_reason']?.toString(),
+      rejectedAt: json['rejected_at'] != null
+          ? DateTime.tryParse(json['rejected_at']?.toString() ?? '')
+          : null,
     );
   }
 
@@ -142,6 +150,8 @@ class ReportModel {
       'lgu_resolved_at': lguResolvedAt?.toIso8601String(),
       'citizen_closed_at': citizenClosedAt?.toIso8601String(),
       'is_overdue': isOverdue,
+      'rejection_reason': rejectionReason,
+      'rejected_at': rejectedAt?.toIso8601String(),
     };
   }
 }

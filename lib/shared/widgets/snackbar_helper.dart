@@ -29,4 +29,10 @@ class SnackbarHelper {
     );
   }
 
+  static void showSuccessMessage(String message){
+     messengerKey.currentState?.showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.blue),
+    );
+  }
+
 }

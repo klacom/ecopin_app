@@ -9,32 +9,33 @@ enum UserRole { citizen, lgu, admin }
 // Validation Status
 
 enum ValidationStatus {
-  automaticallyValid,
+  pendingAiValidation,
+  approved,
   manualReview,
   rejected,
-  pending
+  archived,
 }
-
-
 
 extension ValidationStatusExtension on ValidationStatus {
   String get value {
     switch (this) {
-      case ValidationStatus.automaticallyValid:
-        return 'automatically_valid';
+      case ValidationStatus.pendingAiValidation:
+        return 'pending_ai_validation';
+      case ValidationStatus.approved:
+        return 'approved';
       case ValidationStatus.manualReview:
         return 'manual_review';
       case ValidationStatus.rejected:
         return 'rejected';
-      case ValidationStatus.pending:
-        return 'pending';
+      case ValidationStatus.archived:
+        return 'archived';
     }
   }
 
   static ValidationStatus fromString(String value) {
     return ValidationStatus.values.firstWhere(
       (e) => e.value == value,
-      orElse: () => ValidationStatus.pending,
+      orElse: () => ValidationStatus.pendingAiValidation,
     );
   }
 }
@@ -52,7 +53,7 @@ LatLngBounds get pasigBounds =>
 
 final messengerKey = GlobalKey<ScaffoldMessengerState>();
 
-// Notification variables 
+// Notification variables
 
 final int itemsPerPage = 10;
 int displayedItems = 10;
@@ -64,6 +65,7 @@ const List<String> reportFilters = [
   'unresolved',
   'in progress',
   'resolved',
+  'rejected',
 ];
 
 // Create Report Fun Facts - Notice: May get removed after image validation logic change.

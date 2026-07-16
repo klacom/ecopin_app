@@ -18,7 +18,20 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _selectedFilter = 'All';
-  
+
+  // Helper to check if a rejected report is still visible (within 24 hours)
+  bool _isReportVisible(ReportModel report) {
+    if (report.validationStatus.toLowerCase() != 'rejected') {
+      return true;
+    }
+    if (report.rejectedAt == null) {
+      return true;
+    }
+    final now = DateTime.now();
+    final difference = now.difference(report.rejectedAt!);
+    return difference.inHours < 24;
+  }
+
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(myReportsProvider);
@@ -54,15 +67,18 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       ),
       body: reportsAsync.when(
         data: (reports) {
+          // First filter out rejected reports older than 24 hours
+          final visibleReports = reports.where(_isReportVisible).toList();
+
           final filteredReports = _selectedFilter == 'All'
-              ? reports
-              : reports
-                    .where(
-                      (r) =>
-                          r.status.toLowerCase() ==
-                          _selectedFilter.toLowerCase(),
-                    )
-                    .toList();
+              ? visibleReports
+              : visibleReports.where((r) {
+                  if (_selectedFilter.toLowerCase() == 'rejected') {
+                    return r.validationStatus.toLowerCase() == 'rejected';
+                  }
+                  return r.status.toLowerCase() ==
+                      _selectedFilter.toLowerCase();
+                }).toList();
 
           if (filteredReports.isEmpty) {
             return const Center(child: Text('No reports found.'));
@@ -109,6 +125,22 @@ class _ReportListItem extends StatelessWidget {
             dateStr,
             style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
+          if (report.validationStatus.toLowerCase() == 'rejected' &&
+              report.rejectionReason != null) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Text(
+                'Rejection Reason: ${report.rejectionReason}',
+                style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+              ),
+            ),
+          ],
         ],
       ),
       trailing: Column(
@@ -123,5 +155,3 @@ class _ReportListItem extends StatelessWidget {
     );
   }
 }
-
-

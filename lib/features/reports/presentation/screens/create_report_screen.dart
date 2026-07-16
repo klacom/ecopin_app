@@ -235,26 +235,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       }
 
       if (mounted) {
-        // Close loading dialog
-        Navigator.pop(context);
-        String message = 'Report submitted successfully!';
-        if (status == 'automatically_valid') {
-          message += ' AI Validated (Score: ${aiScore?.toStringAsFixed(1)}%)';
-        } else if (status == 'manual_review') {
-          message +=
-              ' Pending manual review (Score: ${aiScore?.toStringAsFixed(1)}%)';
+          // Close loading dialog
+          Navigator.pop(context);
+          // Show success message indicating AI validation is in progress
+          SnackbarHelper.showSuccessMessage('Report submitted successfully! AI validation is in progress.');
+
+          context.pop(); // Go back after success
         }
-
-        // TODO: This currently decides to show if valid or 'valid' or 'manually review' but image validation flow is changed. User can post it first then the AI would flag it after posting, to reduce the delay in posting. After the change modify the scaffold messenger.
-
-        if (status == 'automatically_valid') {
-          SnackbarHelper.showValidMessage(message);
-        } else {
-          SnackbarHelper.showSemiValidMessage(message);
-        }
-
-        context.pop(); // Go back after success
-      }
     } on DioException catch (e, stackTrace) {
       _log.severe(e, stackTrace);
       if (mounted) Navigator.pop(context); // Close loading dialog

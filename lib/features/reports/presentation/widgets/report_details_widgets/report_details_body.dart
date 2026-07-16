@@ -1,18 +1,20 @@
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/reports/data/models/report_model.dart';
 import 'package:ecopin_app/features/reports/presentation/screens/satisfaction_rating_screen.dart';
 import 'package:ecopin_app/features/reports/presentation/widgets/report_details_widgets/fullscreen_image_view.dart';
 import 'package:ecopin_app/features/reports/presentation/widgets/report_details_widgets/info_row.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../reports_screen_widgets/status_badge.dart';
 import '../reports_screen_widgets/validation_badge.dart';
 
-class ReportDetailsBody extends StatefulWidget {
+class ReportDetailsBody extends ConsumerStatefulWidget {
   final ReportModel report;
   final List<dynamic> evidence;
   final bool isLoadingEvidence;
@@ -33,10 +35,50 @@ class ReportDetailsBody extends StatefulWidget {
   });
 
   @override
-  State<ReportDetailsBody> createState() => _ReportDetailsBodyState();
+  ConsumerState<ReportDetailsBody> createState() => _ReportDetailsBodyState();
 }
 
-class _ReportDetailsBodyState extends State<ReportDetailsBody> {
+class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
+  bool _isCreatingNewReport = false;
+
+  Future<void> _handleCreateNewReport() async {
+    setState(() => _isCreatingNewReport = true);
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final response = await apiClient.createReportFromRejected(widget.report.id);
+      
+      if (response.statusCode == 201) {
+        final newReportId = response.data['report']['id'];
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('New report created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Navigate to the new report
+          Navigator.of(context).pushReplacementNamed(
+            '/report-details',
+            arguments: newReportId,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create new report: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCreatingNewReport = false);
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +121,91 @@ class _ReportDetailsBodyState extends State<ReportDetailsBody> {
               ValidationBadge(status: widget.report.validationStatus),
             ],
           ),
+          // Show rejection reason if report is rejected
+          if (widget.report.validationStatus.toLowerCase() == 'rejected' && widget.report.rejectionReason != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Rejection Reason',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.report.rejectionReason!,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red.shade700,
+                    ),
+                  ),
+                  if (widget.report.rejectedAt != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Rejected on: ${DateFormat('MMMM dd, yyyy - hh:mm a').format(widget.report.rejectedAt!)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.red.shade600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          // Show Create New Report button for rejected reports
+          if (widget.report.validationStatus.toLowerCase() == 'rejected' && !widget.isLguUser) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isCreatingNewReport ? null : () => _handleCreateNewReport(),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.blue,
+                ),
+                child: _isCreatingNewReport
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Create New Report',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This will copy the title, description, and location to a new report. You will need to add new evidence photos.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 16),
           Text(
             widget.report.title,

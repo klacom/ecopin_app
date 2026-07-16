@@ -12,9 +12,14 @@ class ValidationBadge extends StatelessWidget {
     IconData icon;
 
     switch (status.toLowerCase()) {
-      case 'automatically_valid':
+      case 'pending_ai_validation':
+        color = Colors.blue;
+        label = 'PENDING AI';
+        icon = Icons.hourglass_empty;
+        break;
+      case 'approved':
         color = Colors.green;
-        label = 'AI VALIDATED';
+        label = 'APPROVED';
         icon = Icons.verified;
         break;
       case 'manual_review':
@@ -24,13 +29,18 @@ class ValidationBadge extends StatelessWidget {
         break;
       case 'rejected':
         color = Colors.red;
-        label = 'INVALID';
+        label = 'REJECTED';
         icon = Icons.error_outline;
+        break;
+      case 'archived':
+        color = Colors.grey;
+        label = 'ARCHIVED';
+        icon = Icons.archive;
         break;
       default:
         color = Colors.grey;
-        label = 'PENDING';
-        icon = Icons.hourglass_empty;
+        label = 'UNKNOWN';
+        icon = Icons.help_outline;
         break;
     }
 

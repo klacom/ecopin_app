@@ -15,6 +15,8 @@ class LguReport {
   final String? validationStatus;
   final bool? isOverdue;
   final String? lifecycleStage;
+  final String? rejectionReason;
+  final DateTime? rejectedAt;
 
   LguReport({
     required this.id,
@@ -26,6 +28,8 @@ class LguReport {
     this.validationStatus,
     this.isOverdue,
     this.lifecycleStage,
+    this.rejectionReason,
+    this.rejectedAt,
   });
 
   factory LguReport.fromJson(Map<String, dynamic> json) {
@@ -35,12 +39,16 @@ class LguReport {
       description: json['description'] as String?,
       issueType: json['issue_type'] as String?,
       status: json['status'] as String?,
-      createdAt: json['created_at'] != null 
-          ? DateTime.tryParse(json['created_at']) 
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'])
           : null,
       validationStatus: json['validation_status'] as String?,
       isOverdue: json['is_overdue'] as bool?,
       lifecycleStage: json['lifecycle_stage'] as String?,
+      rejectionReason: json['rejection_reason'] as String?,
+      rejectedAt: json['rejected_at'] != null
+          ? DateTime.tryParse(json['rejected_at'])
+          : null,
     );
   }
 }
@@ -60,10 +68,16 @@ class LguReportsNotifier extends ChangeNotifier {
     notifyListeners();
     try {
       final response = await _apiClient.getPublicReports();
-      final List<dynamic> data = response.data is List 
+      final List<dynamic> data = response.data is List
           ? response.data as List<dynamic>
           : [];
-      final reports = data.map((json) => LguReport.fromJson(json as Map<String, dynamic>)).toList();
+      final reports = data
+          .map((json) => LguReport.fromJson(json as Map<String, dynamic>))
+          // Filter out rejected reports entirely for LGU
+          .where(
+            (report) => report.validationStatus?.toLowerCase() != 'rejected',
+          )
+          .toList();
       _reports = AsyncValue.data(reports);
       notifyListeners();
     } catch (e, stackTrace) {
@@ -109,10 +123,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
     final reportsAsync = ref.watch(lguReportsProvider).reports;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reports'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Reports'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),
@@ -126,7 +137,8 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                     Text('Error: $error'),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () => ref.read(lguReportsProvider).loadReports(),
+                      onPressed: () =>
+                          ref.read(lguReportsProvider).loadReports(),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -135,14 +147,17 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
               data: (reports) {
                 final filteredReports = _filterReports(reports);
                 final paginatedReports = _paginateReports(filteredReports);
-                
+
                 if (filteredReports.isEmpty) {
-                  return const Center(
-                    child: Text('No reports found'),
-                  );
+                  return const Center(child: Text('No reports found'));
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 80,
+                  ),
                   itemCount: paginatedReports.length + 1,
                   itemBuilder: (context, index) {
                     if (index == paginatedReports.length) {
@@ -195,9 +210,18 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                   isExpanded: true,
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
-                    DropdownMenuItem(value: 'unresolved', child: Text('Unresolved')),
-                    DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
-                    DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
+                    DropdownMenuItem(
+                      value: 'unresolved',
+                      child: Text('Unresolved'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'in_progress',
+                      child: Text('In Progress'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'resolved',
+                      child: Text('Resolved'),
+                    ),
                     DropdownMenuItem(value: 'closed', child: Text('Closed')),
                   ],
                   onChanged: (value) {
@@ -222,9 +246,18 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
                     DropdownMenuItem(value: 'Waste', child: Text('Waste')),
-                    DropdownMenuItem(value: 'Flooding', child: Text('Flooding')),
-                    DropdownMenuItem(value: 'Pollution', child: Text('Pollution')),
-                    DropdownMenuItem(value: 'Illegal Logging', child: Text('Illegal Log.')),
+                    DropdownMenuItem(
+                      value: 'Flooding',
+                      child: Text('Flooding'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Pollution',
+                      child: Text('Pollution'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Illegal Logging',
+                      child: Text('Illegal Log.'),
+                    ),
                     DropdownMenuItem(value: 'Others', child: Text('Others')),
                   ],
                   onChanged: (value) {
@@ -253,9 +286,18 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
                     DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                    DropdownMenuItem(value: 'automatically_valid', child: Text('Auto Valid')),
-                    DropdownMenuItem(value: 'manual_review', child: Text('Manual Review')),
-                    DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                    DropdownMenuItem(
+                      value: 'automatically_valid',
+                      child: Text('Auto Valid'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'manual_review',
+                      child: Text('Manual Review'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'rejected',
+                      child: Text('Rejected'),
+                    ),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -278,10 +320,22 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                   isExpanded: true,
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All')),
-                    DropdownMenuItem(value: 'reported', child: Text('Reported')),
-                    DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')),
-                    DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
-                    DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
+                    DropdownMenuItem(
+                      value: 'reported',
+                      child: Text('Reported'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'acknowledged',
+                      child: Text('Acknowledged'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'in_progress',
+                      child: Text('In Progress'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'resolved',
+                      child: Text('Resolved'),
+                    ),
                     DropdownMenuItem(value: 'closed', child: Text('Closed')),
                   ],
                   onChanged: (value) {
@@ -319,29 +373,40 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
 
   List<LguReport> _filterReports(List<LguReport> reports) {
     var filtered = reports.where((report) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          (report.title?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (report.description?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-      
-      final matchesStatus = _statusFilter == 'all' ||
-          report.status == _statusFilter;
-      
-      final matchesIssueType = _issueTypeFilter == 'all' ||
-          report.issueType == _issueTypeFilter;
-      
-      final matchesValidationStatus = _validationStatusFilter == 'all' ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
+          (report.title?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (report.description?.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ??
+              false);
+
+      final matchesStatus =
+          _statusFilter == 'all' || report.status == _statusFilter;
+
+      final matchesIssueType =
+          _issueTypeFilter == 'all' || report.issueType == _issueTypeFilter;
+
+      final matchesValidationStatus =
+          _validationStatusFilter == 'all' ||
           report.validationStatus == _validationStatusFilter;
-      
-      final matchesLifecycleStage = _lifecycleStageFilter == 'all' ||
+
+      final matchesLifecycleStage =
+          _lifecycleStageFilter == 'all' ||
           report.lifecycleStage == _lifecycleStageFilter;
-      
-      return matchesSearch && matchesStatus && matchesIssueType && matchesValidationStatus && matchesLifecycleStage;
+
+      return matchesSearch &&
+          matchesStatus &&
+          matchesIssueType &&
+          matchesValidationStatus &&
+          matchesLifecycleStage;
     }).toList();
 
     // Sort by date
     filtered.sort((a, b) {
       if (a.createdAt == null || b.createdAt == null) return 0;
-      return _sortBy == 'newest' 
+      return _sortBy == 'newest'
           ? b.createdAt!.compareTo(a.createdAt!)
           : a.createdAt!.compareTo(b.createdAt!);
     });
@@ -417,7 +482,10 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                   ),
                   if (report.isOverdue == true)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -458,10 +526,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
               if (report.description != null && report.description!.isNotEmpty)
                 Text(
                   report.description!,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),

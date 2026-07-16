@@ -367,4 +367,8 @@ class ApiClient {
       data: {'photo_type': photoType},
     );
   }
+
+  Future<dio.Response> createReportFromRejected(String reportId) async {
+    return _dio.post('/api/reports/$reportId/create-new');
+  }
 }

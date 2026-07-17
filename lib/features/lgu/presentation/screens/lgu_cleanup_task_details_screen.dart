@@ -113,7 +113,8 @@ class _LguCleanupTaskDetailsScreenState
   List<TaskReport> _reports = [];
   bool _isLoading = true;
   bool _isMarkingComplete = false;
-  final Map<String, bool> _isUploadingPhotos = {}; // key: "$reportId-$photoType"
+  final Map<String, bool> _isUploadingPhotos =
+      {}; // key: "$reportId-$photoType"
   final Map<String, bool> _isDeletingPhotos = {}; // key: "$reportId-$photoType"
   final Set<String> _expandedReports = {};
   final ImagePicker _picker = ImagePicker();
@@ -136,7 +137,9 @@ class _LguCleanupTaskDetailsScreenState
       // Load reports
       if (_task?.isCustom == true && _task?.reportIds?.isNotEmpty == true) {
         // Load reports by ids
-        final reportsResponse = await apiClient.getReportsByIds(_task!.reportIds!);
+        final reportsResponse = await apiClient.getReportsByIds(
+          _task!.reportIds!,
+        );
         final List<dynamic> data = reportsResponse.data is List
             ? reportsResponse.data as List<dynamic>
             : [];
@@ -162,7 +165,7 @@ class _LguCleanupTaskDetailsScreenState
         });
       }
     } catch (e) {
-      print('Error loading task details: $e');
+      log.severe('Error loading task details: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -199,7 +202,9 @@ class _LguCleanupTaskDetailsScreenState
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Task can only be complete when all reports are resolved'),
+            content: Text(
+              'Task can only be complete when all reports are resolved',
+            ),
           ),
         );
         return;
@@ -212,7 +217,9 @@ class _LguCleanupTaskDetailsScreenState
       await apiClient.markCleanupTaskComplete(widget.taskId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cleanup task marked as complete successfully!')),
+        const SnackBar(
+          content: Text('Cleanup task marked as complete successfully!'),
+        ),
       );
       await _loadTaskDetails();
     } catch (e) {
@@ -236,11 +243,7 @@ class _LguCleanupTaskDetailsScreenState
     try {
       final apiClient = ref.read(apiClientProvider);
       final file = File(pickedFile.path);
-      await apiClient.uploadReportPhoto(
-        reportId,
-        file,
-        photoType,
-      );
+      await apiClient.uploadReportPhoto(reportId, file, photoType);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Photo uploaded successfully')),
@@ -248,9 +251,9 @@ class _LguCleanupTaskDetailsScreenState
       await _loadTaskDetails();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload photo: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to upload photo: $e')));
     } finally {
       if (mounted) setState(() => _isUploadingPhotos.remove(key));
     }
@@ -261,10 +264,7 @@ class _LguCleanupTaskDetailsScreenState
     setState(() => _isDeletingPhotos[key] = true);
     try {
       final apiClient = ref.read(apiClientProvider);
-      await apiClient.deleteReportPhoto(
-        reportId,
-        photoType,
-      );
+      await apiClient.deleteReportPhoto(reportId, photoType);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Photo deleted successfully')),
@@ -272,9 +272,9 @@ class _LguCleanupTaskDetailsScreenState
       await _loadTaskDetails();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete photo: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete photo: $e')));
     } finally {
       if (mounted) setState(() => _isDeletingPhotos.remove(key));
     }
@@ -303,9 +303,9 @@ class _LguCleanupTaskDetailsScreenState
       await _loadTaskDetails();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload photo: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to upload photo: $e')));
     } finally {
       if (mounted) setState(() => _isUploadingPhotos.remove(key));
     }
@@ -327,9 +327,9 @@ class _LguCleanupTaskDetailsScreenState
       await _loadTaskDetails();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete photo: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete photo: $e')));
     } finally {
       if (mounted) setState(() => _isDeletingPhotos.remove(key));
     }
@@ -371,6 +371,7 @@ class _LguCleanupTaskDetailsScreenState
 
   Widget _buildTaskSummary() {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -481,6 +482,7 @@ class _LguCleanupTaskDetailsScreenState
     final totalCount = _reports.length;
 
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -490,8 +492,13 @@ class _LguCleanupTaskDetailsScreenState
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _task?.isCustom == true ? 'Linked Reports' : 'Reports in this Cluster',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _task?.isCustom == true
+                      ? 'Linked Reports'
+                      : 'Reports in this Cluster',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Flexible(
                   child: Text(
@@ -511,7 +518,11 @@ class _LguCleanupTaskDetailsScreenState
               ),
             const SizedBox(height: 16),
             if (_reports.isEmpty)
-              Text(_task?.isCustom == true ? 'No linked reports' : 'No reports found in this cluster')
+              Text(
+                _task?.isCustom == true
+                    ? 'No linked reports'
+                    : 'No reports found in this cluster',
+              )
             else
               ListView.builder(
                 shrinkWrap: true,
@@ -541,6 +552,7 @@ class _LguCleanupTaskDetailsScreenState
         borderRadius: BorderRadius.circular(8),
       ),
       child: Card(
+        color: Theme.of(context).colorScheme.surface,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         child: Column(
@@ -628,8 +640,8 @@ class _LguCleanupTaskDetailsScreenState
                                   ),
                                   child: Text(
                                     report.stage!
-                                            .replaceAll('_', ' ')
-                                            .toUpperCase(),
+                                        .replaceAll('_', ' ')
+                                        .toUpperCase(),
                                     style: const TextStyle(
                                       color: Colors.blue,
                                       fontSize: 12,
@@ -660,7 +672,7 @@ class _LguCleanupTaskDetailsScreenState
                   children: [
                     _buildReportInfoSection(report),
                     const SizedBox(height: 16),
-                    
+
                     // Before & After Photos Section
                     const Text(
                       'Before & After Photos',
@@ -673,7 +685,7 @@ class _LguCleanupTaskDetailsScreenState
                     _buildReportPhotoUploadSection(report, 'before'),
                     const SizedBox(height: 12),
                     _buildReportPhotoUploadSection(report, 'after'),
-                    
+
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -699,7 +711,9 @@ class _LguCleanupTaskDetailsScreenState
 
   Widget _buildReportPhotoUploadSection(TaskReport report, String photoType) {
     final key = "${report.id}-$photoType";
-    final photoUrl = photoType == 'before' ? report.beforePhotoUrl : report.afterPhotoUrl;
+    final photoUrl = photoType == 'before'
+        ? report.beforePhotoUrl
+        : report.afterPhotoUrl;
     final label = photoType == 'before' ? 'Before Photo' : 'After Photo';
 
     return Column(
@@ -738,9 +752,7 @@ class _LguCleanupTaskDetailsScreenState
                         ? null
                         : () => _deleteReportPhoto(report.id, photoType),
                     icon: const Icon(Icons.delete_outline, color: Colors.white),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
+                    style: IconButton.styleFrom(backgroundColor: Colors.red),
                   ),
                 ),
             ],
@@ -859,6 +871,7 @@ class _LguCleanupTaskDetailsScreenState
     }
 
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -868,12 +881,12 @@ class _LguCleanupTaskDetailsScreenState
               'Photo Gallery',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
-            
+            const SizedBox(height: 16, width: double.infinity),
+
             // Before Photos Section
             _buildPhotoGroup('Before Photos', beforePhotos, 'before'),
-            const SizedBox(height: 24),
-            
+            const SizedBox(height: 24, width: double.infinity),
+
             // After Photos Section
             _buildPhotoGroup('After Photos', afterPhotos, 'after'),
           ],
@@ -882,7 +895,11 @@ class _LguCleanupTaskDetailsScreenState
     );
   }
 
-  Widget _buildPhotoGroup(String label, List<Map<String, dynamic>> photos, String photoType) {
+  Widget _buildPhotoGroup(
+    String label,
+    List<Map<String, dynamic>> photos,
+    String photoType,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -907,10 +924,7 @@ class _LguCleanupTaskDetailsScreenState
             },
           )
         else
-          Text(
-            'No $label yet',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
+          Text('No $label yet', style: TextStyle(color: Colors.grey[600])),
       ],
     );
   }
@@ -980,9 +994,7 @@ class _LguCleanupTaskDetailsScreenState
                           }
                         },
                   icon: const Icon(Icons.delete_outline, color: Colors.white),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.red,
-                  ),
+                  style: IconButton.styleFrom(backgroundColor: Colors.red),
                 ),
               ),
           ],

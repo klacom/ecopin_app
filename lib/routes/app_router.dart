@@ -27,8 +27,11 @@ import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/features/reports/presentation/screens/report_details_screen.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:logging/logging.dart';
 
 // Guides user to Public and Protected Routes
+
+final Logger log = Logger("App Router");
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.watch(authNotifierProvider);
@@ -43,7 +46,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final path = state.matchedLocation;
       final role = auth.role;
 
-      print(
+      log.finer(
         'Redirect check - Path: $path, LoggedIn: $loggedIn, Role: $role, IsLoading: $isLoading',
       );
 
@@ -53,16 +56,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         // If logged in, redirect based on role
         if (loggedIn) {
           if (role == UserRole.lgu) {
-            print('Redirecting from splash to LGU Dashboard');
+            log.info('Redirecting from splash to LGU Dashboard');
             return LguAppRoutes.dashboard;
           } else if (role == UserRole.admin) {
-            print('Redirecting from splash to Admin Dashboard');
+            log.info('Redirecting from splash to Admin Dashboard');
             return AdminAppRoutes.dashboard;
           } else if (role == UserRole.citizen) {
-            print('Redirecting from splash to Maps (Citizen)');
+            log.info('Redirecting from splash to Maps (Citizen)');
             return ProtectedAppRoutes.maps;
           } else {
-            print('Redirecting from splash to Login (Logout)');
+            log.info('Redirecting from splash to Login (Logout)');
             return PublicAppRoutes.login;
           }
         } else {
@@ -75,21 +78,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLguRoute = path.startsWith('/lgu/');
       final isAdminRoute = path.startsWith('/admin/');
 
-      print(
+      log.info(
         'Route checks - IsPublicRoute: $isPublicRoute, IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute',
       );
 
       if (loggedIn && isPublicRoute) {
         // Route based on role
-        print('Redirecting based on role: $role');
+        log.info('Redirecting based on role: $role');
         if (role == UserRole.lgu) {
-          print('Redirecting to LGU Dashboard');
+          log.info('Redirecting to LGU Dashboard');
           return LguAppRoutes.dashboard;
         } else if (role == UserRole.admin) {
-          print('Redirecting to Admin Dashboard');
+          log.info('Redirecting to Admin Dashboard');
           return AdminAppRoutes.dashboard;
         } else {
-          print('Redirecting to Maps (Citizen)');
+          log.info('Redirecting to Maps (Citizen)');
           return ProtectedAppRoutes.maps;
         }
       }

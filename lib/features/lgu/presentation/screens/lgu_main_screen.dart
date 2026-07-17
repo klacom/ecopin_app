@@ -132,7 +132,9 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
   Widget _buildProfileMoreMenuItem(String? avatarUrl, String? fullName) {
     final currentLocation = GoRouterState.of(context).matchedLocation;
     final isSelected = currentLocation.startsWith(LguAppRoutes.profile);
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.grey;
+    final color = isSelected
+        ? Theme.of(context).colorScheme.primary
+        : Colors.grey;
 
     return InkWell(
       onTap: () {

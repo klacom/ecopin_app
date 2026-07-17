@@ -1,4 +1,3 @@
-
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/lgu/providers/lgu_cleanup_tasks_provider.dart';
 import 'package:ecopin_app/features/maps/presentation/widgets/report_marker.dart';
@@ -40,10 +39,16 @@ class _LguCreateCustomCleanupTaskScreenState
     try {
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.getPublicReports();
-      final List<dynamic> data = response.data is List ? response.data as List : [];
-      final allReports = data.map((json) => ReportModel.fromJson(json as Map<String, dynamic>)).toList();
+      final List<dynamic> data = response.data is List
+          ? response.data as List
+          : [];
+      final allReports = data
+          .map((json) => ReportModel.fromJson(json as Map<String, dynamic>))
+          .toList();
       // Filter to only unresolved reports, like the web version does
-      final unresolvedReports = allReports.where((report) => report.status.toLowerCase() == 'unresolved').toList();
+      final unresolvedReports = allReports
+          .where((report) => report.status.toLowerCase() == 'unresolved')
+          .toList();
       setState(() {
         _reports = unresolvedReports;
         _isLoading = false;
@@ -60,9 +65,7 @@ class _LguCreateCustomCleanupTaskScreenState
     if (_selectedReportIds.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select at least one report'),
-          ),
+          const SnackBar(content: Text('Please select at least one report')),
         );
       }
       return;
@@ -82,14 +85,16 @@ class _LguCreateCustomCleanupTaskScreenState
       context.go(LguAppRoutes.cleanupTasks);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Custom cleanup task created successfully')),
+          const SnackBar(
+            content: Text('Custom cleanup task created successfully'),
+          ),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create task: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to create task: $e')));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -98,9 +103,7 @@ class _LguCreateCustomCleanupTaskScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Custom Cleanup Task'),
-      ),
+      appBar: AppBar(title: const Text('Create Custom Cleanup Task')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : LayoutBuilder(
@@ -130,9 +133,9 @@ class _LguCreateCustomCleanupTaskScreenState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildFormSection(),
-                              const SizedBox(height: 16),
                               _buildInstructions(),
+                              const SizedBox(height: 16),
+                              _buildFormSection(),
                             ],
                           ),
                         ),
@@ -145,13 +148,14 @@ class _LguCreateCustomCleanupTaskScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildFormSection(),
-                        const SizedBox(height: 24),
+                        _buildInstructions(),
+                        const SizedBox(height: 16),
                         _buildMapSection(),
                         const SizedBox(height: 16),
                         _buildSelectedReportsSection(),
                         const SizedBox(height: 16),
-                        _buildInstructions(),
+                        _buildFormSection(),
+                        const SizedBox(height: 96),
                       ],
                     ),
                   );
@@ -163,6 +167,7 @@ class _LguCreateCustomCleanupTaskScreenState
 
   Widget _buildFormSection() {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -181,7 +186,8 @@ class _LguCreateCustomCleanupTaskScreenState
                   labelText: 'Task Title *',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                validator: (value) =>
+                    value?.isEmpty ?? true ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -254,10 +260,14 @@ class _LguCreateCustomCleanupTaskScreenState
         sumLat += report.location.latitude;
         sumLng += report.location.longitude;
       }
-      initialCenter = LatLng(sumLat / _reports.length, sumLng / _reports.length);
+      initialCenter = LatLng(
+        sumLat / _reports.length,
+        sumLng / _reports.length,
+      );
     }
 
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -284,7 +294,8 @@ class _LguCreateCustomCleanupTaskScreenState
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   MarkerLayer(
@@ -313,7 +324,10 @@ class _LguCreateCustomCleanupTaskScreenState
                                   decoration: BoxDecoration(
                                     color: Colors.black.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 3),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 3,
+                                    ),
                                   ),
                                   width: 44,
                                   height: 44,
@@ -339,8 +353,11 @@ class _LguCreateCustomCleanupTaskScreenState
   }
 
   Widget _buildSelectedReportsSection() {
-    final selectedReports = _reports.where((report) => _selectedReportIds.contains(report.id)).toList();
+    final selectedReports = _reports
+        .where((report) => _selectedReportIds.contains(report.id))
+        .toList();
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -352,7 +369,10 @@ class _LguCreateCustomCleanupTaskScreenState
                 Flexible(
                   child: Text(
                     'Selected Reports (${_selectedReportIds.length})',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 if (_selectedReportIds.isNotEmpty)
@@ -394,7 +414,10 @@ class _LguCreateCustomCleanupTaskScreenState
                         Text(report.issueType ?? 'Unknown issue'),
                         Text(
                           '${report.location.latitude.toStringAsFixed(6)}, ${report.location.longitude.toStringAsFixed(6)}',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
                         ),
                       ],
                     ),
@@ -417,7 +440,7 @@ class _LguCreateCustomCleanupTaskScreenState
 
   Widget _buildInstructions() {
     return Card(
-      color: Colors.blue.shade50,
+      color: Theme.of(context).colorScheme.surface,
       child: const Padding(
         padding: EdgeInsets.all(16),
         child: Column(

@@ -25,7 +25,7 @@ class ReportDataSource {
   Future<List<ReportModel>> getPublicReports() async {
     final response = await _apiClient.getPublicReports();
     final List data = response.data;
-    // print('data: $data');
+    // log.info('data: $data');
     return data.map((json) => ReportModel.fromJson(json)).toList();
   }
 

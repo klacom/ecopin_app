@@ -8,7 +8,8 @@ class LguCleanupTasksScreen extends ConsumerStatefulWidget {
   const LguCleanupTasksScreen({super.key});
 
   @override
-  ConsumerState<LguCleanupTasksScreen> createState() => _LguCleanupTasksScreenState();
+  ConsumerState<LguCleanupTasksScreen> createState() =>
+      _LguCleanupTasksScreenState();
 }
 
 class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
@@ -20,10 +21,7 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
     final tasksAsync = ref.watch(lguCleanupTasksProvider).tasks;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cleanup Tasks'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Cleanup Tasks'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),
@@ -37,7 +35,8 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
                     Text('Error: $error'),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () => ref.read(lguCleanupTasksProvider).loadTasks(),
+                      onPressed: () =>
+                          ref.read(lguCleanupTasksProvider).loadTasks(),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -46,12 +45,15 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
               data: (tasks) {
                 final filteredTasks = _filterTasks(tasks);
                 if (filteredTasks.isEmpty) {
-                  return const Center(
-                    child: Text('No cleanup tasks found'),
-                  );
+                  return const Center(child: Text('No cleanup tasks found'));
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 80,
+                  ),
                   itemCount: filteredTasks.length,
                   itemBuilder: (context, index) {
                     final task = filteredTasks[index];
@@ -106,7 +108,10 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
             items: const [
               DropdownMenuItem(value: 'all', child: Text('All')),
               DropdownMenuItem(value: 'pending', child: Text('Pending')),
-              DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
+              DropdownMenuItem(
+                value: 'in_progress',
+                child: Text('In Progress'),
+              ),
               DropdownMenuItem(value: 'completed', child: Text('Completed')),
             ],
             onChanged: (value) {
@@ -122,19 +127,25 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
 
   List<CleanupTask> _filterTasks(List<CleanupTask> tasks) {
     return tasks.where((task) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          (task.title?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (task.description?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-      
-      final matchesStatus = _statusFilter == 'all' ||
-          task.status == _statusFilter;
-      
+      final matchesSearch =
+          _searchQuery.isEmpty ||
+          (task.title?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (task.description?.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ??
+              false);
+
+      final matchesStatus =
+          _statusFilter == 'all' || task.status == _statusFilter;
+
       return matchesSearch && matchesStatus;
     }).toList();
   }
 
   Widget _buildTaskCard(CleanupTask task) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
@@ -176,10 +187,7 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
               if (task.description != null && task.description!.isNotEmpty)
                 Text(
                   task.description!,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),

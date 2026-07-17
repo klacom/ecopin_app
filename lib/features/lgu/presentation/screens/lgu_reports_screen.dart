@@ -170,6 +170,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
               },
             ),
           ),
+          const SizedBox(height: 32),
         ],
       ),
     );
@@ -424,7 +425,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
   Widget _buildPaginationControls(int totalReports) {
     final totalPages = (totalReports / _pageSize).ceil();
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -458,6 +459,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
 
   Widget _buildReportCard(LguReport report) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {

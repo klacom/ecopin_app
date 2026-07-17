@@ -25,8 +25,8 @@ class ResponseLog {
       id: json['id']?.toString() ?? '',
       actionType: json['action_type'] as String?,
       actionDetails: json['action_details'] as String?,
-      createdAt: json['created_at'] != null 
-          ? DateTime.tryParse(json['created_at']) 
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'])
           : null,
       userId: json['user_id']?.toString(),
       profile: json['profiles'] as Map<String, dynamic>?,
@@ -49,10 +49,12 @@ class ResponseLogsNotifier extends ChangeNotifier {
     notifyListeners();
     try {
       final response = await _apiClient.getResponseLogs(params: params);
-      final List<dynamic> data = response.data['logs'] is List 
+      final List<dynamic> data = response.data['logs'] is List
           ? response.data['logs'] as List<dynamic>
           : [];
-      final logs = data.map((json) => ResponseLog.fromJson(json as Map<String, dynamic>)).toList();
+      final logs = data
+          .map((json) => ResponseLog.fromJson(json as Map<String, dynamic>))
+          .toList();
       _logs = AsyncValue.data(logs);
       notifyListeners();
     } catch (e, stackTrace) {
@@ -67,7 +69,9 @@ class ResponseLogsNotifier extends ChangeNotifier {
   }
 }
 
-final lguResponseLogsProvider = ChangeNotifierProvider<ResponseLogsNotifier>((ref) {
+final lguResponseLogsProvider = ChangeNotifierProvider<ResponseLogsNotifier>((
+  ref,
+) {
   final apiClient = ref.watch(apiClientProvider);
   return ResponseLogsNotifier(apiClient);
 });
@@ -76,7 +80,8 @@ class LguResponseLogsScreen extends ConsumerStatefulWidget {
   const LguResponseLogsScreen({super.key});
 
   @override
-  ConsumerState<LguResponseLogsScreen> createState() => _LguResponseLogsScreenState();
+  ConsumerState<LguResponseLogsScreen> createState() =>
+      _LguResponseLogsScreenState();
 }
 
 class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
@@ -88,10 +93,7 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
     final logsAsync = ref.watch(lguResponseLogsProvider).logs;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Response Logs'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Response Logs'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),
@@ -105,7 +107,8 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
                     Text('Error: $error'),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () => ref.read(lguResponseLogsProvider).loadLogs(),
+                      onPressed: () =>
+                          ref.read(lguResponseLogsProvider).loadLogs(),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -114,12 +117,15 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
               data: (logs) {
                 final filteredLogs = _filterAndSortLogs(logs);
                 if (filteredLogs.isEmpty) {
-                  return const Center(
-                    child: Text('No response logs found'),
-                  );
+                  return const Center(child: Text('No response logs found'));
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 80,
+                  ),
                   itemCount: filteredLogs.length,
                   itemBuilder: (context, index) {
                     final log = filteredLogs[index];
@@ -129,6 +135,7 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
               },
             ),
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -150,10 +157,22 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
                   ),
                   items: const [
                     DropdownMenuItem(value: 'all', child: Text('All Actions')),
-                    DropdownMenuItem(value: 'status_update', child: Text('Status Update')),
-                    DropdownMenuItem(value: 'lifecycle_stage_update', child: Text('Lifecycle')),
-                    DropdownMenuItem(value: 'acknowledge_complaint', child: Text('Acknowledge')),
-                    DropdownMenuItem(value: 'manual_note', child: Text('Manual Note')),
+                    DropdownMenuItem(
+                      value: 'status_update',
+                      child: Text('Status Update'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'lifecycle_stage_update',
+                      child: Text('Lifecycle'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'acknowledge_complaint',
+                      child: Text('Acknowledge'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'manual_note',
+                      child: Text('Manual Note'),
+                    ),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -162,7 +181,11 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: 12),
+            ],
+          ),
+          const SizedBox(width: 12, height: 12),
+          Row(
+            children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
                   value: _sortBy,
@@ -171,8 +194,14 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'newest', child: Text('Newest First')),
-                    DropdownMenuItem(value: 'oldest', child: Text('Oldest First')),
+                    DropdownMenuItem(
+                      value: 'newest',
+                      child: Text('Newest First'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'oldest',
+                      child: Text('Oldest First'),
+                    ),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -183,6 +212,7 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
               ),
             ],
           ),
+          const SizedBox(width: 12, height: 12),
         ],
       ),
     );
@@ -191,7 +221,9 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
   List<ResponseLog> _filterAndSortLogs(List<ResponseLog> logs) {
     var filtered = logs;
     if (_actionTypeFilter != 'all') {
-      filtered = logs.where((log) => log.actionType == _actionTypeFilter).toList();
+      filtered = logs
+          .where((log) => log.actionType == _actionTypeFilter)
+          .toList();
     }
 
     // Sort by date
@@ -207,6 +239,7 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
 
   Widget _buildLogCard(ResponseLog log) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -220,19 +253,13 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
                 if (log.createdAt != null)
                   Text(
                     _formatDateTime(log.createdAt!),
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
               ],
             ),
             const SizedBox(height: 8),
             if (log.actionDetails != null && log.actionDetails!.isNotEmpty)
-              Text(
-                log.actionDetails!,
-                style: const TextStyle(fontSize: 14),
-              ),
+              Text(log.actionDetails!, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 8),
             if (log.profile != null)
               Row(
@@ -254,7 +281,7 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
   Widget _buildActionTypeBadge(String? actionType) {
     Color color;
     String label;
-    
+
     switch (actionType) {
       case 'status_update':
         color = Colors.blue;
@@ -276,7 +303,7 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
         color = Colors.grey;
         label = actionType?.toUpperCase() ?? 'UNKNOWN';
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(

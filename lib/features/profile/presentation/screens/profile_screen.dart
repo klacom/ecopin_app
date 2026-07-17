@@ -480,9 +480,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       child: Material(
                         color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(
-                          AppColors.radiusCard,
-                        ),
+                        borderRadius: BorderRadius.circular(AppColors.radiusCard),
                         child: Consumer(
                           builder: (context, ref, child) {
                             final themeMode = ref.watch(themeModeProvider);
@@ -543,9 +541,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       child: Material(
                         color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(
-                          AppColors.radiusCard,
-                        ),
+                        borderRadius: BorderRadius.circular(AppColors.radiusCard),
                         child: SwitchListTile(
                           secondary: const Icon(Icons.privacy_tip_outlined),
                           title: const Text(

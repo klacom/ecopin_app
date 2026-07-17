@@ -72,10 +72,12 @@ class LguClusterDetailsScreen extends ConsumerStatefulWidget {
   const LguClusterDetailsScreen({super.key, required this.clusterId});
 
   @override
-  ConsumerState<LguClusterDetailsScreen> createState() => _LguClusterDetailsScreenState();
+  ConsumerState<LguClusterDetailsScreen> createState() =>
+      _LguClusterDetailsScreenState();
 }
 
-class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScreen> {
+class _LguClusterDetailsScreenState
+    extends ConsumerState<LguClusterDetailsScreen> {
   ClusterDetail? _cluster;
   List<Report> _reports = [];
   bool _isLoading = true;
@@ -108,13 +110,15 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
       final List<dynamic> data = response.data is List
           ? response.data as List<dynamic>
           : [];
-      final reports = data.map((json) => Report.fromJson(json as Map<String, dynamic>)).toList();
+      final reports = data
+          .map((json) => Report.fromJson(json as Map<String, dynamic>))
+          .toList();
       setState(() {
         _reports = reports;
         _isLoadingReports = false;
       });
     } catch (e) {
-      print('Error loading cluster reports: $e');
+      log.severe('Error loading cluster reports: $e');
       setState(() => _isLoadingReports = false);
     }
   }
@@ -149,30 +153,29 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Cluster #${widget.clusterId}'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text('Cluster #${widget.clusterId}'), elevation: 0),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _cluster == null
-              ? const Center(child: Text('Cluster not found'))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildClusterSummary(),
-                      const SizedBox(height: 24),
-                      _buildReportsSection(),
-                    ],
-                  ),
-                ),
+          ? const Center(child: Text('Cluster not found'))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildClusterSummary(),
+                  const SizedBox(height: 16),
+                  _buildReportsSection(),
+                  const SizedBox(height: 96),
+                ],
+              ),
+            ),
     );
   }
 
   Widget _buildClusterSummary() {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -184,10 +187,7 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
                 const Expanded(
                   child: Text(
                     'Cluster Summary',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
                 ElevatedButton.icon(
@@ -197,7 +197,10 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
                   icon: const Icon(Icons.add_task, size: 20),
                   label: const Text('Create Task'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ],
@@ -244,7 +247,12 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -257,13 +265,7 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
-            ),
-          ),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
           const SizedBox(height: 4),
           Text(
             value,
@@ -280,6 +282,7 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
 
   Widget _buildReportsSection() {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -287,12 +290,9 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
           children: [
             const Text(
               'Reports in this Cluster',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 16, width: double.infinity),
             if (_isLoadingReports)
               const Center(child: CircularProgressIndicator())
             else if (_reports.isEmpty)
@@ -339,13 +339,19 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
                   ),
                   Flexible(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(report.status).withValues(alpha: 0.1),
+                        color: _getStatusColor(
+                          report.status,
+                        ).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        report.status?.replaceAll('_', ' ').toUpperCase() ?? 'N/A',
+                        report.status?.replaceAll('_', ' ').toUpperCase() ??
+                            'N/A',
                         style: TextStyle(
                           color: _getStatusColor(report.status),
                           fontSize: 12,
@@ -361,10 +367,7 @@ class _LguClusterDetailsScreenState extends ConsumerState<LguClusterDetailsScree
               if (report.description != null && report.description!.isNotEmpty)
                 Text(
                   report.description!,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),

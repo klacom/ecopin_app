@@ -172,6 +172,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(reportsStreamProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: reportsAsync.when(
@@ -224,9 +225,9 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
                 CurrentLocationLayer(
                   alignPositionOnUpdate: AlignOnUpdate.never,
                   alignDirectionOnUpdate: AlignOnUpdate.never,
-                  style: const LocationMarkerStyle(
+                  style: LocationMarkerStyle(
                     marker: DefaultLocationMarker(
-                      child: Icon(Icons.navigation, color: Colors.white),
+                      child: Icon(Icons.navigation, color: colorScheme.surface),
                     ),
                     markerSize: Size(40, 40),
                     markerDirection: MarkerDirection.heading,
@@ -282,7 +283,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
@@ -374,7 +375,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
                       if (_showSuggestions)
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
@@ -444,7 +445,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
@@ -468,7 +469,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
@@ -519,7 +520,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
         ), // Margin at bottom to stay above floating navbar
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(

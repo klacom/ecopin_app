@@ -171,6 +171,7 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
 
   Widget _buildClusterCard(Cluster cluster) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {

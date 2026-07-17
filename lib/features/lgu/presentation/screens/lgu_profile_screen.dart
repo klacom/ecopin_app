@@ -250,14 +250,16 @@ class _LguProfileScreenState extends ConsumerState<LguProfileScreen> {
                           );
                           Navigator.pop(context);
                         }
-                      } on dio.DioException catch (e) {
+                      } on dio.DioException catch (e, stackTrace) {
+                        _log.severe(e, stackTrace);
                         if (context.mounted) {
                           SnackbarHelper.showError(
                             e.response?.data['message'] ??
                                 'Failed to change password!',
                           );
                         }
-                      } catch (e) {
+                      } catch (e, stackTrace) {
+                        _log.severe(e, stackTrace);
                         if (context.mounted) {
                           SnackbarHelper.showError(
                             'Failed to change password!',

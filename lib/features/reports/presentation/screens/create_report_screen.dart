@@ -319,7 +319,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       children: [
                         TileLayer(
                           urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              Theme.of(context).brightness == Brightness.dark
+                              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                              : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          subdomains: const ['a', 'b', 'c'],
                           userAgentPackageName: 'com.ecopinas.ecopin_app',
                         ),
                       ],

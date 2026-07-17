@@ -79,6 +79,13 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
             ),
             const Divider(height: 1),
             _buildMoreMenuItem(
+              icon: Icons.analytics_outlined,
+              activeIcon: Icons.analytics,
+              label: 'Analytics',
+              route: LguAppRoutes.analytics,
+            ),
+            const Divider(height: 1),
+            _buildMoreMenuItem(
               icon: Icons.history_outlined,
               activeIcon: Icons.history,
               label: 'Logs',

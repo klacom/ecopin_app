@@ -10,10 +10,7 @@ class LguAnalyticsScreen extends ConsumerWidget {
     final statsAsync = ref.watch(lguDashboardProvider).stats;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Analytics'), elevation: 0),
       body: RefreshIndicator(
         onRefresh: () => ref.read(lguDashboardProvider).loadStats(),
         child: statsAsync.when(
@@ -36,19 +33,13 @@ class LguAnalyticsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Analytics Overview',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
                 const SizedBox(height: 16),
-                _buildResolutionRateCard(stats),
+                _buildResolutionRateCard(stats, context),
                 const SizedBox(height: 16),
-                _buildIssueDistributionCard(stats),
+                _buildIssueDistributionCard(stats, context),
                 const SizedBox(height: 16),
-                _buildTrendsCard(stats),
+                _buildTrendsCard(stats, context),
+                const SizedBox(height: 96),
               ],
             ),
           ),
@@ -57,12 +48,13 @@ class LguAnalyticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildResolutionRateCard(DashboardStats stats) {
+  Widget _buildResolutionRateCard(DashboardStats stats, BuildContext context) {
     final total = stats.totalReports;
     final resolved = stats.resolved;
     final resolutionRate = total > 0 ? (resolved / total * 100).toInt() : 0;
 
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -70,10 +62,7 @@ class LguAnalyticsScreen extends ConsumerWidget {
           children: [
             const Text(
               'Resolution Rate',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Row(
@@ -110,7 +99,9 @@ class LguAnalyticsScreen extends ConsumerWidget {
                           value: resolutionRate / 100,
                           strokeWidth: 8,
                           backgroundColor: Colors.grey[200],
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.green,
+                          ),
                         ),
                       ),
                     ],
@@ -124,8 +115,12 @@ class LguAnalyticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildIssueDistributionCard(DashboardStats stats) {
+  Widget _buildIssueDistributionCard(
+    DashboardStats stats,
+    BuildContext context,
+  ) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -133,21 +128,43 @@ class LguAnalyticsScreen extends ConsumerWidget {
           children: [
             const Text(
               'Report Status Distribution',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildStatusRow('Unresolved', stats.unresolved, stats.totalReports, Colors.red),
+            _buildStatusRow(
+              'Unresolved',
+              stats.unresolved,
+              stats.totalReports,
+              Colors.red,
+            ),
             const SizedBox(height: 12),
-            _buildStatusRow('In Progress', stats.inProgress, stats.totalReports, Colors.orange),
+            _buildStatusRow(
+              'In Progress',
+              stats.inProgress,
+              stats.totalReports,
+              Colors.orange,
+            ),
             const SizedBox(height: 12),
-            _buildStatusRow('Resolved', stats.resolved, stats.totalReports, Colors.green),
+            _buildStatusRow(
+              'Resolved',
+              stats.resolved,
+              stats.totalReports,
+              Colors.green,
+            ),
             const SizedBox(height: 12),
-            _buildStatusRow('Closed', stats.closed, stats.totalReports, Colors.grey),
+            _buildStatusRow(
+              'Closed',
+              stats.closed,
+              stats.totalReports,
+              Colors.grey,
+            ),
             const SizedBox(height: 12),
-            _buildStatusRow('Waiting for Feedback', stats.waitingForFeedback, stats.totalReports, Colors.purple),
+            _buildStatusRow(
+              'Waiting for Feedback',
+              stats.waitingForFeedback,
+              stats.totalReports,
+              Colors.purple,
+            ),
           ],
         ),
       ),
@@ -156,16 +173,13 @@ class LguAnalyticsScreen extends ConsumerWidget {
 
   Widget _buildStatusRow(String label, int count, int total, Color color) {
     final percentage = total > 0 ? (count / total * 100).toInt() : 0;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label),
-            Text('$count ($percentage%)'),
-          ],
+          children: [Text(label), Text('$count ($percentage%)')],
         ),
         const SizedBox(height: 4),
         ClipRRect(
@@ -181,8 +195,9 @@ class LguAnalyticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTrendsCard(DashboardStats stats) {
+  Widget _buildTrendsCard(DashboardStats stats, BuildContext context) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -190,10 +205,7 @@ class LguAnalyticsScreen extends ConsumerWidget {
           children: [
             const Text(
               'Key Metrics',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Row(
@@ -245,7 +257,12 @@ class LguAnalyticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
+  Widget _buildMetricCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -268,10 +285,7 @@ class LguAnalyticsScreen extends ConsumerWidget {
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
             textAlign: TextAlign.center,
           ),
         ],

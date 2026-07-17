@@ -14,6 +14,8 @@ import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cluster_details
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cleanup_task_details_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_create_custom_cleanup_task_screen.dart';
 import 'package:ecopin_app/features/lgu/presentation/screens/lgu_report_details_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_analytics_screen.dart';
+import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cluster_create_task.dart';
 import 'package:ecopin_app/features/main_screen.dart';
 import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/features/notifications/presentation/screens/notifications_screen.dart';
@@ -46,7 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final path = state.matchedLocation;
       final role = auth.role;
 
-      log.finer(
+      log.info(
         'Redirect check - Path: $path, LoggedIn: $loggedIn, Role: $role, IsLoading: $isLoading',
       );
 
@@ -77,9 +79,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isPublicRoute = PublicAppRoutes.publicRoutes.contains(path);
       final isLguRoute = path.startsWith('/lgu/');
       final isAdminRoute = path.startsWith('/admin/');
+      final isProtectedRoute = ProtectedAppRoutes.protectedRoutes.any(
+        (route) => path.startsWith(route),
+      );
 
       log.info(
-        'Route checks - IsPublicRoute: $isPublicRoute, IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute',
+        'Route checks - IsPublicRoute: $isPublicRoute, IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
       );
 
       if (loggedIn && isPublicRoute) {
@@ -103,19 +108,25 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Role-based route protection
       if (loggedIn) {
+        log.info('Role-based check - IsLguRoute: $isLguRoute, Role: $role');
         if (isLguRoute && role != UserRole.lgu && role != UserRole.admin) {
+          log.info('Redirecting to citizen maps - non-LGU/Admin on LGU route');
           return ProtectedAppRoutes.maps;
         }
         if (isAdminRoute && role != UserRole.admin) {
+          log.info(
+            'Redirecting to appropriate screen - non-Admin on Admin route',
+          );
           return role == UserRole.lgu
               ? LguAppRoutes.dashboard
               : ProtectedAppRoutes.maps;
         }
         // Check if path is a protected route (including nested routes)
-        final isProtectedRoute = ProtectedAppRoutes.protectedRoutes.any(
-          (route) => path.startsWith(route),
+        log.info(
+          'Final check - IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
         );
         if (!isLguRoute && !isAdminRoute && !isProtectedRoute) {
+          log.info('Redirecting to citizen maps - not in any route category');
           return ProtectedAppRoutes.maps;
         }
       }
@@ -199,6 +210,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                   final id = state.pathParameters['id']!;
                   return LguClusterDetailsScreen(clusterId: id);
                 },
+                routes: [
+                  GoRoute(
+                    path: 'create-task',
+                    builder: (context, state) {
+                      return const LguClusterCreateTaskScreen();
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -235,6 +254,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: LguAppRoutes.responseLogs,
             builder: (_, _) => const LguResponseLogsScreen(),
+          ),
+          GoRoute(
+            path: LguAppRoutes.analytics,
+            builder: (_, _) => const LguAnalyticsScreen(),
           ),
           GoRoute(
             path: LguAppRoutes.profile,

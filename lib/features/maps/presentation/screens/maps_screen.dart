@@ -280,8 +280,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate: Theme.of(context).brightness == Brightness.dark
+                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    subdomains: const ['a', 'b', 'c'],
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   if (_showHeatmap)

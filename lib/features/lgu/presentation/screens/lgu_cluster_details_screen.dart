@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
+import 'package:logging/logging.dart';
 
 class ClusterDetail {
   final String id;
@@ -78,6 +80,7 @@ class LguClusterDetailsScreen extends ConsumerStatefulWidget {
 
 class _LguClusterDetailsScreenState
     extends ConsumerState<LguClusterDetailsScreen> {
+  final Logger log = Logger('Lgu Cluster Details Screen');
   ClusterDetail? _cluster;
   List<Report> _reports = [];
   bool _isLoading = true;
@@ -192,7 +195,15 @@ class _LguClusterDetailsScreenState
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    // TODO: Implement create cleanup task
+                    // Pass all report IDs in this cluster
+                    final reportIds = _reports.map((r) => r.id).toList();
+                    context.push(
+                      LguAppRoutes.clusterCreateTask.replaceAll(
+                        ':id',
+                        widget.clusterId,
+                      ),
+                      extra: {'reportIds': reportIds},
+                    );
                   },
                   icon: const Icon(Icons.add_task, size: 20),
                   label: const Text('Create Task'),

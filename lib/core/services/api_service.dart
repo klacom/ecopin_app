@@ -210,12 +210,9 @@ class ApiClient {
     required String oldPassword,
     required String newPassword,
   }) async {
-    return _dio.post(
+    return _dio.put(
       ApiConstants.changePassword,
-      data: {
-        'oldPassword': oldPassword,
-        'newPassword': newPassword,
-      },
+      data: {'current_password': oldPassword, 'new_password': newPassword},
     );
   }
 

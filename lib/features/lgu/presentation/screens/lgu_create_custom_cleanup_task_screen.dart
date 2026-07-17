@@ -1,14 +1,14 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/lgu/providers/lgu_cleanup_tasks_provider.dart';
 import 'package:ecopin_app/features/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/features/reports/data/models/report_model.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
-import 'package:ecopin_app/core/constants/app_constants.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:go_router/go_router.dart';
 
 class LguCreateCustomCleanupTaskScreen extends ConsumerStatefulWidget {
   const LguCreateCustomCleanupTaskScreen({super.key});
@@ -39,9 +39,7 @@ class _LguCreateCustomCleanupTaskScreenState
     try {
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.getPublicReports();
-      final List<dynamic> data = response.data is List
-          ? response.data as List
-          : [];
+      final List<dynamic> data = response.data is List ? response.data : [];
       final allReports = data
           .map((json) => ReportModel.fromJson(json as Map<String, dynamic>))
           .toList();
@@ -51,6 +49,26 @@ class _LguCreateCustomCleanupTaskScreenState
           .toList();
       setState(() {
         _reports = unresolvedReports;
+      });
+
+      // Check if we got reportIds from the extra arguments (cluster details screen)
+      final extra = GoRouterState.of(context).extra;
+      if (extra != null && extra is Map<String, dynamic>) {
+        final List<String>? passedReportIds =
+            extra['reportIds'] as List<String>?;
+        if (passedReportIds != null && passedReportIds.isNotEmpty) {
+          // Pre-select the passed report IDs, but only if they are in our list of unresolved reports
+          setState(() {
+            _selectedReportIds.addAll(
+              passedReportIds.where(
+                (id) => _reports.any((report) => report.id == id),
+              ),
+            );
+          });
+        }
+      }
+
+      setState(() {
         _isLoading = false;
       });
     } catch (e) {
@@ -103,7 +121,7 @@ class _LguCreateCustomCleanupTaskScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Custom Cleanup Task')),
+      appBar: AppBar(title: const Text('Create Cleanup Task')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : LayoutBuilder(
@@ -251,9 +269,25 @@ class _LguCreateCustomCleanupTaskScreenState
   }
 
   Widget _buildMapSection() {
-    // Calculate initial center based on reports, or default to Pasig initial center
+    // Calculate initial center based on selected reports, or default to Pasig initial center
     LatLng initialCenter = pasigInitialCenter;
-    if (_reports.isNotEmpty) {
+    if (_selectedReportIds.isNotEmpty) {
+      final selectedReports = _reports
+          .where((report) => _selectedReportIds.contains(report.id))
+          .toList();
+      if (selectedReports.isNotEmpty) {
+        double sumLat = 0;
+        double sumLng = 0;
+        for (var report in selectedReports) {
+          sumLat += report.location.latitude;
+          sumLng += report.location.longitude;
+        }
+        initialCenter = LatLng(
+          sumLat / selectedReports.length,
+          sumLng / selectedReports.length,
+        );
+      }
+    } else if (_reports.isNotEmpty) {
       double sumLat = 0;
       double sumLng = 0;
       for (var report in _reports) {
@@ -294,8 +328,10 @@ class _LguCreateCustomCleanupTaskScreenState
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate: Theme.of(context).brightness == Brightness.dark
+                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    subdomains: const ['a', 'b', 'c'],
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   MarkerLayer(

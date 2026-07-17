@@ -97,12 +97,16 @@ class _LguClusterDetailsScreenState
     try {
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.getClusterById(widget.clusterId);
-      setState(() {
-        _cluster = ClusterDetail.fromJson(response.data);
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _cluster = ClusterDetail.fromJson(response.data);
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -116,13 +120,17 @@ class _LguClusterDetailsScreenState
       final reports = data
           .map((json) => Report.fromJson(json as Map<String, dynamic>))
           .toList();
-      setState(() {
-        _reports = reports;
-        _isLoadingReports = false;
-      });
+      if (mounted) {
+        setState(() {
+          _reports = reports;
+          _isLoadingReports = false;
+        });
+      }
     } catch (e) {
       log.severe('Error loading cluster reports: $e');
-      setState(() => _isLoadingReports = false);
+      if (mounted) {
+        setState(() => _isLoadingReports = false);
+      }
     }
   }
 

@@ -47,6 +47,7 @@ class _LguCreateCustomCleanupTaskScreenState
       final unresolvedReports = allReports
           .where((report) => report.status.toLowerCase() == 'unresolved')
           .toList();
+      if (!mounted) return; // Exit early if not mounted
       setState(() {
         _reports = unresolvedReports;
       });
@@ -72,9 +73,11 @@ class _LguCreateCustomCleanupTaskScreenState
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

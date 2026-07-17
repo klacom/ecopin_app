@@ -32,21 +32,29 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
   }
 
   Future<void> _fetchEvidence() async {
-    setState(() => _isLoadingEvidence = true);
+    if (mounted) {
+      setState(() => _isLoadingEvidence = true);
+    }
     try {
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.getReportEvidence(widget.reportId);
       _log.fine('Evidence response: ${response.data}');
-      setState(() => _evidence = response.data);
+      if (mounted) {
+        setState(() => _evidence = response.data);
+      }
     } catch (e, stackTrace) {
       _log.severe('Failed to fetch evidence: $e', stackTrace);
     } finally {
-      setState(() => _isLoadingEvidence = false);
+      if (mounted) {
+        setState(() => _isLoadingEvidence = false);
+      }
     }
   }
 
   Future<void> _fetchCleanupTask(String clusterId) async {
-    setState(() => _isLoadingCleanupTask = true);
+    if (mounted) {
+      setState(() => _isLoadingCleanupTask = true);
+    }
     try {
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.getCleanupTasksByCluster(clusterId);
@@ -56,7 +64,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
             .map((taskJson) => CleanupTaskModel.fromJson(taskJson))
             .toList();
 
-        if (tasks.isNotEmpty) {
+        if (mounted && tasks.isNotEmpty) {
           setState(() {
             _cleanupTask = tasks.first;
           });
@@ -65,7 +73,9 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
     } catch (e, stackTrace) {
       _log.severe('Failed to fetch cleanup tasks: $e', stackTrace);
     } finally {
-      setState(() => _isLoadingCleanupTask = false);
+      if (mounted) {
+        setState(() => _isLoadingCleanupTask = false);
+      }
     }
   }
 

@@ -129,10 +129,12 @@ class _LguCleanupTaskDetailsScreenState
     try {
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.getCleanupTaskById(widget.taskId);
-      setState(() {
-        _task = CleanupTaskDetail.fromJson(response.data);
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _task = CleanupTaskDetail.fromJson(response.data);
+          _isLoading = false;
+        });
+      }
 
       // Load reports
       if (_task?.isCustom == true && _task?.reportIds?.isNotEmpty == true) {
@@ -146,9 +148,11 @@ class _LguCleanupTaskDetailsScreenState
         final reports = data
             .map((json) => TaskReport.fromJson(json as Map<String, dynamic>))
             .toList();
-        setState(() {
-          _reports = reports;
-        });
+        if (mounted) {
+          setState(() {
+            _reports = reports;
+          });
+        }
       } else if (_task?.clusterId != null) {
         // Load reports by cluster id
         final reportsResponse = await apiClient.getReportsByClusterId(
@@ -160,13 +164,17 @@ class _LguCleanupTaskDetailsScreenState
         final reports = data
             .map((json) => TaskReport.fromJson(json as Map<String, dynamic>))
             .toList();
-        setState(() {
-          _reports = reports;
-        });
+        if (mounted) {
+          setState(() {
+            _reports = reports;
+          });
+        }
       }
     } catch (e) {
       log.severe('Error loading task details: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

@@ -145,17 +145,21 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (query.length >= 2) {
         final results = await _searchService.searchLocations(query);
-        setState(() {
-          _suggestions = results;
-          _showSuggestions = results.isNotEmpty;
-          _isSearching = false;
-        });
+        if (mounted) {
+          setState(() {
+            _suggestions = results;
+            _showSuggestions = results.isNotEmpty;
+            _isSearching = false;
+          });
+        }
       } else {
-        setState(() {
-          _showSuggestions = false;
-          _suggestions = [];
-          _isSearching = false;
-        });
+        if (mounted) {
+          setState(() {
+            _showSuggestions = false;
+            _suggestions = [];
+            _isSearching = false;
+          });
+        }
       }
     });
   }

@@ -73,9 +73,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 }
                 break;
               }
-              setState(() {
-                _capturedImages.add(file);
-              });
+              if (mounted) {
+                setState(() {
+                  _capturedImages.add(file);
+                });
+              }
             }
           }
         }
@@ -104,15 +106,19 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               }
               return;
             }
-            setState(() {
-              _selectedImage = file;
-              _capturedImages.add(file);
-            });
+            if (mounted) {
+              setState(() {
+                _selectedImage = file;
+                _capturedImages.add(file);
+              });
+            }
           }
         }
       }
     } catch (e) {
-      SnackbarHelper.showError('Failed to pick image: $e');
+      if (mounted) {
+        SnackbarHelper.showError('Failed to pick image: $e');
+      }
     }
   }
 

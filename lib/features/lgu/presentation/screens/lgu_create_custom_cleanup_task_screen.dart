@@ -59,19 +59,23 @@ class _LguCreateCustomCleanupTaskScreenState
             extra['reportIds'] as List<String>?;
         if (passedReportIds != null && passedReportIds.isNotEmpty) {
           // Pre-select the passed report IDs, but only if they are in our list of unresolved reports
-          setState(() {
-            _selectedReportIds.addAll(
-              passedReportIds.where(
-                (id) => _reports.any((report) => report.id == id),
-              ),
-            );
-          });
+          if (mounted) {
+            setState(() {
+              _selectedReportIds.addAll(
+                passedReportIds.where(
+                  (id) => _reports.any((report) => report.id == id),
+                ),
+              );
+            });
+          }
         }
       }
 
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {

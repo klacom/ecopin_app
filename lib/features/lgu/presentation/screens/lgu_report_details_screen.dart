@@ -201,8 +201,8 @@ class _LguReportDetailsScreenState
         log.severe('Error loading evidence: $e');
       }
 
-      setState(() {
-        if (mounted) {
+      if (mounted) {
+        setState(() {
           _report = LguReportDetail.fromJson(
             response.data is Map<String, dynamic>
                 ? response.data as Map<String, dynamic>
@@ -210,16 +210,18 @@ class _LguReportDetailsScreenState
           );
           _evidencePhotos = evidenceList;
           _isLoading = false;
-        }
-      });
+        });
+      }
     } catch (e, stackTrace) {
       log.severe('Error loading report details: $e');
       log.severe('Stack trace: $stackTrace');
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _errorMessage = e.toString();
+        });
+      }
     }
   }
 
@@ -241,7 +243,9 @@ class _LguReportDetailsScreenState
         );
       }
     } finally {
-      setState(() => _isUpdating = false);
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
     }
   }
 
@@ -299,7 +303,9 @@ class _LguReportDetailsScreenState
         ).showSnackBar(const SnackBar(content: Text('Failed to upload photo')));
       }
     } finally {
-      setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
     }
   }
 
@@ -324,7 +330,9 @@ class _LguReportDetailsScreenState
         ).showSnackBar(const SnackBar(content: Text('Failed to delete photo')));
       }
     } finally {
-      setState(() => _isDeleting = false);
+      if (mounted) {
+        setState(() => _isDeleting = false);
+      }
     }
   }
 
@@ -346,7 +354,9 @@ class _LguReportDetailsScreenState
         );
       }
     } finally {
-      setState(() => _isUpdating = false);
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
     }
   }
 

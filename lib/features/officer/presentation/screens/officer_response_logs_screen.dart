@@ -69,28 +69,28 @@ class ResponseLogsNotifier extends ChangeNotifier {
   }
 }
 
-final lguResponseLogsProvider = ChangeNotifierProvider<ResponseLogsNotifier>((
+final officerResponseLogsProvider = ChangeNotifierProvider<ResponseLogsNotifier>((
   ref,
 ) {
   final apiClient = ref.watch(apiClientProvider);
   return ResponseLogsNotifier(apiClient);
 });
 
-class LguResponseLogsScreen extends ConsumerStatefulWidget {
-  const LguResponseLogsScreen({super.key});
+class OfficerResponseLogsScreen extends ConsumerStatefulWidget {
+  const OfficerResponseLogsScreen({super.key});
 
   @override
-  ConsumerState<LguResponseLogsScreen> createState() =>
-      _LguResponseLogsScreenState();
+  ConsumerState<OfficerResponseLogsScreen> createState() =>
+      _OfficerResponseLogsScreenState();
 }
 
-class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
+class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsScreen> {
   String _actionTypeFilter = 'all';
   String _sortBy = 'newest';
 
   @override
   Widget build(BuildContext context) {
-    final logsAsync = ref.watch(lguResponseLogsProvider).logs;
+    final logsAsync = ref.watch(officerResponseLogsProvider).logs;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Response Logs'), elevation: 0),
@@ -108,7 +108,7 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () =>
-                          ref.read(lguResponseLogsProvider).loadLogs(),
+                          ref.read(officerResponseLogsProvider).loadLogs(),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -325,3 +325,4 @@ class _LguResponseLogsScreenState extends ConsumerState<LguResponseLogsScreen> {
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
+

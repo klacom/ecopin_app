@@ -3,16 +3,18 @@ import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/profile/providers/profile_provider.dart';
+import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
 
-class LguMainScreen extends ConsumerStatefulWidget {
+class OfficerMainScreen extends ConsumerStatefulWidget {
   final Widget child;
-  const LguMainScreen({super.key, required this.child});
+  const OfficerMainScreen({super.key, required this.child});
 
   @override
-  ConsumerState<LguMainScreen> createState() => _LguMainScreenState();
+  ConsumerState<OfficerMainScreen> createState() => _OfficerMainScreenState();
 }
 
-class _LguMainScreenState extends ConsumerState<LguMainScreen> {
+class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
   String _getInitials(String? fullName) {
     if (fullName == null || fullName.isEmpty) return '?';
     final parts = fullName.trim().split(' ');
@@ -25,10 +27,10 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
 
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith(LguAppRoutes.dashboard)) return 0;
-    if (location.startsWith(LguAppRoutes.clusters)) return 1;
-    if (location.startsWith(LguAppRoutes.cleanupTasks)) return 2;
-    if (location.startsWith(LguAppRoutes.reports)) return 3;
+    if (location.startsWith(OfficerAppRoutes.dashboard)) return 0;
+    if (location.startsWith(OfficerAppRoutes.clusters)) return 1;
+    if (location.startsWith(OfficerAppRoutes.cleanupTasks)) return 2;
+    if (location.startsWith(OfficerAppRoutes.reports)) return 3;
     // More menu items don't affect index since they open a menu
     return 0;
   }
@@ -36,16 +38,16 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
   void _onItemTapped(int index, BuildContext context) {
     switch (index) {
       case 0:
-        context.go(LguAppRoutes.dashboard);
+        context.go(OfficerAppRoutes.dashboard);
         break;
       case 1:
-        context.go(LguAppRoutes.clusters);
+        context.go(OfficerAppRoutes.clusters);
         break;
       case 2:
-        context.go(LguAppRoutes.cleanupTasks);
+        context.go(OfficerAppRoutes.cleanupTasks);
         break;
       case 3:
-        context.go(LguAppRoutes.reports);
+        context.go(OfficerAppRoutes.reports);
         break;
       case 4:
         _showMoreMenu(context);
@@ -57,6 +59,8 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
     final profileAsync = ref.read(profileProvider);
     final fullName = profileAsync.value?['full_name'] as String?;
     final avatarUrl = profileAsync.value?['avatar_url'] as String?;
+
+    final isFieldCrew = ref.read(authNotifierProvider).state.role == UserRole.fieldCrew;
 
     showModalBottomSheet(
       context: context,
@@ -71,25 +75,27 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildMoreMenuItem(
-              icon: Icons.map_outlined,
-              activeIcon: Icons.map,
-              label: 'Map',
-              route: LguAppRoutes.maps,
-            ),
-            const Divider(height: 1),
-            _buildMoreMenuItem(
-              icon: Icons.analytics_outlined,
-              activeIcon: Icons.analytics,
-              label: 'Analytics',
-              route: LguAppRoutes.analytics,
-            ),
-            const Divider(height: 1),
+            if (!isFieldCrew) ...[
+              _buildMoreMenuItem(
+                icon: Icons.map_outlined,
+                activeIcon: Icons.map,
+                label: 'Map',
+                route: OfficerAppRoutes.maps,
+              ),
+              const Divider(height: 1),
+              _buildMoreMenuItem(
+                icon: Icons.analytics_outlined,
+                activeIcon: Icons.analytics,
+                label: 'Analytics',
+                route: OfficerAppRoutes.analytics,
+              ),
+              const Divider(height: 1),
+            ],
             _buildMoreMenuItem(
               icon: Icons.history_outlined,
               activeIcon: Icons.history,
               label: 'Logs',
-              route: LguAppRoutes.responseLogs,
+              route: OfficerAppRoutes.responseLogs,
             ),
             const Divider(height: 1),
             _buildProfileMoreMenuItem(avatarUrl, fullName),
@@ -138,7 +144,7 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
 
   Widget _buildProfileMoreMenuItem(String? avatarUrl, String? fullName) {
     final currentLocation = GoRouterState.of(context).matchedLocation;
-    final isSelected = currentLocation.startsWith(LguAppRoutes.profile);
+    final isSelected = currentLocation.startsWith(OfficerAppRoutes.profile);
     final color = isSelected
         ? Theme.of(context).colorScheme.primary
         : Colors.grey;
@@ -146,7 +152,7 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
     return InkWell(
       onTap: () {
         Navigator.pop(context);
-        context.go(LguAppRoutes.profile);
+        context.go(OfficerAppRoutes.profile);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -196,6 +202,8 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
     final fullName = profileAsync.value?['full_name'] as String?;
     final avatarUrl = profileAsync.value?['avatar_url'] as String?;
 
+    final isFieldCrew = ref.watch(authNotifierProvider).state.role == UserRole.fieldCrew;
+
     return Scaffold(
       extendBody: true,
       body: widget.child,
@@ -230,13 +238,14 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
                     'Dashboard',
                     selectedIndex,
                   ),
-                  _buildNavItem(
-                    1,
-                    Icons.group_work_outlined,
-                    Icons.group_work,
-                    'Clusters',
-                    selectedIndex,
-                  ),
+                  if (!isFieldCrew)
+                    _buildNavItem(
+                      1,
+                      Icons.group_work_outlined,
+                      Icons.group_work,
+                      'Clusters',
+                      selectedIndex,
+                    ),
                   _buildNavItem(
                     2,
                     Icons.task_outlined,
@@ -299,3 +308,4 @@ class _LguMainScreenState extends ConsumerState<LguMainScreen> {
     );
   }
 }
+

@@ -27,23 +27,23 @@ class ProtectedAppRoutes {
   ];
 }
 
-// LGU-only routes
-class LguAppRoutes {
-  static const String dashboard = '/lgu/dashboard';
-  static const String maps = '/lgu/maps';
-  static const String clusters = '/lgu/clusters';
-  static const String clusterDetails = '/lgu/clusters/:id';
-  static const String clusterCreateTask = '/lgu/clusters/:id/create-task';
-  static const String cleanupTasks = '/lgu/cleanup-tasks';
-  static const String taskDetails = '/lgu/cleanup-tasks/:id';
-  static const String createCustomTask = '/lgu/cleanup-tasks/create';
-  static const String reports = '/lgu/reports';
-  static const String reportDetails = '/lgu/reports/:id';
-  static const String responseLogs = '/lgu/response-logs';
-  static const String analytics = '/lgu/analytics';
-  static const String profile = '/lgu/profile';
+// Officer/Field Crew routes
+class OfficerAppRoutes {
+  static const String dashboard = '/officer/dashboard';
+  static const String maps = '/officer/maps';
+  static const String clusters = '/officer/clusters';
+  static const String clusterDetails = '/officer/clusters/:id';
+  static const String clusterCreateTask = '/officer/clusters/:id/create-task';
+  static const String cleanupTasks = '/officer/cleanup-tasks';
+  static const String taskDetails = '/officer/cleanup-tasks/:id';
+  static const String createCustomTask = '/officer/cleanup-tasks/create';
+  static const String reports = '/officer/reports';
+  static const String reportDetails = '/officer/reports/:id';
+  static const String responseLogs = '/officer/response-logs';
+  static const String analytics = '/officer/analytics';
+  static const String profile = '/officer/profile';
 
-  static const lguRoutes = [
+  static const officerRoutes = [
     dashboard,
     maps,
     clusters,

@@ -9,10 +9,10 @@ class Permissions {
   }
 
   static bool canManageReports(UserRole? role) {
-    return role == UserRole.admin || role == UserRole.lgu;
+    return role == UserRole.admin || role == UserRole.officer;
   }
 
   static bool canViewTasks(UserRole? role) {
-    return role != null;
+    return role == UserRole.admin || role == UserRole.officer || role == UserRole.fieldCrew;
   }
 }

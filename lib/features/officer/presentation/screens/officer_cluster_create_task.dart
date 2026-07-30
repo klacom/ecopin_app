@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/features/lgu/providers/lgu_cleanup_tasks_provider.dart';
+import 'package:ecopin_app/features/officer/providers/officer_cleanup_tasks_provider.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 
-class LguClusterCreateTaskScreen extends ConsumerStatefulWidget {
-  const LguClusterCreateTaskScreen({super.key});
+class OfficerClusterCreateTaskScreen extends ConsumerStatefulWidget {
+  const OfficerClusterCreateTaskScreen({super.key});
 
   @override
-  ConsumerState<LguClusterCreateTaskScreen> createState() =>
-      _LguClusterCreateTaskScreenState();
+  ConsumerState<OfficerClusterCreateTaskScreen> createState() =>
+      _OfficerClusterCreateTaskScreenState();
 }
 
-class _LguClusterCreateTaskScreenState
-    extends ConsumerState<LguClusterCreateTaskScreen> {
+class _OfficerClusterCreateTaskScreenState
+    extends ConsumerState<OfficerClusterCreateTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -52,8 +52,8 @@ class _LguClusterCreateTaskScreenState
             : _descriptionController.text,
       );
       if (!mounted) return;
-      ref.read(lguCleanupTasksProvider).loadTasks();
-      context.go(LguAppRoutes.cleanupTasks);
+      ref.read(officerCleanupTasksProvider).loadTasks();
+      context.go(OfficerAppRoutes.cleanupTasks);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Cleanup task created successfully')),
@@ -187,3 +187,5 @@ class _LguClusterCreateTaskScreenState
     super.dispose();
   }
 }
+
+

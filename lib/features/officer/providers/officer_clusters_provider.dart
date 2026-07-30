@@ -67,7 +67,8 @@ class ClustersNotifier extends ChangeNotifier {
   }
 }
 
-final lguClustersProvider = ChangeNotifierProvider<ClustersNotifier>((ref) {
+final officerClustersProvider = ChangeNotifierProvider<ClustersNotifier>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return ClustersNotifier(apiClient);
 });
+

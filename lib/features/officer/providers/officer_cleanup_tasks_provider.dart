@@ -91,7 +91,8 @@ class CleanupTasksNotifier extends ChangeNotifier {
   }
 }
 
-final lguCleanupTasksProvider = ChangeNotifierProvider<CleanupTasksNotifier>((ref) {
+final officerCleanupTasksProvider = ChangeNotifierProvider<CleanupTasksNotifier>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return CleanupTasksNotifier(apiClient);
 });
+

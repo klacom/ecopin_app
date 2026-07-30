@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/auth/data/models/auth_state.dart';
-import 'package:ecopin_app/features/lgu/providers/lgu_clusters_provider.dart';
-import 'package:ecopin_app/features/lgu/providers/lgu_cleanup_tasks_provider.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_response_logs_screen.dart';
+import 'package:ecopin_app/features/officer/providers/officer_clusters_provider.dart';
+import 'package:ecopin_app/features/officer/providers/officer_cleanup_tasks_provider.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_response_logs_screen.dart';
 import 'package:ecopin_app/features/profile/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -31,14 +31,14 @@ class AuthNotifier extends ChangeNotifier {
 
   void _clearCachedData() {
     // Clear cached data from providers when switching accounts
-    if (_ref.container.exists(lguClustersProvider)) {
-      _ref.read(lguClustersProvider.notifier).reset();
+    if (_ref.container.exists(officerClustersProvider)) {
+      _ref.read(officerClustersProvider.notifier).reset();
     }
-    if (_ref.container.exists(lguCleanupTasksProvider)) {
-      _ref.read(lguCleanupTasksProvider.notifier).reset();
+    if (_ref.container.exists(officerCleanupTasksProvider)) {
+      _ref.read(officerCleanupTasksProvider.notifier).reset();
     }
-    if (_ref.container.exists(lguResponseLogsProvider)) {
-      _ref.read(lguResponseLogsProvider.notifier).reset();
+    if (_ref.container.exists(officerResponseLogsProvider)) {
+      _ref.read(officerResponseLogsProvider.notifier).reset();
     }
     // Invalidate profile provider to reset it
     _ref.invalidate(profileProvider);
@@ -87,15 +87,20 @@ class AuthNotifier extends ChangeNotifier {
 
         UserRole? role;
         if (roleString != null) {
-          role = UserRole.values.firstWhere(
-            (r) => r.name == roleString,
-            orElse: () {
-              _log.warning(
-                'Role "$roleString" not found in UserRole enum, defaulting to citizen',
-              );
-              return UserRole.citizen;
-            },
-          );
+          // Special case for snake_case coming from backend
+          if (roleString == 'field_crew') {
+            role = UserRole.fieldCrew;
+          } else {
+            role = UserRole.values.firstWhere(
+              (e) => e.name == roleString,
+              orElse: () {
+                _log.warning(
+                  'Role "$roleString" not found in UserRole enum, defaulting to citizen',
+                );
+                return UserRole.citizen;
+              },
+            );
+          }
         } else {
           _log.warning('Role string is null, defaulting to citizen');
           role = UserRole.citizen;
@@ -138,3 +143,5 @@ class AuthNotifier extends ChangeNotifier {
     super.dispose();
   }
 }
+
+

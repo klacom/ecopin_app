@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/features/lgu/providers/lgu_cleanup_tasks_provider.dart';
+import 'package:ecopin_app/features/officer/providers/officer_cleanup_tasks_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 
-class LguCleanupTasksScreen extends ConsumerStatefulWidget {
-  const LguCleanupTasksScreen({super.key});
+class OfficerCleanupTasksScreen extends ConsumerStatefulWidget {
+  const OfficerCleanupTasksScreen({super.key});
 
   @override
-  ConsumerState<LguCleanupTasksScreen> createState() =>
-      _LguCleanupTasksScreenState();
+  ConsumerState<OfficerCleanupTasksScreen> createState() =>
+      _OfficerCleanupTasksScreenState();
 }
 
-class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
+class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksScreen> {
   String _searchQuery = '';
   String _statusFilter = 'all';
 
   @override
   Widget build(BuildContext context) {
-    final tasksAsync = ref.watch(lguCleanupTasksProvider).tasks;
+    final tasksAsync = ref.watch(officerCleanupTasksProvider).tasks;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Cleanup Tasks'), elevation: 0),
@@ -36,7 +36,7 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () =>
-                          ref.read(lguCleanupTasksProvider).loadTasks(),
+                          ref.read(officerCleanupTasksProvider).loadTasks(),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -77,7 +77,7 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                context.go('${LguAppRoutes.cleanupTasks}/create');
+                context.go('${OfficerAppRoutes.cleanupTasks}/create');
               },
               icon: const Icon(Icons.add),
               label: const Text('Create Custom Cleanup Task'),
@@ -149,7 +149,7 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          context.go(LguAppRoutes.taskDetails.replaceAll(':id', task.id));
+          context.go(OfficerAppRoutes.taskDetails.replaceAll(':id', task.id));
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -264,3 +264,5 @@ class _LguCleanupTasksScreenState extends ConsumerState<LguCleanupTasksScreen> {
     return '${clusterId.substring(0, 8)}...';
   }
 }
+
+

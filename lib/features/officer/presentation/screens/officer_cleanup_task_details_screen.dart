@@ -97,18 +97,18 @@ class TaskReport {
   }
 }
 
-class LguCleanupTaskDetailsScreen extends ConsumerStatefulWidget {
+class OfficerCleanupTaskDetailsScreen extends ConsumerStatefulWidget {
   final String taskId;
 
-  const LguCleanupTaskDetailsScreen({super.key, required this.taskId});
+  const OfficerCleanupTaskDetailsScreen({super.key, required this.taskId});
 
   @override
-  ConsumerState<LguCleanupTaskDetailsScreen> createState() =>
-      _LguCleanupTaskDetailsScreenState();
+  ConsumerState<OfficerCleanupTaskDetailsScreen> createState() =>
+      _OfficerCleanupTaskDetailsScreenState();
 }
 
-class _LguCleanupTaskDetailsScreenState
-    extends ConsumerState<LguCleanupTaskDetailsScreen> {
+class _OfficerCleanupTaskDetailsScreenState
+    extends ConsumerState<OfficerCleanupTaskDetailsScreen> {
   CleanupTaskDetail? _task;
   List<TaskReport> _reports = [];
   bool _isLoading = true;
@@ -699,7 +699,7 @@ class _LguCleanupTaskDetailsScreenState
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          context.go('/lgu/reports/${report.id}');
+                          context.go('/officer/reports/${report.id}');
                         },
                         icon: const Icon(Icons.open_in_new, size: 18),
                         label: const Text('View Full Report Details'),
@@ -1074,3 +1074,4 @@ class _LguCleanupTaskDetailsScreenState
     return '${clusterId.substring(0, 8)}...';
   }
 }
+

@@ -82,7 +82,8 @@ class DashboardNotifier extends ChangeNotifier {
   }
 }
 
-final lguDashboardProvider = ChangeNotifierProvider<DashboardNotifier>((ref) {
+final officerDashboardProvider = ChangeNotifierProvider<DashboardNotifier>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return DashboardNotifier(apiClient);
 });
+

@@ -68,18 +68,18 @@ class Report {
   }
 }
 
-class LguClusterDetailsScreen extends ConsumerStatefulWidget {
+class OfficerClusterDetailsScreen extends ConsumerStatefulWidget {
   final String clusterId;
 
-  const LguClusterDetailsScreen({super.key, required this.clusterId});
+  const OfficerClusterDetailsScreen({super.key, required this.clusterId});
 
   @override
-  ConsumerState<LguClusterDetailsScreen> createState() =>
-      _LguClusterDetailsScreenState();
+  ConsumerState<OfficerClusterDetailsScreen> createState() =>
+      _OfficerClusterDetailsScreenState();
 }
 
-class _LguClusterDetailsScreenState
-    extends ConsumerState<LguClusterDetailsScreen> {
+class _OfficerClusterDetailsScreenState
+    extends ConsumerState<OfficerClusterDetailsScreen> {
   final Logger log = Logger('Lgu Cluster Details Screen');
   ClusterDetail? _cluster;
   List<Report> _reports = [];
@@ -206,7 +206,7 @@ class _LguClusterDetailsScreenState
                     // Pass all report IDs in this cluster
                     final reportIds = _reports.map((r) => r.id).toList();
                     context.push(
-                      LguAppRoutes.clusterCreateTask.replaceAll(
+                      OfficerAppRoutes.clusterCreateTask.replaceAll(
                         ':id',
                         widget.clusterId,
                       ),
@@ -337,7 +337,7 @@ class _LguClusterDetailsScreenState
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          context.go('/lgu/reports/${report.id}');
+          context.go('/officer/reports/${report.id}');
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -417,3 +417,4 @@ class _LguClusterDetailsScreenState
     );
   }
 }
+

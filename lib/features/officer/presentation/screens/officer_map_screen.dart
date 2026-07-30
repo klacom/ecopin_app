@@ -20,14 +20,14 @@ import 'package:logging/logging.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 
-class LguMapScreen extends ConsumerStatefulWidget {
-  const LguMapScreen({super.key});
+class OfficerMapScreen extends ConsumerStatefulWidget {
+  const OfficerMapScreen({super.key});
 
   @override
-  ConsumerState<LguMapScreen> createState() => _LguMapScreenState();
+  ConsumerState<OfficerMapScreen> createState() => _OfficerMapScreenState();
 }
 
-class _LguMapScreenState extends ConsumerState<LguMapScreen> {
+class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
   final Logger log = Logger("Lgu Maps Screen");
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
@@ -664,7 +664,7 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  context.push('${LguAppRoutes.reports}/${report.id}');
+                  context.push('${OfficerAppRoutes.reports}/${report.id}');
                 },
                 child: const Text('View Full Details'),
               ),
@@ -675,3 +675,4 @@ class _LguMapScreenState extends ConsumerState<LguMapScreen> {
     );
   }
 }
+

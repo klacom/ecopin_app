@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 // App Roles
 
-enum UserRole { citizen, lgu, admin }
+enum UserRole { citizen, officer, fieldCrew, admin }
 
 // Validation Status
 

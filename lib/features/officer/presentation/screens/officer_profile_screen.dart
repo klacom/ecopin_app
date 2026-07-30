@@ -13,14 +13,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/providers/theme_mode_provider.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 
-class LguProfileScreen extends ConsumerStatefulWidget {
-  const LguProfileScreen({super.key});
+class OfficerProfileScreen extends ConsumerStatefulWidget {
+  const OfficerProfileScreen({super.key});
 
   @override
-  ConsumerState<LguProfileScreen> createState() => _LguProfileScreenState();
+  ConsumerState<OfficerProfileScreen> createState() => _OfficerProfileScreenState();
 }
 
-class _LguProfileScreenState extends ConsumerState<LguProfileScreen> {
+class _OfficerProfileScreenState extends ConsumerState<OfficerProfileScreen> {
   final Logger _log = Logger("LGU Profile Screen");
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _fullNameController;
@@ -568,3 +568,4 @@ class _LguProfileScreenState extends ConsumerState<LguProfileScreen> {
     super.dispose();
   }
 }
+

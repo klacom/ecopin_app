@@ -4,22 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/features/lgu/providers/lgu_cleanup_tasks_provider.dart';
+import 'package:ecopin_app/features/officer/providers/officer_cleanup_tasks_provider.dart';
 import 'package:ecopin_app/features/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/features/reports/data/models/report_model.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:latlong2/latlong.dart';
 
-class LguCreateCustomCleanupTaskScreen extends ConsumerStatefulWidget {
-  const LguCreateCustomCleanupTaskScreen({super.key});
+class OfficerCreateCustomCleanupTaskScreen extends ConsumerStatefulWidget {
+  const OfficerCreateCustomCleanupTaskScreen({super.key});
 
   @override
-  ConsumerState<LguCreateCustomCleanupTaskScreen> createState() =>
-      _LguCreateCustomCleanupTaskScreenState();
+  ConsumerState<OfficerCreateCustomCleanupTaskScreen> createState() =>
+      _OfficerCreateCustomCleanupTaskScreenState();
 }
 
-class _LguCreateCustomCleanupTaskScreenState
-    extends ConsumerState<LguCreateCustomCleanupTaskScreen> {
+class _OfficerCreateCustomCleanupTaskScreenState
+    extends ConsumerState<OfficerCreateCustomCleanupTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -106,8 +106,8 @@ class _LguCreateCustomCleanupTaskScreenState
       );
       if (!mounted) return;
       // Refresh tasks list before navigating back
-      ref.read(lguCleanupTasksProvider).loadTasks();
-      context.go(LguAppRoutes.cleanupTasks);
+      ref.read(officerCleanupTasksProvider).loadTasks();
+      context.go(OfficerAppRoutes.cleanupTasks);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -512,3 +512,5 @@ class _LguCreateCustomCleanupTaskScreenState
     super.dispose();
   }
 }
+
+

@@ -22,7 +22,7 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
   final CleanupTaskModel? cleanupTask;
   final bool isLoadingCleanupTask;
   final VoidCallback? onFetchCleanupTask;
-  final bool isLguUser;
+  final bool isOfficerUser;
 
   const ReportDetailsBody({
     super.key,
@@ -32,7 +32,7 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
     this.cleanupTask,
     required this.isLoadingCleanupTask,
     this.onFetchCleanupTask,
-    this.isLguUser = false,
+    this.isOfficerUser = false,
   });
 
   @override
@@ -167,7 +167,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
           ],
           // Show Create New Report button for rejected reports
           if (widget.report.validationStatus.toLowerCase() == 'rejected' &&
-              !widget.isLguUser) ...[
+              !widget.isOfficerUser) ...[
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -479,7 +479,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
           ],
           const SizedBox(height: 32),
           // Satisfaction rating button if waiting for feedback (citizen only)
-          if (!widget.isLguUser &&
+          if (!widget.isOfficerUser &&
               widget.report.status.toLowerCase() == 'waiting_for_feedback') ...[
             const Text(
               'The issue has been resolved! Please rate the service.',
@@ -504,7 +504,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             const SizedBox(height: 16),
           ],
           // Show satisfaction rating if already closed (citizen only)
-          if (!widget.isLguUser &&
+          if (!widget.isOfficerUser &&
               widget.report.status.toLowerCase() == 'closed' &&
               widget.report.satisfactionRating != null) ...[
             const Text(
@@ -534,7 +534,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
           ],
           const SizedBox(height: 100),
           // LGU-specific actions
-          if (widget.isLguUser) ...[
+          if (widget.isOfficerUser) ...[
             const SizedBox(height: 24),
             const Text(
               'LGU Actions',
@@ -625,3 +625,4 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
     }
   }
 }
+

@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/features/lgu/providers/lgu_dashboard_provider.dart';
+import 'package:ecopin_app/features/officer/providers/officer_dashboard_provider.dart';
 
-class LguAnalyticsScreen extends ConsumerWidget {
-  const LguAnalyticsScreen({super.key});
+class OfficerAnalyticsScreen extends ConsumerWidget {
+  const OfficerAnalyticsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(lguDashboardProvider).stats;
+    final statsAsync = ref.watch(officerDashboardProvider).stats;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Analytics'), elevation: 0),
       body: RefreshIndicator(
-        onRefresh: () => ref.read(lguDashboardProvider).loadStats(),
+        onRefresh: () => ref.read(officerDashboardProvider).loadStats(),
         child: statsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) => Center(
@@ -22,7 +22,7 @@ class LguAnalyticsScreen extends ConsumerWidget {
                 Text('Error: $error'),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => ref.read(lguDashboardProvider).loadStats(),
+                  onPressed: () => ref.read(officerDashboardProvider).loadStats(),
                   child: const Text('Retry'),
                 ),
               ],
@@ -293,3 +293,5 @@ class LguAnalyticsScreen extends ConsumerWidget {
     );
   }
 }
+
+

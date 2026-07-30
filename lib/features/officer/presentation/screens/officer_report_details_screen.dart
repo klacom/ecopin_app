@@ -140,18 +140,18 @@ class ResponseLog {
   }
 }
 
-class LguReportDetailsScreen extends ConsumerStatefulWidget {
+class OfficerReportDetailsScreen extends ConsumerStatefulWidget {
   final String reportId;
 
-  const LguReportDetailsScreen({super.key, required this.reportId});
+  const OfficerReportDetailsScreen({super.key, required this.reportId});
 
   @override
-  ConsumerState<LguReportDetailsScreen> createState() =>
-      _LguReportDetailsScreenState();
+  ConsumerState<OfficerReportDetailsScreen> createState() =>
+      _OfficerReportDetailsScreenState();
 }
 
-class _LguReportDetailsScreenState
-    extends ConsumerState<LguReportDetailsScreen> {
+class _OfficerReportDetailsScreenState
+    extends ConsumerState<OfficerReportDetailsScreen> {
   LguReportDetail? _report;
   List<EvidencePhoto> _evidencePhotos = [];
   bool _isLoading = true;
@@ -1076,3 +1076,4 @@ class _LguReportDetailsScreenState
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
+

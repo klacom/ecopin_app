@@ -83,7 +83,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
   Widget build(BuildContext context) {
     final reportAsync = ref.watch(reportDetailsProvider(widget.reportId));
     final authState = ref.watch(authNotifierProvider);
-    final isLguUser = authState.state.role == UserRole.lgu;
+    final isOfficerUser = authState.state.role == UserRole.officer;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Report Details')),
@@ -97,7 +97,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
           onFetchCleanupTask: report.clusterId != null
               ? () => _fetchCleanupTask(report.clusterId!)
               : null,
-          isLguUser: isLguUser,
+          isOfficerUser: isOfficerUser,
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
@@ -105,3 +105,4 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
     );
   }
 }
+

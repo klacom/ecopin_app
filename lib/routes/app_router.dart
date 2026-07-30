@@ -2,20 +2,20 @@ import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
 import 'package:ecopin_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:ecopin_app/features/auth/presentation/screens/register_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cleanup_tasks_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_clusters_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_dashboard_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_main_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_map_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_profile_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_reports_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_response_logs_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cluster_details_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cleanup_task_details_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_create_custom_cleanup_task_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_report_details_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_analytics_screen.dart';
-import 'package:ecopin_app/features/lgu/presentation/screens/lgu_cluster_create_task.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_cleanup_tasks_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_clusters_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_dashboard_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_main_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_map_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_profile_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_reports_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_response_logs_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_cluster_details_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_cleanup_task_details_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_create_custom_cleanup_task_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_report_details_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_analytics_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_cluster_create_task.dart';
 import 'package:ecopin_app/features/main_screen.dart';
 import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/features/notifications/presentation/screens/notifications_screen.dart';
@@ -57,9 +57,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (path == PublicAppRoutes.splash) {
         // If logged in, redirect based on role
         if (loggedIn) {
-          if (role == UserRole.lgu) {
-            log.info('Redirecting from splash to LGU Dashboard');
-            return LguAppRoutes.dashboard;
+          if (role == UserRole.officer || role == UserRole.fieldCrew) {
+            log.info('Redirecting from splash to Officer Dashboard');
+            return OfficerAppRoutes.dashboard;
           } else if (role == UserRole.admin) {
             log.info('Redirecting from splash to Admin Dashboard');
             return AdminAppRoutes.dashboard;
@@ -77,22 +77,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       final isPublicRoute = PublicAppRoutes.publicRoutes.contains(path);
-      final isLguRoute = path.startsWith('/lgu/');
+      final isOfficerRoute = path.startsWith('/officer/');
       final isAdminRoute = path.startsWith('/admin/');
       final isProtectedRoute = ProtectedAppRoutes.protectedRoutes.any(
         (route) => path.startsWith(route),
       );
 
       log.info(
-        'Route checks - IsPublicRoute: $isPublicRoute, IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
+        'Route checks - IsPublicRoute: $isPublicRoute, IsOfficerRoute: $isOfficerRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
       );
 
       if (loggedIn && isPublicRoute) {
         // Route based on role
         log.info('Redirecting based on role: $role');
-        if (role == UserRole.lgu) {
-          log.info('Redirecting to LGU Dashboard');
-          return LguAppRoutes.dashboard;
+        if (role == UserRole.officer || role == UserRole.fieldCrew) {
+          log.info('Redirecting to Officer Dashboard');
+          return OfficerAppRoutes.dashboard;
         } else if (role == UserRole.admin) {
           log.info('Redirecting to Admin Dashboard');
           return AdminAppRoutes.dashboard;
@@ -108,24 +108,24 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Role-based route protection
       if (loggedIn) {
-        log.info('Role-based check - IsLguRoute: $isLguRoute, Role: $role');
-        if (isLguRoute && role != UserRole.lgu && role != UserRole.admin) {
-          log.info('Redirecting to citizen maps - non-LGU/Admin on LGU route');
+        log.info('Role-based check - IsOfficerRoute: $isOfficerRoute, Role: $role');
+        if (isOfficerRoute && role != UserRole.officer && role != UserRole.fieldCrew && role != UserRole.admin) {
+          log.info('Redirecting to citizen maps - non-Officer/Admin on Officer route');
           return ProtectedAppRoutes.maps;
         }
         if (isAdminRoute && role != UserRole.admin) {
           log.info(
             'Redirecting to appropriate screen - non-Admin on Admin route',
           );
-          return role == UserRole.lgu
-              ? LguAppRoutes.dashboard
+          return (role == UserRole.officer || role == UserRole.fieldCrew)
+              ? OfficerAppRoutes.dashboard
               : ProtectedAppRoutes.maps;
         }
         // Check if path is a protected route (including nested routes)
         log.info(
-          'Final check - IsLguRoute: $isLguRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
+          'Final check - IsOfficerRoute: $isOfficerRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
         );
-        if (!isLguRoute && !isAdminRoute && !isProtectedRoute) {
+        if (!isOfficerRoute && !isAdminRoute && !isProtectedRoute) {
           log.info('Redirecting to citizen maps - not in any route category');
           return ProtectedAppRoutes.maps;
         }
@@ -188,33 +188,33 @@ final routerProvider = Provider<GoRouter>((ref) {
           return CreateReportScreen(initialLocation: location);
         },
       ),
-      // LGU Shell Route
+      // Officer Shell Route
       ShellRoute(
-        builder: (context, state, child) => LguMainScreen(child: child),
+        builder: (context, state, child) => OfficerMainScreen(child: child),
         routes: [
           GoRoute(
-            path: LguAppRoutes.dashboard,
-            builder: (_, _) => const LguDashboardScreen(),
+            path: OfficerAppRoutes.dashboard,
+            builder: (_, _) => const OfficerDashboardScreen(),
           ),
           GoRoute(
-            path: LguAppRoutes.maps,
-            builder: (_, _) => const LguMapScreen(),
+            path: OfficerAppRoutes.maps,
+            builder: (_, _) => const OfficerMapScreen(),
           ),
           GoRoute(
-            path: LguAppRoutes.clusters,
-            builder: (_, _) => const LguClustersScreen(),
+            path: OfficerAppRoutes.clusters,
+            builder: (_, _) => const OfficerClustersScreen(),
             routes: [
               GoRoute(
                 path: ':id',
                 builder: (context, state) {
                   final id = state.pathParameters['id']!;
-                  return LguClusterDetailsScreen(clusterId: id);
+                  return OfficerClusterDetailsScreen(clusterId: id);
                 },
                 routes: [
                   GoRoute(
                     path: 'create-task',
                     builder: (context, state) {
-                      return const LguClusterCreateTaskScreen();
+                      return const OfficerClusterCreateTaskScreen();
                     },
                   ),
                 ],
@@ -222,49 +222,50 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
-            path: LguAppRoutes.cleanupTasks,
-            builder: (_, _) => const LguCleanupTasksScreen(),
+            path: OfficerAppRoutes.cleanupTasks,
+            builder: (_, _) => const OfficerCleanupTasksScreen(),
             routes: [
               GoRoute(
                 path: 'create',
-                builder: (_, _) => const LguCreateCustomCleanupTaskScreen(),
+                builder: (_, _) => const OfficerCreateCustomCleanupTaskScreen(),
               ),
               GoRoute(
                 path: ':id',
                 builder: (context, state) {
                   final id = state.pathParameters['id']!;
-                  return LguCleanupTaskDetailsScreen(taskId: id);
+                  return OfficerCleanupTaskDetailsScreen(taskId: id);
                 },
               ),
             ],
           ),
           GoRoute(
-            path: LguAppRoutes.reports,
-            builder: (_, _) => const LguReportsScreen(),
+            path: OfficerAppRoutes.reports,
+            builder: (_, _) => const OfficerReportsScreen(),
             routes: [
               GoRoute(
                 path: ':id',
                 builder: (context, state) {
                   final id = state.pathParameters['id']!;
-                  return LguReportDetailsScreen(reportId: id);
+                  return OfficerReportDetailsScreen(reportId: id);
                 },
               ),
             ],
           ),
           GoRoute(
-            path: LguAppRoutes.responseLogs,
-            builder: (_, _) => const LguResponseLogsScreen(),
+            path: OfficerAppRoutes.responseLogs,
+            builder: (_, _) => const OfficerResponseLogsScreen(),
           ),
           GoRoute(
-            path: LguAppRoutes.analytics,
-            builder: (_, _) => const LguAnalyticsScreen(),
+            path: OfficerAppRoutes.analytics,
+            builder: (_, _) => const OfficerAnalyticsScreen(),
           ),
           GoRoute(
-            path: LguAppRoutes.profile,
-            builder: (_, _) => const LguProfileScreen(),
+            path: OfficerAppRoutes.profile,
+            builder: (_, _) => const OfficerProfileScreen(),
           ),
         ],
       ),
     ],
   );
 });
+

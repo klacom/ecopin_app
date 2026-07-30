@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/features/lgu/providers/lgu_dashboard_provider.dart';
+import 'package:ecopin_app/features/officer/providers/officer_dashboard_provider.dart';
 
-class LguDashboardScreen extends ConsumerStatefulWidget {
-  const LguDashboardScreen({super.key});
+class OfficerDashboardScreen extends ConsumerStatefulWidget {
+  const OfficerDashboardScreen({super.key});
 
   @override
-  ConsumerState<LguDashboardScreen> createState() => _LguDashboardScreenState();
+  ConsumerState<OfficerDashboardScreen> createState() => _OfficerDashboardScreenState();
 }
 
-class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
+class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen> {
   @override
   Widget build(BuildContext context) {
-    final statsAsync = ref.watch(lguDashboardProvider).stats;
+    final statsAsync = ref.watch(officerDashboardProvider).stats;
 
     return Scaffold(
       appBar: AppBar(title: const Text('LGU Dashboard'), elevation: 0),
       body: RefreshIndicator(
-        onRefresh: () => ref.read(lguDashboardProvider).loadStats(),
+        onRefresh: () => ref.read(officerDashboardProvider).loadStats(),
         child: statsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stack) => Center(
@@ -27,7 +27,7 @@ class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
                 Text('Error: $error'),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => ref.read(lguDashboardProvider).loadStats(),
+                  onPressed: () => ref.read(officerDashboardProvider).loadStats(),
                   child: const Text('Retry'),
                 ),
               ],
@@ -130,3 +130,5 @@ class _LguDashboardScreenState extends ConsumerState<LguDashboardScreen> {
     );
   }
 }
+
+

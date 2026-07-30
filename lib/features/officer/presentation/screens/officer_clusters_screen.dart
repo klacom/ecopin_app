@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/features/lgu/providers/lgu_clusters_provider.dart';
+import 'package:ecopin_app/features/officer/providers/officer_clusters_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 
-class LguClustersScreen extends ConsumerStatefulWidget {
-  const LguClustersScreen({super.key});
+class OfficerClustersScreen extends ConsumerStatefulWidget {
+  const OfficerClustersScreen({super.key});
 
   @override
-  ConsumerState<LguClustersScreen> createState() => _LguClustersScreenState();
+  ConsumerState<OfficerClustersScreen> createState() => _OfficerClustersScreenState();
 }
 
-class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
+class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
   String _searchQuery = '';
   String _severityFilter = 'all';
   String _statusFilter = 'all';
 
   @override
   Widget build(BuildContext context) {
-    final clustersAsync = ref.watch(lguClustersProvider).clusters;
+    final clustersAsync = ref.watch(officerClustersProvider).clusters;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Clusters'), elevation: 0),
@@ -36,7 +36,7 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () =>
-                          ref.read(lguClustersProvider).loadClusters(),
+                          ref.read(officerClustersProvider).loadClusters(),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -175,7 +175,7 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          context.go(LguAppRoutes.clusterDetails.replaceAll(':id', cluster.id));
+          context.go(OfficerAppRoutes.clusterDetails.replaceAll(':id', cluster.id));
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -289,3 +289,5 @@ class _LguClustersScreenState extends ConsumerState<LguClustersScreen> {
     );
   }
 }
+
+

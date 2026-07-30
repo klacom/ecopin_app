@@ -96,19 +96,19 @@ class LguReportsNotifier extends ChangeNotifier {
   }
 }
 
-final lguReportsProvider = ChangeNotifierProvider<LguReportsNotifier>((ref) {
+final officerReportsProvider = ChangeNotifierProvider<LguReportsNotifier>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return LguReportsNotifier(apiClient);
 });
 
-class LguReportsScreen extends ConsumerStatefulWidget {
-  const LguReportsScreen({super.key});
+class OfficerReportsScreen extends ConsumerStatefulWidget {
+  const OfficerReportsScreen({super.key});
 
   @override
-  ConsumerState<LguReportsScreen> createState() => _LguReportsScreenState();
+  ConsumerState<OfficerReportsScreen> createState() => _OfficerReportsScreenState();
 }
 
-class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
+class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
   String _searchQuery = '';
   String _statusFilter = 'all';
   String _issueTypeFilter = 'all';
@@ -120,7 +120,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final reportsAsync = ref.watch(lguReportsProvider).reports;
+    final reportsAsync = ref.watch(officerReportsProvider).reports;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Reports'), elevation: 0),
@@ -138,7 +138,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () =>
-                          ref.read(lguReportsProvider).loadReports(),
+                          ref.read(officerReportsProvider).loadReports(),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -463,7 +463,7 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          context.go(LguAppRoutes.reportDetails.replaceAll(':id', report.id));
+          context.go(OfficerAppRoutes.reportDetails.replaceAll(':id', report.id));
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -661,3 +661,4 @@ class _LguReportsScreenState extends ConsumerState<LguReportsScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 }
+

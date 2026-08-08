@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/officer/providers/officer_cleanup_tasks_provider.dart';
-import 'package:ecopin_app/features/maps/presentation/widgets/report_marker.dart';
-import 'package:ecopin_app/features/reports/data/models/report_model.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
+import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:latlong2/latlong.dart';
 

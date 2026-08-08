@@ -1,7 +1,7 @@
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
-import 'package:ecopin_app/features/auth/presentation/screens/login_screen.dart';
-import 'package:ecopin_app/features/auth/presentation/screens/register_screen.dart';
+import 'package:ecopin_app/shared/auth/presentation/screens/login_screen.dart';
+import 'package:ecopin_app/shared/auth/presentation/screens/register_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_cleanup_tasks_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_clusters_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_dashboard_screen.dart';
@@ -16,18 +16,27 @@ import 'package:ecopin_app/features/officer/presentation/screens/officer_create_
 import 'package:ecopin_app/features/officer/presentation/screens/officer_report_details_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_analytics_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_cluster_create_task.dart';
-import 'package:ecopin_app/features/main_screen.dart';
-import 'package:ecopin_app/features/maps/presentation/screens/maps_screen.dart';
-import 'package:ecopin_app/features/notifications/presentation/screens/notifications_screen.dart';
-import 'package:ecopin_app/features/profile/presentation/screens/profile_screen.dart';
-import 'package:ecopin_app/features/reports/presentation/screens/create_report_screen.dart';
-import 'package:ecopin_app/features/reports/presentation/screens/reports_screen.dart';
-import 'package:ecopin_app/features/splash/splash_screen.dart';
+import 'package:ecopin_app/features/citizen/presentation/screens/citizen_main_screen.dart';
+import 'package:ecopin_app/shared/maps/presentation/screens/maps_screen.dart';
+import 'package:ecopin_app/shared/notifications/presentation/screens/notifications_screen.dart';
+import 'package:ecopin_app/shared/profile/presentation/screens/profile_screen.dart';
+import 'package:ecopin_app/shared/reports/presentation/screens/create_report_screen.dart';
+import 'package:ecopin_app/shared/reports/presentation/screens/reports_screen.dart';
+import 'package:ecopin_app/shared/splash/splash_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_main_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_dashboard_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_users_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_settings_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_audit_logs_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_main_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_dashboard_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_tasks_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_reports_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
+import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
-import 'package:ecopin_app/features/reports/presentation/screens/report_details_screen.dart';
+import 'package:ecopin_app/shared/reports/presentation/screens/report_details_screen.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:logging/logging.dart';
 
@@ -57,9 +66,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (path == PublicAppRoutes.splash) {
         // If logged in, redirect based on role
         if (loggedIn) {
-          if (role == UserRole.officer || role == UserRole.fieldCrew) {
+          if (role == UserRole.officer) {
             log.info('Redirecting from splash to Officer Dashboard');
             return OfficerAppRoutes.dashboard;
+          } else if (role == UserRole.fieldCrew) {
+            log.info('Redirecting from splash to Field Crew Dashboard');
+            return FieldCrewAppRoutes.dashboard;
           } else if (role == UserRole.admin) {
             log.info('Redirecting from splash to Admin Dashboard');
             return AdminAppRoutes.dashboard;
@@ -79,6 +91,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isPublicRoute = PublicAppRoutes.publicRoutes.contains(path);
       final isOfficerRoute = path.startsWith('/officer/');
       final isAdminRoute = path.startsWith('/admin/');
+      final isFieldCrewRoute = path.startsWith('/field-crew/');
       final isProtectedRoute = ProtectedAppRoutes.protectedRoutes.any(
         (route) => path.startsWith(route),
       );
@@ -90,9 +103,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (loggedIn && isPublicRoute) {
         // Route based on role
         log.info('Redirecting based on role: $role');
-        if (role == UserRole.officer || role == UserRole.fieldCrew) {
+        if (role == UserRole.officer) {
           log.info('Redirecting to Officer Dashboard');
           return OfficerAppRoutes.dashboard;
+        } else if (role == UserRole.fieldCrew) {
+          log.info('Redirecting to Field Crew Dashboard');
+          return FieldCrewAppRoutes.dashboard;
         } else if (role == UserRole.admin) {
           log.info('Redirecting to Admin Dashboard');
           return AdminAppRoutes.dashboard;
@@ -108,24 +124,29 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Role-based route protection
       if (loggedIn) {
-        log.info('Role-based check - IsOfficerRoute: $isOfficerRoute, Role: $role');
-        if (isOfficerRoute && role != UserRole.officer && role != UserRole.fieldCrew && role != UserRole.admin) {
+        log.info('Role-based check - Role: $role');
+        
+        if (isOfficerRoute && role != UserRole.officer && role != UserRole.admin) {
           log.info('Redirecting to citizen maps - non-Officer/Admin on Officer route');
           return ProtectedAppRoutes.maps;
         }
+        
+        if (isFieldCrewRoute && role != UserRole.fieldCrew && role != UserRole.admin && role != UserRole.officer) {
+          log.info('Redirecting to citizen maps - unauthorized on Field Crew route');
+          return ProtectedAppRoutes.maps;
+        }
+
         if (isAdminRoute && role != UserRole.admin) {
           log.info(
             'Redirecting to appropriate screen - non-Admin on Admin route',
           );
-          return (role == UserRole.officer || role == UserRole.fieldCrew)
-              ? OfficerAppRoutes.dashboard
-              : ProtectedAppRoutes.maps;
+          if (role == UserRole.officer) return OfficerAppRoutes.dashboard;
+          if (role == UserRole.fieldCrew) return FieldCrewAppRoutes.dashboard;
+          return ProtectedAppRoutes.maps;
         }
+
         // Check if path is a protected route (including nested routes)
-        log.info(
-          'Final check - IsOfficerRoute: $isOfficerRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
-        );
-        if (!isOfficerRoute && !isAdminRoute && !isProtectedRoute) {
+        if (!isOfficerRoute && !isAdminRoute && !isFieldCrewRoute && !isProtectedRoute) {
           log.info('Redirecting to citizen maps - not in any route category');
           return ProtectedAppRoutes.maps;
         }
@@ -152,7 +173,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       // Shell Route to maintain a consistent UI shell. Allows navigating on different routes while maintaining access to Bottom Nav Bar.
       ShellRoute(
-        builder: (context, state, child) => MainScreen(child: child),
+        builder: (context, state, child) => CitizenMainScreen(child: child),
         routes: [
           GoRoute(
             path: ProtectedAppRoutes.maps,
@@ -262,6 +283,46 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: OfficerAppRoutes.profile,
             builder: (_, _) => const OfficerProfileScreen(),
+          ),
+        ],
+      ),
+      // Admin Shell Route
+      ShellRoute(
+        builder: (context, state, child) => AdminMainScreen(child: child),
+        routes: [
+          GoRoute(
+            path: AdminAppRoutes.dashboard,
+            builder: (_, _) => const AdminDashboardScreen(),
+          ),
+          GoRoute(
+            path: AdminAppRoutes.users,
+            builder: (_, _) => const AdminUsersScreen(),
+          ),
+          GoRoute(
+            path: AdminAppRoutes.settings,
+            builder: (_, _) => const AdminSettingsScreen(),
+          ),
+          GoRoute(
+            path: AdminAppRoutes.auditLogs,
+            builder: (_, _) => const AdminAuditLogsScreen(),
+          ),
+        ],
+      ),
+      // Field Crew Shell Route
+      ShellRoute(
+        builder: (context, state, child) => FieldCrewMainScreen(child: child),
+        routes: [
+          GoRoute(
+            path: FieldCrewAppRoutes.dashboard,
+            builder: (_, _) => const FieldCrewDashboardScreen(),
+          ),
+          GoRoute(
+            path: FieldCrewAppRoutes.tasks,
+            builder: (_, _) => const FieldCrewTasksScreen(),
+          ),
+          GoRoute(
+            path: FieldCrewAppRoutes.reports,
+            builder: (_, _) => const FieldCrewReportsScreen(),
           ),
         ],
       ),

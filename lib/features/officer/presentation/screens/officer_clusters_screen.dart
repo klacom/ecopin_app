@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/officer/providers/officer_clusters_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -21,7 +22,9 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
     final clustersAsync = ref.watch(officerClustersProvider).clusters;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Clusters'), elevation: 0),
+      appBar: AppBar(
+        actions: const [NotificationBadgeAction()],
+        title: const Text('Clusters'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),

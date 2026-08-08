@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -123,7 +124,9 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
     final reportsAsync = ref.watch(officerReportsProvider).reports;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Reports'), elevation: 0),
+      appBar: AppBar(
+        actions: const [NotificationBadgeAction()],
+        title: const Text('Reports'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),

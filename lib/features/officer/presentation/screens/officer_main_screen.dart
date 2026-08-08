@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/features/profile/providers/profile_provider.dart';
-import 'package:ecopin_app/features/auth/providers/auth_notifier.dart';
+import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
+import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
 
 class OfficerMainScreen extends ConsumerStatefulWidget {

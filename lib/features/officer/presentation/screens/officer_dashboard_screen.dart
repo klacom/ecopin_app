@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/officer/providers/officer_dashboard_provider.dart';
 
@@ -15,7 +16,9 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
     final statsAsync = ref.watch(officerDashboardProvider).stats;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('LGU Dashboard'), elevation: 0),
+      appBar: AppBar(
+        actions: const [NotificationBadgeAction()],
+        title: const Text('LGU Dashboard'), elevation: 0),
       body: RefreshIndicator(
         onRefresh: () => ref.read(officerDashboardProvider).loadStats(),
         child: statsAsync.when(

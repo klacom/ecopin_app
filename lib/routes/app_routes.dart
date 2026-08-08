@@ -27,7 +27,7 @@ class ProtectedAppRoutes {
   ];
 }
 
-// Officer/Field Crew routes
+// Officer routes
 class OfficerAppRoutes {
   static const String dashboard = '/officer/dashboard';
   static const String maps = '/officer/maps';
@@ -55,12 +55,23 @@ class OfficerAppRoutes {
   ];
 }
 
+// Field Crew routes
+class FieldCrewAppRoutes {
+  static const String dashboard = '/field-crew/dashboard';
+  static const String tasks = '/field-crew/tasks';
+  static const String reports = '/field-crew/reports';
+  static const String profile = '/field-crew/profile';
+
+  static const fieldCrewRoutes = [dashboard, tasks, reports, profile];
+}
+
 // Admin-only routes
 class AdminAppRoutes {
   static const String dashboard = '/admin/dashboard';
   static const String users = '/admin/users';
   static const String settings = '/admin/settings';
   static const String auditLogs = '/admin/audit-logs';
+  static const String profile = '/admin/profile';
 
-  static const adminRoutes = [dashboard, users, settings, auditLogs];
+  static const adminRoutes = [dashboard, users, settings, auditLogs, profile];
 }

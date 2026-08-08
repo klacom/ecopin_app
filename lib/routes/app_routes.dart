@@ -42,6 +42,7 @@ class OfficerAppRoutes {
   static const String responseLogs = '/officer/response-logs';
   static const String analytics = '/officer/analytics';
   static const String profile = '/officer/profile';
+  static const String notifications = '/officer/notifications';
 
   static const officerRoutes = [
     dashboard,
@@ -52,6 +53,7 @@ class OfficerAppRoutes {
     responseLogs,
     analytics,
     profile,
+    notifications,
   ];
 }
 
@@ -61,8 +63,9 @@ class FieldCrewAppRoutes {
   static const String tasks = '/field-crew/tasks';
   static const String reports = '/field-crew/reports';
   static const String profile = '/field-crew/profile';
+  static const String notifications = '/field-crew/notifications';
 
-  static const fieldCrewRoutes = [dashboard, tasks, reports, profile];
+  static const fieldCrewRoutes = [dashboard, tasks, reports, profile, notifications];
 }
 
 // Admin-only routes
@@ -72,6 +75,7 @@ class AdminAppRoutes {
   static const String settings = '/admin/settings';
   static const String auditLogs = '/admin/audit-logs';
   static const String profile = '/admin/profile';
+  static const String notifications = '/admin/notifications';
 
-  static const adminRoutes = [dashboard, users, settings, auditLogs, profile];
+  static const adminRoutes = [dashboard, users, settings, auditLogs, profile, notifications];
 }

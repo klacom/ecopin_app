@@ -28,7 +28,7 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
     if (location.startsWith(FieldCrewAppRoutes.dashboard)) return 0;
     if (location.startsWith(FieldCrewAppRoutes.tasks)) return 1;
     if (location.startsWith(FieldCrewAppRoutes.reports)) return 2;
-    if (location.startsWith(ProtectedAppRoutes.profile)) return 3;
+    if (location.startsWith(FieldCrewAppRoutes.profile)) return 3;
     return 0;
   }
 
@@ -44,7 +44,7 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
         context.go(FieldCrewAppRoutes.reports);
         break;
       case 3:
-        context.go(ProtectedAppRoutes.profile);
+        context.go(FieldCrewAppRoutes.profile);
         break;
     }
   }

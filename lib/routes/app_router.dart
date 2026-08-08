@@ -284,6 +284,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: OfficerAppRoutes.profile,
             builder: (_, _) => const OfficerProfileScreen(),
           ),
+          GoRoute(
+            path: OfficerAppRoutes.notifications,
+            builder: (_, _) => const NotificationsScreen(),
+          ),
         ],
       ),
       // Admin Shell Route
@@ -306,6 +310,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AdminAppRoutes.auditLogs,
             builder: (_, _) => const AdminAuditLogsScreen(),
           ),
+          GoRoute(
+            path: AdminAppRoutes.profile,
+            builder: (_, _) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: AdminAppRoutes.notifications,
+            builder: (_, _) => const NotificationsScreen(),
+          ),
         ],
       ),
       // Field Crew Shell Route
@@ -323,6 +335,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: FieldCrewAppRoutes.reports,
             builder: (_, _) => const FieldCrewReportsScreen(),
+          ),
+          GoRoute(
+            path: FieldCrewAppRoutes.profile,
+            builder: (_, _) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: FieldCrewAppRoutes.notifications,
+            builder: (_, _) => const NotificationsScreen(),
           ),
         ],
       ),

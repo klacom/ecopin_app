@@ -26,9 +26,10 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith(FieldCrewAppRoutes.dashboard)) return 0;
-    if (location.startsWith(FieldCrewAppRoutes.tasks)) return 1;
-    if (location.startsWith(FieldCrewAppRoutes.reports)) return 2;
-    if (location.startsWith(FieldCrewAppRoutes.profile)) return 3;
+    if (location.startsWith(FieldCrewAppRoutes.map)) return 1;
+    if (location.startsWith(FieldCrewAppRoutes.tasks)) return 2;
+    if (location.startsWith(FieldCrewAppRoutes.reports)) return 3;
+    if (location.startsWith(FieldCrewAppRoutes.profile)) return 4;
     return 0;
   }
 
@@ -38,12 +39,15 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
         context.go(FieldCrewAppRoutes.dashboard);
         break;
       case 1:
-        context.go(FieldCrewAppRoutes.tasks);
+        context.go(FieldCrewAppRoutes.map);
         break;
       case 2:
-        context.go(FieldCrewAppRoutes.reports);
+        context.go(FieldCrewAppRoutes.tasks);
         break;
       case 3:
+        context.go(FieldCrewAppRoutes.reports);
+        break;
+      case 4:
         context.go(FieldCrewAppRoutes.profile);
         break;
     }
@@ -84,9 +88,10 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard, 'Dashboard', selectedIndex),
-                  _buildNavItem(1, Icons.task_outlined, Icons.task, 'Tasks', selectedIndex),
-                  _buildNavItem(2, Icons.report_outlined, Icons.report, 'Reports', selectedIndex),
-                  _buildProfileNavItem(3, selectedIndex, avatarUrl, fullName),
+                  _buildNavItem(1, Icons.map_outlined, Icons.map, 'Map', selectedIndex),
+                  _buildNavItem(2, Icons.task_outlined, Icons.task, 'Tasks', selectedIndex),
+                  _buildNavItem(3, Icons.report_outlined, Icons.report, 'Reports', selectedIndex),
+                  _buildProfileNavItem(4, selectedIndex, avatarUrl, fullName),
                 ],
               ),
             ),

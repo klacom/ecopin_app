@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/status_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -24,7 +25,18 @@ import 'package:logging/logging.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
-  const MapScreen({super.key});
+  final bool isFieldCrewMode;
+  final bool showOptimizedRoute;
+  final bool showOtherCrews;
+  final bool showBaseOfOperations;
+
+  const MapScreen({
+    super.key,
+    this.isFieldCrewMode = false,
+    this.showOptimizedRoute = false,
+    this.showOtherCrews = false,
+    this.showBaseOfOperations = false,
+  });
 
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
@@ -33,6 +45,35 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   final Logger log = Logger("Maps Screen");
   final MapController _mapController = MapController();
+
+  // Mock Field Crew Data for high-fidelity visualization
+  final LatLng _baseLocation = LatLng(14.5762, 121.0855);
+  
+  final List<Map<String, dynamic>> _otherCrews = [
+    {
+      'name': 'Juan Cruz',
+      'location': LatLng(14.5710, 121.0820),
+      'status': 'Active',
+      'color': const Color(0xFF2E7D32),
+    },
+    {
+      'name': 'Pedro Santos',
+      'location': LatLng(14.5780, 121.0760),
+      'status': 'Active',
+      'color': const Color(0xFFF9A825),
+    },
+  ];
+
+  final List<LatLng> _optimizedRoutePoints = [
+    LatLng(14.5762, 121.0855), // Base
+    LatLng(14.5745, 121.0830),
+    LatLng(14.5720, 121.0815),
+    LatLng(14.5710, 121.0820), // Crew 1
+    LatLng(14.5680, 121.0840), // Task location 1
+    LatLng(14.5700, 121.0900), // Task location 2
+    LatLng(14.5735, 121.0880),
+    LatLng(14.5762, 121.0855), // Back to base
+  ];
   // TODO: Make own Text Editing Controller + Separate controller in different file.
   final TextEditingController _searchController = TextEditingController();
   final LocationSearchService _searchService = LocationSearchService();
@@ -253,14 +294,26 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(reportsStreamProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
+    final textSecondary = textPrimary.withValues(alpha: 0.6);
 
     return Scaffold(
       body: reportsAsync.when(
         data: (reports) {
           // Filter out rejected reports
-          final visibleReports = reports
+          var visibleReports = reports
               .where((r) => r.validationStatus.toLowerCase() != 'rejected')
               .toList();
+
+          if (widget.isFieldCrewMode) {
+            visibleReports = visibleReports
+                .where((r) =>
+                    r.status.toLowerCase() == 'in progress' ||
+                    r.status.toLowerCase() == 'acknowledged' ||
+                    r.status.toLowerCase() == 'pending')
+                .toList();
+          }
           return Stack(
             fit: StackFit.expand,
             children: [
@@ -334,6 +387,108 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       showAccuracyCircle: true,
                     ),
                   ),
+                  if (widget.showOptimizedRoute)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: _optimizedRoutePoints,
+                          strokeWidth: 4.5,
+                          color: const Color(0xFF699834),
+                          borderColor: const Color(0xFF457113),
+                          borderStrokeWidth: 1.5,
+                        ),
+                      ],
+                    ),
+                  if (widget.showBaseOfOperations)
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _baseLocation,
+                          width: 45,
+                          height: 45,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF457113),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.home_work_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (widget.showOtherCrews)
+                    MarkerLayer(
+                      markers: _otherCrews.map((crew) {
+                        return Marker(
+                          point: crew['location'] as LatLng,
+                          width: 42,
+                          height: 42,
+                          child: Tooltip(
+                            message: '${crew['name']} (${crew['status']})',
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                // Pulsing/glow ring
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: (crew['color'] as Color).withValues(alpha: 0.2),
+                                    border: Border.all(
+                                      color: crew['color'] as Color,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                                // Avatar circle
+                                CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: crew['color'] as Color,
+                                  child: Text(
+                                    (crew['name'] as String)
+                                        .split(' ')
+                                        .map((n) => n[0])
+                                        .join(''),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                // Live dot indicator
+                                Positioned(
+                                  right: 4,
+                                  bottom: 4,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF2E7D32),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 1),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   MyMarkerClusterLayer(
                     markers: visibleReports.map((report) {
                       return Marker(
@@ -687,6 +842,100 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
               ),
+              if (widget.isFieldCrewMode)
+                Positioned(
+                  left: AppColors.spaceMD,
+                  right: AppColors.spaceMD,
+                  bottom: 110, // Positioned above bottom nav bar
+                  child: SafeArea(
+                    child: Container(
+                      padding: const EdgeInsets.all(AppColors.spaceMD),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.surfaceDark : Colors.white,
+                        borderRadius: BorderRadius.circular(AppColors.radiusCard),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.route_rounded,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'AI-Optimized Task Route',
+                                      style: AppTypography.body.copyWith(
+                                        color: textPrimary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Factors: Traffic (Normal), Weather (Clear), Road works (Avoided)',
+                                      style: AppTypography.caption.copyWith(
+                                        color: textSecondary,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(AppColors.radiusChip),
+                                ),
+                                child: Text(
+                                  'Live',
+                                  style: AppTypography.caption.copyWith(
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildMetric(Icons.linear_scale_rounded, 'Distance', '4.8 km', textPrimary, textSecondary),
+                              _buildMetric(Icons.access_time_rounded, 'Est. Time', '24 mins', textPrimary, textSecondary),
+                              _buildMetric(Icons.people_alt_rounded, 'Other Crews', '2 Nearby', textPrimary, textSecondary),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -766,6 +1015,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMetric(IconData icon, String label, String value, Color textPrimary, Color textSecondary) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: textSecondary),
+        const SizedBox(width: 4),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(color: textSecondary, fontSize: 9, fontFamily: 'Outfit'),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Outfit',
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -60,12 +60,13 @@ class OfficerAppRoutes {
 // Field Crew routes
 class FieldCrewAppRoutes {
   static const String dashboard = '/field-crew/dashboard';
+  static const String map = '/field-crew/map';
   static const String tasks = '/field-crew/tasks';
   static const String reports = '/field-crew/reports';
   static const String profile = '/field-crew/profile';
   static const String notifications = '/field-crew/notifications';
 
-  static const fieldCrewRoutes = [dashboard, tasks, reports, profile, notifications];
+  static const fieldCrewRoutes = [dashboard, map, tasks, reports, profile, notifications];
 }
 
 // Admin-only routes

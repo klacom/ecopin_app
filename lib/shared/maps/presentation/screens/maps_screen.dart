@@ -48,7 +48,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // Mock Field Crew Data for high-fidelity visualization
   final LatLng _baseLocation = LatLng(14.5762, 121.0855);
-  
+
   final List<Map<String, dynamic>> _otherCrews = [
     {
       'name': 'Juan Cruz',
@@ -295,7 +295,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final reportsAsync = ref.watch(reportsStreamProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
+    final textPrimary = isDark
+        ? AppColors.textPrimaryDark
+        : AppColors.textPrimaryLight;
     final textSecondary = textPrimary.withValues(alpha: 0.6);
 
     return Scaffold(
@@ -308,10 +310,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
           if (widget.isFieldCrewMode) {
             visibleReports = visibleReports
-                .where((r) =>
-                    r.status.toLowerCase() == 'in progress' ||
-                    r.status.toLowerCase() == 'acknowledged' ||
-                    r.status.toLowerCase() == 'pending')
+                .where(
+                  (r) =>
+                      r.status.toLowerCase() == 'in progress' ||
+                      r.status.toLowerCase() == 'acknowledged' ||
+                      r.status.toLowerCase() == 'pending',
+                )
                 .toList();
           }
           return Stack(
@@ -327,9 +331,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   interactionOptions: const InteractionOptions(
                     flags: InteractiveFlag.all,
                   ),
-                  onTap: (tapPosition, point) {
-                    context.push(ProtectedAppRoutes.createReport, extra: point);
-                  },
+                  onTap: widget.isFieldCrewMode
+                      ? null
+                      : (tapPosition, point) {
+                          context.push(
+                            ProtectedAppRoutes.createReport,
+                            extra: point,
+                          );
+                        },
                 ),
                 children: [
                   TileLayer(
@@ -446,7 +455,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   height: 38,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: (crew['color'] as Color).withValues(alpha: 0.2),
+                                    color: (crew['color'] as Color).withValues(
+                                      alpha: 0.2,
+                                    ),
                                     border: Border.all(
                                       color: crew['color'] as Color,
                                       width: 1.5,
@@ -479,7 +490,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF2E7D32),
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white, width: 1),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 1,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -514,246 +528,253 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ],
               ),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Container(
-                    color: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Consumer(
-                          builder: (context, ref, child) {
-                            final isDark =
-                                Theme.of(context).brightness == Brightness.dark;
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppColors.spaceLG,
-                                vertical: AppColors.spaceSM,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppColors.surfaceDark
-                                    : AppColors.surfaceLight,
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.search,
-                                    color: isDark
-                                        ? AppColors.secondaryDark
-                                        : AppColors.secondaryLight,
-                                  ),
-                                  const SizedBox(width: AppColors.spaceMD),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _searchController,
-                                      focusNode: _searchFocusNode,
-                                      onChanged: _onSearchChanged,
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? AppColors.textPrimaryDark
-                                            : AppColors.textPrimaryLight,
-                                        fontSize: 16,
-                                      ),
-                                      decoration: InputDecoration(
-                                        hintText: 'Search location...',
-                                        hintStyle: TextStyle(
-                                          color: isDark
-                                              ? AppColors.secondaryDark
-                                              : AppColors.secondaryLight,
-                                          fontSize: 16,
-                                        ),
-                                        border: InputBorder.none,
-                                      ),
-                                    ),
-                                  ),
-                                  if (_searchController.text.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: () {
-                                        _searchController.clear();
-                                        setState(() {
-                                          _showSuggestions = false;
-                                          _suggestions = [];
-                                        });
-                                      },
-                                      child: Container(
-                                        margin: const EdgeInsets.only(
-                                          right: AppColors.spaceSM,
-                                        ),
-                                        padding: const EdgeInsets.all(
-                                          AppColors.spaceXS,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? AppColors.surfaceLight
-                                              : AppColors.surfaceDark,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.close,
-                                          color: isDark
-                                              ? AppColors.secondaryLight
-                                              : AppColors.secondaryDark,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ),
-                                  if (_isSearching)
-                                    Container(
-                                      margin: const EdgeInsets.only(
-                                        right: AppColors.spaceSM,
-                                      ),
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: isDark
-                                            ? AppColors.textPrimaryDark
-                                            : AppColors.textPrimaryLight,
-                                      ),
-                                    ),
-                                  if (_suggestions.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _showSuggestions = !_showSuggestions;
-                                        });
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.all(
-                                          AppColors.spaceXS,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: _showSuggestions
-                                              ? isDark
-                                                    ? AppColors.surfaceLight
-                                                    : AppColors.surfaceDark
-                                              : isDark
-                                              ? AppColors.surfaceDark
-                                              : AppColors.surfaceLight,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          _showSuggestions
-                                              ? Icons.keyboard_arrow_up
-                                              : Icons.keyboard_arrow_down,
-                                          color: isDark
-                                              ? AppColors.secondaryDark
-                                              : AppColors.secondaryLight,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: AppColors.spaceSM),
-                        if (_showSuggestions)
+              // ── Search bar (hidden in field crew mode) ─────────────────
+              if (!widget.isFieldCrewMode)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    child: Container(
+                      color: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Consumer(
                             builder: (context, ref, child) {
                               final isDark =
                                   Theme.of(context).brightness ==
                                   Brightness.dark;
                               return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppColors.spaceLG,
+                                  vertical: AppColors.spaceSM,
+                                ),
                                 decoration: BoxDecoration(
                                   color: isDark
                                       ? AppColors.surfaceDark
                                       : AppColors.surfaceLight,
-                                  borderRadius: BorderRadius.circular(
-                                    AppColors.radiusCard,
-                                  ),
+                                  borderRadius: BorderRadius.circular(24),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withValues(
-                                        alpha: 0.2,
+                                        alpha: 0.1,
                                       ),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 8),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 5),
                                     ),
                                   ],
                                 ),
-                                width: double.infinity,
-                                height: 250,
-                                child: ListView.builder(
-                                  padding: const EdgeInsets.all(
-                                    AppColors.spaceSM,
-                                  ),
-                                  itemCount: _suggestions.length,
-                                  itemBuilder: (context, index) {
-                                    final suggestion = _suggestions[index];
-                                    return InkWell(
-                                      onTap: () => _onSuggestionTap(suggestion),
-                                      child: Container(
-                                        margin: const EdgeInsets.only(
-                                          bottom: AppColors.spaceXS,
-                                        ),
-                                        padding: const EdgeInsets.all(
-                                          AppColors.spaceSM,
-                                        ),
-                                        decoration: BoxDecoration(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.search,
+                                      color: isDark
+                                          ? AppColors.secondaryDark
+                                          : AppColors.secondaryLight,
+                                    ),
+                                    const SizedBox(width: AppColors.spaceMD),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _searchController,
+                                        focusNode: _searchFocusNode,
+                                        onChanged: _onSearchChanged,
+                                        style: TextStyle(
                                           color: isDark
-                                              ? AppColors.backgroundDark
-                                              : AppColors.backgroundLight,
-                                          borderRadius: BorderRadius.circular(
-                                            AppColors.radiusButton,
-                                          ),
+                                              ? AppColors.textPrimaryDark
+                                              : AppColors.textPrimaryLight,
+                                          fontSize: 16,
                                         ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.location_pin,
-                                              color: isDark
-                                                  ? AppColors.secondaryDark
-                                                  : AppColors.secondaryLight,
-                                            ),
-                                            const SizedBox(
-                                              width: AppColors.spaceSM,
-                                            ),
-                                            Expanded(
-                                              child: Text(
-                                                suggestion.displayName,
-                                                style: TextStyle(
-                                                  color: isDark
-                                                      ? AppColors
-                                                            .textPrimaryDark
-                                                      : AppColors
-                                                            .textPrimaryLight,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                        decoration: InputDecoration(
+                                          hintText: 'Search location...',
+                                          hintStyle: TextStyle(
+                                            color: isDark
+                                                ? AppColors.secondaryDark
+                                                : AppColors.secondaryLight,
+                                            fontSize: 16,
+                                          ),
+                                          border: InputBorder.none,
                                         ),
                                       ),
-                                    );
-                                  },
+                                    ),
+                                    if (_searchController.text.isNotEmpty)
+                                      GestureDetector(
+                                        onTap: () {
+                                          _searchController.clear();
+                                          setState(() {
+                                            _showSuggestions = false;
+                                            _suggestions = [];
+                                          });
+                                        },
+                                        child: Container(
+                                          margin: const EdgeInsets.only(
+                                            right: AppColors.spaceSM,
+                                          ),
+                                          padding: const EdgeInsets.all(
+                                            AppColors.spaceXS,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? AppColors.surfaceLight
+                                                : AppColors.surfaceDark,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.close,
+                                            color: isDark
+                                                ? AppColors.secondaryLight
+                                                : AppColors.secondaryDark,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ),
+                                    if (_isSearching)
+                                      Container(
+                                        margin: const EdgeInsets.only(
+                                          right: AppColors.spaceSM,
+                                        ),
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: isDark
+                                              ? AppColors.textPrimaryDark
+                                              : AppColors.textPrimaryLight,
+                                        ),
+                                      ),
+                                    if (_suggestions.isNotEmpty)
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _showSuggestions =
+                                                !_showSuggestions;
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(
+                                            AppColors.spaceXS,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _showSuggestions
+                                                ? isDark
+                                                      ? AppColors.surfaceLight
+                                                      : AppColors.surfaceDark
+                                                : isDark
+                                                ? AppColors.surfaceDark
+                                                : AppColors.surfaceLight,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            _showSuggestions
+                                                ? Icons.keyboard_arrow_up
+                                                : Icons.keyboard_arrow_down,
+                                            color: isDark
+                                                ? AppColors.secondaryDark
+                                                : AppColors.secondaryLight,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               );
                             },
                           ),
-                      ],
+                          const SizedBox(height: AppColors.spaceSM),
+                          if (_showSuggestions)
+                            Consumer(
+                              builder: (context, ref, child) {
+                                final isDark =
+                                    Theme.of(context).brightness ==
+                                    Brightness.dark;
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? AppColors.surfaceDark
+                                        : AppColors.surfaceLight,
+                                    borderRadius: BorderRadius.circular(
+                                      AppColors.radiusCard,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        blurRadius: 15,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  width: double.infinity,
+                                  height: 250,
+                                  child: ListView.builder(
+                                    padding: const EdgeInsets.all(
+                                      AppColors.spaceSM,
+                                    ),
+                                    itemCount: _suggestions.length,
+                                    itemBuilder: (context, index) {
+                                      final suggestion = _suggestions[index];
+                                      return InkWell(
+                                        onTap: () =>
+                                            _onSuggestionTap(suggestion),
+                                        child: Container(
+                                          margin: const EdgeInsets.only(
+                                            bottom: AppColors.spaceXS,
+                                          ),
+                                          padding: const EdgeInsets.all(
+                                            AppColors.spaceSM,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? AppColors.backgroundDark
+                                                : AppColors.backgroundLight,
+                                            borderRadius: BorderRadius.circular(
+                                              AppColors.radiusButton,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.location_pin,
+                                                color: isDark
+                                                    ? AppColors.secondaryDark
+                                                    : AppColors.secondaryLight,
+                                              ),
+                                              const SizedBox(
+                                                width: AppColors.spaceSM,
+                                              ),
+                                              Expanded(
+                                                child: Text(
+                                                  suggestion.displayName,
+                                                  style: TextStyle(
+                                                    color: isDark
+                                                        ? AppColors
+                                                              .textPrimaryDark
+                                                        : AppColors
+                                                              .textPrimaryLight,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
               Positioned(
                 right: AppColors.spaceLG,
                 bottom: 100,
@@ -842,96 +863,145 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
               ),
+              // ── Field Crew Route Card (top of screen) ──────────────────
               if (widget.isFieldCrewMode)
                 Positioned(
+                  top: 0,
                   left: AppColors.spaceMD,
                   right: AppColors.spaceMD,
-                  bottom: 110, // Positioned above bottom nav bar
                   child: SafeArea(
-                    child: Container(
-                      padding: const EdgeInsets.all(AppColors.spaceMD),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.surfaceDark : Colors.white,
-                        borderRadius: BorderRadius.circular(AppColors.radiusCard),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: AppColors.spaceSM),
+                      child: Container(
+                        padding: const EdgeInsets.all(AppColors.spaceMD),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceDark : Colors.white,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusCard,
                           ),
-                        ],
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                          width: 1.5,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.2),
+                            width: 1.5,
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.route_rounded,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  size: 18,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'AI-Optimized Task Route',
-                                      style: AppTypography.body.copyWith(
-                                        color: textPrimary,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Factors: Traffic (Normal), Weather (Clear), Road works (Avoided)',
-                                      style: AppTypography.caption.copyWith(
-                                        color: textSecondary,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.success.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(AppColors.radiusChip),
-                                ),
-                                child: Text(
-                                  'Live',
-                                  style: AppTypography.caption.copyWith(
-                                    color: AppColors.success,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── Header row ────────────────────────────────
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primary
+                                        .withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.route_rounded,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    size: 18,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildMetric(Icons.linear_scale_rounded, 'Distance', '4.8 km', textPrimary, textSecondary),
-                              _buildMetric(Icons.access_time_rounded, 'Est. Time', '24 mins', textPrimary, textSecondary),
-                              _buildMetric(Icons.people_alt_rounded, 'Other Crews', '2 Nearby', textPrimary, textSecondary),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'AI-Optimized Task Route',
+                                        style: AppTypography.body.copyWith(
+                                          color: textPrimary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Traffic: Normal · Weather: Clear · Road works: Avoided',
+                                        style: AppTypography.caption.copyWith(
+                                          color: textSecondary,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // ── Metrics row ───────────────────────────────
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildMetric(
+                                  Icons.linear_scale_rounded,
+                                  'Distance',
+                                  '4.8 km',
+                                  textPrimary,
+                                  textSecondary,
+                                ),
+                                _buildMetric(
+                                  Icons.access_time_rounded,
+                                  'Est. Time',
+                                  '24 mins',
+                                  textPrimary,
+                                  textSecondary,
+                                ),
+                                _buildMetric(
+                                  Icons.people_alt_rounded,
+                                  'Other Crews',
+                                  '2 Nearby',
+                                  textPrimary,
+                                  textSecondary,
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // ── Divider ───────────────────────────────────
+                            Divider(
+                              color: isDark
+                                  ? AppColors.dividerDark
+                                  : AppColors.dividerLight,
+                              thickness: 1,
+                              height: 1,
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // ── Update Status button ──────────────────────
+                            // TODO: Enable this button when the field crew is
+                            // detected within the required proximity radius of
+                            // the assigned report location. Wire up the
+                            // `_isWithinRadius` flag once proximity detection
+                            // is implemented.
+                            _buildUpdateStatusButton(
+                              isWithinRadius:
+                                  false, // placeholder — replace with real proximity check
+                              onUpdateStatus: () {
+                                // TODO: Implement status update call:
+                                // advance report.status to next lifecycle stage
+                              },
+                              textPrimary: textPrimary,
+                              textSecondary: textSecondary,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1018,7 +1088,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  Widget _buildMetric(IconData icon, String label, String value, Color textPrimary, Color textSecondary) {
+  Widget _buildMetric(
+    IconData icon,
+    String label,
+    String value,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1030,7 +1106,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           children: [
             Text(
               label,
-              style: TextStyle(color: textSecondary, fontSize: 9, fontFamily: 'Outfit'),
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 9,
+                fontFamily: 'Outfit',
+              ),
             ),
             Text(
               value,
@@ -1044,6 +1124,46 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  /// Builds the "Update Status" button shown on the assigned task card.
+  ///
+  /// The button is enabled only when [isWithinRadius] is `true` (i.e. the
+  /// field crew is physically within the required proximity of the report
+  /// location). When disabled it shows a muted style with a lock-icon hint
+  /// so the user understands why they cannot tap it yet.
+  Widget _buildUpdateStatusButton({
+    required bool isWithinRadius,
+    required VoidCallback onUpdateStatus,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: isWithinRadius ? onUpdateStatus : null,
+        icon: Icon(
+          isWithinRadius ? Icons.check_circle_outline : Icons.lock_outline,
+          size: 16,
+        ),
+        label: Text(
+          isWithinRadius ? 'Update Status' : 'Update Status (out of range)',
+          style: TextStyle(
+            fontFamily: 'Outfit',
+            fontWeight: FontWeight.w600,
+            color: isWithinRadius ? null : textSecondary,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          disabledBackgroundColor: Colors.grey.withValues(alpha: 0.12),
+          disabledForegroundColor: textSecondary,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:ecopin_app/features/notifications/services/notification_service.dart';
+import 'package:ecopin_app/shared/notifications/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';

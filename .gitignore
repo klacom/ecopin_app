@@ -46,3 +46,9 @@ app.*.map.json
 
 # Environment Variables
 .env
+
+# Task
+TASK.md
+
+# Plan
+PLAN.md

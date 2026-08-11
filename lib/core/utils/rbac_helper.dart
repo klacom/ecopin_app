@@ -8,11 +8,19 @@ class Permissions {
     return role == UserRole.admin;
   }
 
-  static bool canManageReports(UserRole? role) {
+  static bool canAccessDeskOps(UserRole? role) {
     return role == UserRole.admin || role == UserRole.officer;
   }
 
-  static bool canViewTasks(UserRole? role) {
+  static bool canAccessFieldOps(UserRole? role) {
     return role == UserRole.admin || role == UserRole.officer || role == UserRole.fieldCrew;
+  }
+
+  static bool canViewStats(UserRole? role) {
+    return role == UserRole.admin || role == UserRole.officer;
+  }
+
+  static bool canManageReports(UserRole? role) {
+    return role == UserRole.admin || role == UserRole.officer;
   }
 }

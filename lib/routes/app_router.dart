@@ -32,6 +32,7 @@ import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_m
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_dashboard_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_tasks_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_reports_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/fc_report_details_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/map/fc_map_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -340,6 +341,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: FieldCrewAppRoutes.reports,
             builder: (_, _) => const FieldCrewReportsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return FcReportDetailsScreen(reportId: id);
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: FieldCrewAppRoutes.profile,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
@@ -84,6 +85,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _showHeatmap = false;
   bool _isLoadingLocation = false;
   bool _isSearching = false;
+  double _currentZoom = 15.0;
+  static const double _clusterExpansionZoom = 18.0;
 
   @override
   void initState() {
@@ -325,46 +328,115 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         }
       } else {
         // Cluster marker for reports with same clusterId
-        // Calculate centroid of cluster
-        final double avgLat = clusterReports
-            .map((r) => r.location.latitude)
-            .reduce((a, b) => a + b) / clusterReports.length;
-        final double avgLng = clusterReports
-            .map((r) => r.location.longitude)
-            .reduce((a, b) => a + b) / clusterReports.length;
+        // Only show cluster marker when zoomed out (< 16)
+        if (_currentZoom < _clusterExpansionZoom) {
+          // Calculate centroid of cluster
+          final double avgLat = clusterReports
+              .map((r) => r.location.latitude)
+              .reduce((a, b) => a + b) / clusterReports.length;
+          final double avgLng = clusterReports
+              .map((r) => r.location.longitude)
+              .reduce((a, b) => a + b) / clusterReports.length;
 
-        // Determine dominant issue type
-        final Map<String, int> issueTypeCounts = {};
-        for (final report in clusterReports) {
-          final issueType = report.issueType ?? 'unknown';
-          issueTypeCounts[issueType] = (issueTypeCounts[issueType] ?? 0) + 1;
-        }
-        final dominantIssueType = issueTypeCounts.entries
-            .reduce((a, b) => a.value > b.value ? a : b)
-            .key;
+          // Determine dominant issue type
+          final Map<String, int> issueTypeCounts = {};
+          for (final report in clusterReports) {
+            final issueType = report.issueType ?? 'unknown';
+            issueTypeCounts[issueType] = (issueTypeCounts[issueType] ?? 0) + 1;
+          }
+          final dominantIssueType = issueTypeCounts.entries
+              .reduce((a, b) => a.value > b.value ? a : b)
+              .key;
 
-        // Determine severity based on report count
-        final severity = clusterReports.length >= 5 ? 'high'
-                      : clusterReports.length >= 3 ? 'medium'
-                      : 'low';
+          // Determine severity based on report count
+          final severity = clusterReports.length >= 5 ? 'high'
+                        : clusterReports.length >= 3 ? 'medium'
+                        : 'low';
 
-        markers.add(
-          Marker(
-            point: LatLng(avgLat, avgLng),
-            width: 50,
-            height: 50,
-            child: ClusterMarker(
-              reportCount: clusterReports.length,
-              severity: severity,
-              issueType: dominantIssueType,
-              onTap: () => _showClusterPreview(context, clusterReports),
+          markers.add(
+            Marker(
+              point: LatLng(avgLat, avgLng),
+              width: 50,
+              height: 50,
+              child: ClusterMarker(
+                reportCount: clusterReports.length,
+                severity: severity,
+                issueType: dominantIssueType,
+                onTap: () => _showClusterPreview(context, clusterReports),
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          // When zoomed in (>= 16), show individual report pins
+          for (final report in clusterReports) {
+            markers.add(
+              Marker(
+                point: report.location,
+                width: 40,
+                height: 40,
+                child: GestureDetector(
+                  onTap: () => _showReportPreview(context, report),
+                  child: ReportMarker(status: report.status),
+                ),
+              ),
+            );
+          }
+        }
       }
     }
 
     return markers;
+  }
+
+  List<Polygon> _buildClusterPolygons(List<ReportModel> reports) {
+    // Group reports by clusterId
+    final Map<String?, List<ReportModel>> groupedReports = {};
+    
+    for (final report in reports) {
+      final clusterId = report.clusterId;
+      if (!groupedReports.containsKey(clusterId)) {
+        groupedReports[clusterId] = [];
+      }
+      groupedReports[clusterId]!.add(report);
+    }
+
+    final List<Polygon> polygons = [];
+
+    // Process each cluster
+    for (final entry in groupedReports.entries) {
+      final clusterId = entry.key;
+      final clusterReports = entry.value;
+
+      // Only create polygons for clusters with 2+ reports when zoomed in
+      if (clusterId != null && clusterReports.length >= 2 && _currentZoom >= _clusterExpansionZoom) {
+        // Get coordinates of all member reports
+        final List<LatLng> points = clusterReports.map((report) => report.location).toList();
+
+        if (points.length >= 3) {
+          // Calculate centroid
+          final double centerLat = points.map((p) => p.latitude).reduce((a, b) => a + b) / points.length;
+          final double centerLng = points.map((p) => p.longitude).reduce((a, b) => a + b) / points.length;
+
+          // Sort points by angle around center to prevent self-intersection
+          final List<LatLng> sortedPoints = List.from(points)..sort((a, b) {
+            final angleA = atan2(a.longitude - centerLng, a.latitude - centerLat);
+            final angleB = atan2(b.longitude - centerLng, b.latitude - centerLat);
+            return angleA.compareTo(angleB);
+          });
+
+          polygons.add(
+            Polygon(
+              points: sortedPoints,
+              color: Colors.red.withValues(alpha: 0.2),
+              borderColor: Colors.red,
+              borderStrokeWidth: 2,
+            ),
+          );
+        }
+      }
+    }
+
+    return polygons;
   }
 
   void _showClusterPreview(BuildContext context, List<ReportModel> clusterReports) {
@@ -471,7 +543,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   initialCenter: pasigInitialCenter,
                   initialZoom: 15.0,
                   minZoom: 3,
-                  maxZoom: 18,
+                  maxZoom: 22,
                   interactionOptions: const InteractionOptions(
                     flags: InteractiveFlag.all,
                   ),
@@ -483,6 +555,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             extra: point,
                           );
                         },
+                  onMapEvent: (MapEvent event) {
+                    if (event is MapEventMoveEnd) {
+                      setState(() {
+                        _currentZoom = event.camera.zoom;
+                      });
+                    }
+                  },
                 ),
                 children: [
                   TileLayer(
@@ -647,6 +726,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         );
                       }).toList(),
                     ),
+                  // Cluster polygons (shown when zoomed in) - render under pins
+                  PolygonLayer(
+                    polygons: _buildClusterPolygons(visibleReports),
+                  ),
                   // Custom clustering based on DBSCAN clusterId
                   MarkerLayer(
                     markers: _buildClusterMarkers(visibleReports),

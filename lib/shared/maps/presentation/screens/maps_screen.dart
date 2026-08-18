@@ -18,9 +18,8 @@ import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
-import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_layer.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/cluster_marker.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
-import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:logging/logging.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 
@@ -290,6 +289,151 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _searchFocusNode.unfocus();
   }
 
+  List<Marker> _buildClusterMarkers(List<ReportModel> reports) {
+    // Group reports by clusterId
+    final Map<String?, List<ReportModel>> groupedReports = {};
+    
+    for (final report in reports) {
+      final clusterId = report.clusterId;
+      if (!groupedReports.containsKey(clusterId)) {
+        groupedReports[clusterId] = [];
+      }
+      groupedReports[clusterId]!.add(report);
+    }
+
+    final List<Marker> markers = [];
+
+    // Process each group
+    for (final entry in groupedReports.entries) {
+      final clusterId = entry.key;
+      final clusterReports = entry.value;
+
+      if (clusterId == null || clusterReports.length == 1) {
+        // Individual report (no cluster or single report in cluster)
+        for (final report in clusterReports) {
+          markers.add(
+            Marker(
+              point: report.location,
+              width: 40,
+              height: 40,
+              child: GestureDetector(
+                onTap: () => _showReportPreview(context, report),
+                child: ReportMarker(status: report.status),
+              ),
+            ),
+          );
+        }
+      } else {
+        // Cluster marker for reports with same clusterId
+        // Calculate centroid of cluster
+        final double avgLat = clusterReports
+            .map((r) => r.location.latitude)
+            .reduce((a, b) => a + b) / clusterReports.length;
+        final double avgLng = clusterReports
+            .map((r) => r.location.longitude)
+            .reduce((a, b) => a + b) / clusterReports.length;
+
+        // Determine dominant issue type
+        final Map<String, int> issueTypeCounts = {};
+        for (final report in clusterReports) {
+          final issueType = report.issueType ?? 'unknown';
+          issueTypeCounts[issueType] = (issueTypeCounts[issueType] ?? 0) + 1;
+        }
+        final dominantIssueType = issueTypeCounts.entries
+            .reduce((a, b) => a.value > b.value ? a : b)
+            .key;
+
+        // Determine severity based on report count
+        final severity = clusterReports.length >= 5 ? 'high'
+                      : clusterReports.length >= 3 ? 'medium'
+                      : 'low';
+
+        markers.add(
+          Marker(
+            point: LatLng(avgLat, avgLng),
+            width: 50,
+            height: 50,
+            child: ClusterMarker(
+              reportCount: clusterReports.length,
+              severity: severity,
+              issueType: dominantIssueType,
+              onTap: () => _showClusterPreview(context, clusterReports),
+            ),
+          ),
+        );
+      }
+    }
+
+    return markers;
+  }
+
+  void _showClusterPreview(BuildContext context, List<ReportModel> clusterReports) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.group_work, size: 24),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Cluster (${clusterReports.length} reports)',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  itemCount: clusterReports.length,
+                  itemBuilder: (context, index) {
+                    final report = clusterReports[index];
+                    return ListTile(
+                      leading: ReportMarker(status: report.status),
+                      title: Text(report.title),
+                      subtitle: Text(report.issueType ?? 'Unknown'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showReportPreview(context, report);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(reportsStreamProvider);
@@ -503,18 +647,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         );
                       }).toList(),
                     ),
-                  MyMarkerClusterLayer(
-                    markers: visibleReports.map((report) {
-                      return Marker(
-                        point: report.location,
-                        width: 40,
-                        height: 40,
-                        child: GestureDetector(
-                          onTap: () => _showReportPreview(context, report),
-                          child: ReportMarker(status: report.status),
-                        ),
-                      );
-                    }).toList(),
+                  // Custom clustering based on DBSCAN clusterId
+                  MarkerLayer(
+                    markers: _buildClusterMarkers(visibleReports),
                   ),
                   RichAttributionWidget(
                     attributions: [

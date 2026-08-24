@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/heatmap_layer.dart' as heatmap;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -427,31 +427,8 @@ class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
                   userAgentPackageName: 'dev.ecopinas.ecopin_app',
                 ),
                 if (_showHeatmap)
-                  HeatMapLayer(
-                    heatMapDataSource: InMemoryHeatMapDataSource(
-                      data: reports.map((report) {
-                        double weight;
-                        switch (report.status.toLowerCase()) {
-                          case 'resolved':
-                          case 'closed':
-                            weight = 0.3;
-                            break;
-                          case 'in progress':
-                          case 'acknowledged':
-                          case 'waiting for feedback':
-                            weight = 0.6;
-                            break;
-                          case 'pending owner consent':
-                            weight = 0.8;
-                            break;
-                          default:
-                            weight = 1.0;
-                            break;
-                        }
-                        return WeightedLatLng(report.location, weight);
-                      }).toList(),
-                    ),
-                    heatMapOptions: HeatMapOptions(radius: 50, minOpacity: 0.6),
+                  heatmap.ReportHeatmapLayer(
+                    reports: reports,
                   ),
                 CurrentLocationLayer(
                   alignPositionOnUpdate: AlignOnUpdate.never,

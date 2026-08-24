@@ -4,9 +4,9 @@ import 'dart:math';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/status_badge.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/heatmap_layer.dart' as heatmap;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -572,34 +572,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   if (_showHeatmap)
-                    HeatMapLayer(
-                      heatMapDataSource: InMemoryHeatMapDataSource(
-                        data: visibleReports.map((report) {
-                          double weight;
-                          switch (report.status.toLowerCase()) {
-                            case 'resolved':
-                            case 'closed':
-                              weight = 0.3;
-                              break;
-                            case 'in progress':
-                            case 'acknowledged':
-                            case 'waiting_for_feedback':
-                              weight = 0.6;
-                              break;
-                            case 'pending_owner_consent':
-                              weight = 0.8;
-                              break;
-                            default:
-                              weight = 1.0;
-                              break;
-                          }
-                          return WeightedLatLng(report.location, weight);
-                        }).toList(),
-                      ),
-                      heatMapOptions: HeatMapOptions(
-                        radius: 50,
-                        minOpacity: 0.6,
-                      ),
+                    heatmap.ReportHeatmapLayer(
+                      reports: visibleReports,
                     ),
                   CurrentLocationLayer(
                     alignPositionOnUpdate: AlignOnUpdate.never,

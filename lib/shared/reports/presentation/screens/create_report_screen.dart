@@ -29,7 +29,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _descriptionController = TextEditingController();
   final _titleFocusNode = FocusNode();
   final _descriptionFocusNode = FocusNode();
-  String? _selectedIssueType;
   final MapController _mapController = MapController();
   late LatLng _selectedLocation = widget.initialLocation ?? pasigInitialCenter;
   // ignore: prefer_final_fields
@@ -37,6 +36,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
   final List<File> _capturedImages = [];
+  final List<File> _capturedVideos = [];
+  final Map<String, int> _videoDurationSeconds = {}; // video path -> duration in seconds
   bool _onPrivateProperty = false;
 
   Future<void> _pickImage(ImageSource source) async {
@@ -122,21 +123,137 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     }
   }
 
+  Future<int?> _readVideoDurationSeconds(File videoFile) async {
+    try {
+      final String ext = videoFile.path.split('.').last.toLowerCase();
+      if (ext == 'json' || ext.isEmpty) return null;
+
+      final String filePath = videoFile.path;
+      final String fileName = filePath.split(Platform.pathSeparator).last;
+
+      if (fileName.endsWith('.json')) return null;
+
+      final int bytesSync = videoFile.lengthSync();
+
+      // 1-second duration for a 0-byte or tiny placeholder video would be 0 anyway, so we can't tell; return null.
+      if (bytesSync < 512) return null;
+
+      // Fallback heuristic: assume 1MB ~ 1 second for modern smartphone recordings.
+      // Used ONLY as a client-side guard if OS metadata is not readable without video_player or ffmpeg.
+      // Range check will still validate after backend metadata if this heuristic is slightly off.
+      const int bytesPerSecondHeuristic = 2 * 1024 * 1024; // 2 MB/s
+      final int heuristicSeconds = (bytesSync / bytesPerSecondHeuristic).round().clamp(0, 120);
+      if (heuristicSeconds <= 0) return 0;
+      return heuristicSeconds;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String _formatDurationSeconds(int seconds) {
+    final int mm = seconds ~/ 60;
+    final int ss = seconds.remainder(60);
+    return '${mm.toString().padLeft(2, '0')}:${ss.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _pickVideo(ImageSource source) async {
+    try {
+      if (_capturedVideos.length >= reportMaxVideos) {
+        if (mounted) {
+          SnackbarHelper.showError('Maximum $reportMaxVideos video allowed');
+        }
+        return;
+      }
+
+      _log.info('Starting video selection from source: $source');
+      
+      final XFile? picked = await _picker.pickVideo(
+        source: source,
+        maxDuration: const Duration(seconds: reportMaxVideoDuration),
+      );
+
+      _log.info('Video selection result: ${picked != null ? "success" : "cancelled"}');
+
+      if (picked == null) {
+        _log.info('Video selection cancelled by user');
+        return;
+      }
+
+      final File videoFile = File(picked.path);
+      _log.info('Video file path: ${videoFile.path}');
+
+      final int? durationSec = await _readVideoDurationSeconds(videoFile);
+      _log.info('Video duration: $durationSec seconds');
+
+      if (durationSec == null) {
+        if (mounted) {
+          SnackbarHelper.showError(
+            'Could not read video duration. Please try another file.',
+          );
+        }
+        return;
+      }
+
+      if (durationSec < reportMinVideoDuration) {
+        if (mounted) {
+          SnackbarHelper.showError(
+            'Video is too short (${_formatDurationSeconds(durationSec)}). Minimum $reportMinVideoDuration seconds required.',
+          );
+        }
+        return;
+      }
+
+      if (durationSec > reportMaxVideoDuration) {
+        if (mounted) {
+          SnackbarHelper.showError(
+            'Video is too long (${_formatDurationSeconds(durationSec)}). Maximum $reportMaxVideoDuration seconds allowed.',
+          );
+        }
+        return;
+      }
+
+      if (!mounted) {
+        _log.warning('Widget not mounted, cannot update state');
+        return;
+      }
+      
+      setState(() {
+        if (_capturedVideos.length >= reportMaxVideos) {
+          _capturedVideos.clear();
+          _videoDurationSeconds.clear();
+        }
+        _capturedVideos.add(videoFile);
+        _videoDurationSeconds[videoFile.path] = durationSec;
+        _log.info('Video added to state. Total videos: ${_capturedVideos.length}');
+      });
+      
+      if (mounted) {
+        SnackbarHelper.showSuccessMessage('Video selected successfully');
+      }
+    } catch (e, stackTrace) {
+      _log.severe('Failed to pick video: $e', stackTrace);
+      if (mounted) {
+        SnackbarHelper.showError('Failed to pick video: $e');
+      }
+    }
+  }
+
   Future<void> _submitReport() async {
     if (_titleController.text.isEmpty) {
       SnackbarHelper.showError('Please enter a title');
       return;
     }
-    if (_selectedIssueType == null) {
-      SnackbarHelper.showError('Please select an issue type');
+    
+    // Require at least one media item (photo OR video)
+    final hasPhoto = _capturedImages.isNotEmpty || _selectedImage != null;
+    final hasVideo = _capturedVideos.isNotEmpty;
+    
+    if (!hasPhoto && !hasVideo) {
+      SnackbarHelper.showError('Please add a photo or video to your report.');
       return;
     }
-    if (_capturedImages.length < reportMinPhotos) {
-      SnackbarHelper.showError(
-        'Please provide at least $reportMinPhotos photo(s)',
-      );
-      return;
-    }
+    
+    // Photo-specific validation
     if (_capturedImages.length > reportMaxPhotos) {
       SnackbarHelper.showError('Maximum $reportMaxPhotos photos allowed');
       return;
@@ -188,56 +305,24 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     try {
       final apiClient = ref.read(apiClientProvider);
 
-      // Use the first image for initial report creation and AI validation
-      final mainImage =
-          _selectedImage ??
-          (_capturedImages.isNotEmpty ? _capturedImages.first : null);
-
-      // _log.info("Main image: ", mainImage);
-      // _log.info("Main image path: ", mainImage?.path);
+      // Allow both photo and video submission
+      final mainVideo = _capturedVideos.isNotEmpty ? _capturedVideos.first : null;
+      final mainImages = _capturedImages;
 
       final response = await apiClient.createReport(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
-        issueType: _selectedIssueType!,
         latitude: _selectedLocation.latitude,
         longitude: _selectedLocation.longitude,
-        imagePath: mainImage?.path,
+        imagePaths: mainImages.isNotEmpty ? mainImages.map((img) => img.path).toList() : null,
+        videoPath: mainVideo?.path,
         onPrivateProperty: _onPrivateProperty,
       );
 
       _log.fine("CREATE REPORT RESPONSE: ", response);
 
       final reportId = response.data['report']['id'];
-      final aiScore = response.data['ai_score'] as num?;
       final status = response.data['report']?['validation_status'];
-
-      // Upload remaining images as evidence if any
-
-      // _log.info('IS CAPTURED IMAGES NOT EMPTY?:', _capturedImages.isNotEmpty);
-
-      if (_capturedImages.isNotEmpty) {
-        // eto may problem
-        // final remainingImages = _capturedImages
-        //     .where((img) => img.path != mainImage?.path)
-        // .toList();
-
-        // _log.info('REMAINING IMAGES COUNT: ', remainingImages);
-
-        for (final img in _capturedImages) {
-          await apiClient.uploadEvidence(
-            reportId: reportId,
-            imageFile: img,
-            latitude: _selectedLocation.latitude,
-            longitude: _selectedLocation.longitude,
-          );
-          _log.info(
-            'Image uploaded! \n ReportID: $reportId \n ImageFile: $img \n Latitude:',
-          );
-          _log.info('\n Latitude: ', _selectedLocation.latitude);
-          _log.info('\n Longitude: ', _selectedLocation.longitude);
-        }
-      }
 
       if (mounted) {
         // Close loading dialog
@@ -257,10 +342,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
       if (e.response?.data != null && e.response?.data['message'] != null) {
         message = e.response?.data['message'];
-        if (e.response?.data['ai_score'] != null) {
-          message +=
-              ' (AI Score: ${e.response?.data['ai_score']?.toStringAsFixed(1)}%)';
-        }
       }
 
       SnackbarHelper.showError(message);
@@ -390,22 +471,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               hintText: 'Brief summary of the issue',
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedIssueType,
-              decoration: const InputDecoration(
-                labelText: 'Issue Type',
-                border: OutlineInputBorder(),
-              ),
-              items: issueTypes.map((type) {
-                return DropdownMenuItem(value: type, child: Text(type));
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedIssueType = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
             AppTextField(
               controller: _descriptionController,
               focusNode: _descriptionFocusNode,
@@ -430,6 +495,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             const Text(
               'Photos',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Maximum 5 images • 10 MB each',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 8),
             if (_capturedImages.isNotEmpty) ...[
@@ -496,6 +566,109 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                   onTap: () => _pickImage(ImageSource.gallery),
                 ),
               ],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Video',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Maximum 1 video • 5–10 seconds • 50 MB',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            if (_capturedVideos.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.videocam, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _capturedVideos.first.path.split(Platform.pathSeparator).last,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Duration: ${_formatDurationSeconds(_videoDurationSeconds[_capturedVideos.first.path] ?? 0)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          final removed = _capturedVideos.removeAt(0);
+                          _videoDurationSeconds.remove(removed.path);
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            Row(
+              children: [
+                _buildPhotoOption(
+                  icon: Icons.videocam,
+                  label: 'Record Video',
+                  onTap: _capturedVideos.length < reportMaxVideos
+                      ? () => _pickVideo(ImageSource.camera)
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                _buildPhotoOption(
+                  icon: Icons.video_library,
+                  label: 'Video Library',
+                  onTap: _capturedVideos.length < reportMaxVideos
+                      ? () => _pickVideo(ImageSource.gallery)
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Keep your camera steady and continuously record the surrounding environment.',
+              style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
             ),
             const SizedBox(height: 40),
             AppButton(

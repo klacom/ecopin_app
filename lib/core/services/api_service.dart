@@ -95,22 +95,39 @@ class ApiClient {
   Future<dio.Response> createReport({
     required String title,
     required String description,
-    required String issueType,
     required double latitude,
     required double longitude,
-    String? imagePath,
+    List<String>? imagePaths,
+    String? videoPath,
     bool onPrivateProperty = false,
   }) async {
-    final formData = dio.FormData.fromMap({
-      'title': title,
-      'description': description,
-      'issue_type': issueType,
-      'latitude': latitude,
-      'longitude': longitude,
-      'on_private_property': onPrivateProperty,
-      if (imagePath != null)
-        'image': await dio.MultipartFile.fromFile(imagePath),
-    });
+    // Require at least one media type
+    if ((imagePaths == null || imagePaths.isEmpty) && videoPath == null) {
+      throw ArgumentError('Must provide either an image or a video.');
+    }
+
+    final formData = dio.FormData();
+    formData.fields.add(MapEntry('title', title));
+    formData.fields.add(MapEntry('description', description));
+    formData.fields.add(MapEntry('latitude', latitude.toString()));
+    formData.fields.add(MapEntry('longitude', longitude.toString()));
+    formData.fields.add(MapEntry('on_private_property', onPrivateProperty.toString()));
+
+    if (imagePaths != null && imagePaths.isNotEmpty) {
+      for (final imagePath in imagePaths) {
+        formData.files.add(MapEntry(
+          'image',
+          await dio.MultipartFile.fromFile(imagePath),
+        ));
+      }
+    }
+
+    if (videoPath != null) {
+      formData.files.add(MapEntry(
+        'video',
+        await dio.MultipartFile.fromFile(videoPath),
+      ));
+    }
 
     return _dio.post(ApiConstants.createReport, data: formData);
   }

@@ -105,7 +105,7 @@ class ReportModel {
       description: json['description']?.toString(),
       issueType: json['issue_type']?.toString(),
       location: latLng,
-      validationStatus: json['validation_status']?.toString() ?? 'pending',
+      validationStatus: json['validation_status']?.toString() ?? 'pending_ai_validation',
       status: json['status']?.toString() ?? 'unresolved',
       clusterId: json['cluster_id']?.toString(),
       createdAt:

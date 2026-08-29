@@ -94,3 +94,8 @@ const List<String> issueTypes = [
 const int reportMinPhotos = 1;
 const int reportMaxPhotos = 5;
 const int reportTotalPhotosSize = 10 * 1024 * 1024; // 10MB
+
+// Report video constraints
+const int reportMinVideoDuration = 5; // seconds
+const int reportMaxVideoDuration = 10; // seconds inclusive
+const int reportMaxVideos = 1;

@@ -7,6 +7,7 @@ import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart' as pull_refresh;
 
 class ReportDetailsScreen extends ConsumerStatefulWidget {
   final String reportId;
@@ -24,11 +25,24 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
   CleanupTaskModel? _cleanupTask;
   bool _isLoadingCleanupTask = false;
   final Logger _log = Logger('Report Detail Screen');
+  final pull_refresh.RefreshController _refreshController = pull_refresh.RefreshController(initialRefresh: false);
+
+  @override
+  void dispose() {
+    _refreshController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     _fetchEvidence();
+  }
+
+  Future<void> _onRefresh() async {
+    ref.invalidate(reportDetailsProvider(widget.reportId));
+    await _fetchEvidence();
+    _refreshController.refreshCompleted();
   }
 
   Future<void> _fetchEvidence() async {
@@ -87,20 +101,25 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Report Details')),
-      body: reportAsync.when(
-        data: (report) => ReportDetailsBody(
-          report: report,
-          evidence: _evidence,
-          isLoadingEvidence: _isLoadingEvidence,
-          cleanupTask: _cleanupTask,
-          isLoadingCleanupTask: _isLoadingCleanupTask,
-          onFetchCleanupTask: report.clusterId != null
-              ? () => _fetchCleanupTask(report.clusterId!)
-              : null,
-          isOfficerUser: isOfficerUser,
+      body: pull_refresh.SmartRefresher(
+        controller: _refreshController,
+        onRefresh: _onRefresh,
+        enablePullDown: true,
+        child: reportAsync.when(
+          data: (report) => ReportDetailsBody(
+            report: report,
+            evidence: _evidence,
+            isLoadingEvidence: _isLoadingEvidence,
+            cleanupTask: _cleanupTask,
+            isLoadingCleanupTask: _isLoadingCleanupTask,
+            onFetchCleanupTask: report.clusterId != null
+                ? () => _fetchCleanupTask(report.clusterId!)
+                : null,
+            isOfficerUser: isOfficerUser,
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(child: Text('Error: $err')),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
       ),
     );
   }

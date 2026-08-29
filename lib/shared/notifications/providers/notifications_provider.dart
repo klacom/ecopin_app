@@ -1,32 +1,36 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-final unreadNotificationsCountProvider = StreamProvider<int>((ref) {
+final unreadNotificationsCountProvider = FutureProvider<int>((ref) async {
   final user = Supabase.instance.client.auth.currentUser;
-  if (user == null) return Stream.value(0);
+  if (user == null) return 0;
 
-  final stream = Supabase.instance.client
-      .from('notifications')
-      .stream(primaryKey: ['id'])
-      .map(
-        (rows) => rows
-            .where(
-              (row) => row['user_id'] == user.id && row['is_read'] == false,
-            )
-            .length,
-      );
+  try {
+    final response = await Supabase.instance.client
+        .from('notifications')
+        .select()
+        .eq('user_id', user.id)
+        .eq('is_read', false);
 
-  return stream;
+    return response.length;
+  } catch (error) {
+    return 0;
+  }
 });
 
-final notificationsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+final notificationsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final user = Supabase.instance.client.auth.currentUser;
-  if (user == null) return Stream.value([]);
+  if (user == null) return [];
 
-  return Supabase.instance.client
-      .from('notifications')
-      .stream(primaryKey: ['id'])
-      .eq('user_id', user.id)
-      .order('created_at', ascending: false)
-      .map((data) => List<Map<String, dynamic>>.from(data));
+  try {
+    final response = await Supabase.instance.client
+        .from('notifications')
+        .select()
+        .eq('user_id', user.id)
+        .order('created_at', ascending: false);
+
+    return List<Map<String, dynamic>>.from(response);
+  } catch (error) {
+    return [];
+  }
 });

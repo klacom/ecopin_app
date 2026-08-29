@@ -14,6 +14,7 @@ class ValidationBadge extends StatelessWidget {
 
     switch (status.toLowerCase()) {
       case 'pending_ai_validation':
+      case 'pending':
         color = AppColors.info;
         label = 'PENDING AI';
         icon = Icons.hourglass_empty;

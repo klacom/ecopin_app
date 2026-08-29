@@ -10,6 +10,7 @@ import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_wi
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:video_player/video_player.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
 
 import '../reports_screen_widgets/status_badge.dart';
@@ -243,10 +244,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.image, size: 48, color: Colors.grey),
+                    Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
                     SizedBox(height: 8),
                     Text(
-                      'No evidence images',
+                      'No evidence',
                       style: TextStyle(color: Colors.grey),
                     ),
                   ],
@@ -260,40 +261,49 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 scrollDirection: Axis.horizontal,
                 itemCount: widget.evidence.length,
                 itemBuilder: (context, index) {
+                  final evidence = widget.evidence[index];
+                  final isVideo = evidence['resource_type'] == 'video';
+                  
                   return Padding(
                     padding: const EdgeInsets.only(right: 8.0),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FullScreenImageView(
-                              imageUrl: widget.evidence[index]['url'],
-                            ),
-                          ),
-                        );
-                      },
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          widget.evidence[index]['url'],
-                          width: 200,
-                          height: 200,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 200,
-                              height: 200,
-                              color: Colors.grey.shade300,
-                              child: const Center(
-                                child: Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox(
+                        width: 200,
+                        height: 200,
+                        child: isVideo
+                            ? _VideoPlayerWidget(videoUrl: evidence['url'])
+                            : GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => FullScreenImageView(
+                                        imageUrl: evidence['url'],
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Image.network(
+                                  evidence['url'],
+                                  width: 200,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 200,
+                                      height: 200,
+                                      color: Colors.grey.shade300,
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
-                            );
-                          },
-                        ),
                       ),
                     ),
                   );
@@ -623,6 +633,145 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
       default:
         return 'Neutral';
     }
+  }
+}
+
+class _VideoPlayerWidget extends StatefulWidget {
+  final String videoUrl;
+
+  const _VideoPlayerWidget({required this.videoUrl});
+
+  @override
+  State<_VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
+}
+
+class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+  bool _isPlaying = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      final controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      await controller.initialize();
+      
+      if (mounted) {
+        setState(() {
+          _controller = controller;
+          _isInitialized = true;
+        });
+        
+        controller.addListener(() {
+          if (mounted) {
+            setState(() {
+              _isPlaying = controller.value.isPlaying;
+            });
+          }
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _isInitialized = true;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _togglePlayPause() {
+    final controller = _controller;
+    if (controller == null) return;
+    
+    setState(() {
+      if (controller.value.isPlaying) {
+        controller.pause();
+        _isPlaying = false;
+      } else {
+        controller.play();
+        _isPlaying = true;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Container(
+        width: 200,
+        height: 200,
+        color: Colors.grey.shade300,
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final controller = _controller;
+    if (_hasError || controller == null) {
+      return Container(
+        width: 200,
+        height: 200,
+        color: Colors.grey.shade300,
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 32, color: Colors.grey),
+              SizedBox(height: 8),
+              Text('Video load failed', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        GestureDetector(
+          onTap: _togglePlayPause,
+          child: SizedBox(
+            width: 200,
+            height: 200,
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: controller.value.size.width,
+                height: controller.value.size.height,
+                child: VideoPlayer(controller),
+              ),
+            ),
+          ),
+        ),
+        if (!_isPlaying)
+          Container(
+            width: 200,
+            height: 200,
+            color: Colors.black26,
+            child: const Center(
+              child: Icon(
+                Icons.play_circle_outline,
+                size: 64,
+                color: Colors.white,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 

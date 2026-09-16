@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart' as dio;
+import 'package:ecopin_app/core/utils/validators.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -226,15 +227,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ? const CircularProgressIndicator()
                 : ElevatedButton(
                     onPressed: () async {
-                      if (newPasswordController.text !=
-                          confirmPasswordController.text) {
-                        SnackbarHelper.showError('Passwords do not match!');
+                      // Validation — uses the same rules as registration
+                      // (see core/utils/validators.dart).
+                      final newPw = newPasswordController.text;
+                      final confirmPw = confirmPasswordController.text;
+
+                      final passwordError = validatePassword(newPw);
+                      if (passwordError != null) {
+                        SnackbarHelper.showError(passwordError);
                         return;
                       }
-                      if (newPasswordController.text.length < 6) {
-                        SnackbarHelper.showError(
-                          'Password must be at least 6 characters!',
-                        );
+                      final confirmError =
+                          validateConfirmPassword(newPw, confirmPw);
+                      if (confirmError != null) {
+                        SnackbarHelper.showError(confirmError);
                         return;
                       }
 

@@ -1,4 +1,5 @@
 import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:ecopin_app/core/utils/validators.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:flutter/material.dart';
@@ -29,9 +30,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    // Frontend validation
-    // TODO: Make modular later, isang file nalang baguhin for validation rules.
-
+    // Frontend validation — rules mirror the backend (see core/utils/validators.dart).
     if (email.isEmpty) {
       SnackbarHelper.showError('Email is required');
       return;
@@ -40,12 +39,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       SnackbarHelper.showError('Password is required');
       return;
     }
-    if (password != confirmPassword) {
-      SnackbarHelper.showError('Passwords do not match');
+
+    final passwordError = validatePassword(password);
+    if (passwordError != null) {
+      SnackbarHelper.showError(passwordError);
       return;
     }
-    if (password.length < 6) {
-      SnackbarHelper.showError('Password must be at least 6 characters');
+
+    final confirmError = validateConfirmPassword(password, confirmPassword);
+    if (confirmError != null) {
+      SnackbarHelper.showError(confirmError);
       return;
     }
 
@@ -54,7 +57,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       final apiClient = ref.read(apiClientProvider);
       // TODO: Lagyan ng Confirm Email
-      final response = await apiClient.register(
+      await apiClient.register(
         email,
         password,
         confirmPassword,

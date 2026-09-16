@@ -42,10 +42,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final sessionData = response.data['session'];
 
       if (sessionData != null) {
-        // We need to set the session in the Supabase SDK so the ApiClient
-        // interceptor can pick up the token for subsequent requests.
+        // Establish the Supabase session from the tokens returned by the
+        // backend.  The installed gotrue API (2.22.0) signature is:
+        //   setSession(String refreshToken, {String? accessToken})
+        // Passing both avoids an extra /token round-trip and immediately
+        // constructs a valid session so the Dio interceptor can attach
+        // the access token to subsequent requests.
         await Supabase.instance.client.auth.setSession(
           sessionData['refresh_token'],
+          accessToken: sessionData['access_token'],
         );
 
         if (mounted) {

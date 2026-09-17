@@ -2,6 +2,7 @@ import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/login_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/register_screen.dart';
+import 'package:ecopin_app/shared/auth/presentation/screens/email_verification_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_cleanup_tasks_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_clusters_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_dashboard_screen.dart';
@@ -167,6 +168,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: PublicAppRoutes.register,
         builder: (_, _) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: PublicAppRoutes.emailVerification,
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return EmailVerificationScreen(email: email);
+        },
       ),
       GoRoute(
         path: PublicAppRoutes.unauthorized,

@@ -75,6 +75,19 @@ class ApiClient {
     );
   }
 
+  Future<dio.Response> resendVerification(String email) async {
+    return _dio.post(
+      ApiConstants.resendVerification,
+      data: {
+        'email': email,
+      },
+    );
+  }
+
+  Future<dio.Response> getPasswordRequirements() async {
+    return _dio.get(ApiConstants.passwordRequirements);
+  }
+
   Future<dio.Response> login(String email, String password) async {
     return _dio.post(
       ApiConstants.login,

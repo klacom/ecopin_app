@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/shared/widgets/password_strength_meter.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -23,14 +24,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       TextEditingController();
   final Logger _log = Logger("Register Screen");
   bool _isLoading = false;
+  Map<String, dynamic>? _requirements;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRequirements();
+    _passwordController.addListener(() => setState(() {})); // Rebuild on typing
+  }
+
+  Future<void> _fetchRequirements() async {
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final response = await apiClient.getPasswordRequirements();
+      if (mounted) {
+        setState(() {
+          _requirements = response.data;
+        });
+      }
+    } catch (e) {
+      _log.warning('Failed to fetch password requirements: $e');
+    }
+  }
+
+  bool _isPasswordValid() {
+    if (_requirements == null) return _passwordController.text.length >= 6;
+    final pwd = _passwordController.text;
+    final minLength = _requirements!['password_min_length'] ?? 8;
+    if (pwd.length < minLength) return false;
+    if (_requirements!['password_require_uppercase'] == true && !RegExp(r'[A-Z]').hasMatch(pwd)) return false;
+    if (_requirements!['password_require_lowercase'] == true && !RegExp(r'[a-z]').hasMatch(pwd)) return false;
+    if (_requirements!['password_require_numbers'] == true && !RegExp(r'\d').hasMatch(pwd)) return false;
+    if (_requirements!['password_require_special_chars'] == true && !RegExp(r'[!@#\$%\^&\*\(\),\.\?":\{\}\|<>]').hasMatch(pwd)) return false;
+    return true;
+  }
 
   void signUp() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
-
-    // Frontend validation
-    // TODO: Make modular later, isang file nalang baguhin for validation rules.
 
     if (email.isEmpty) {
       SnackbarHelper.showError('Email is required');
@@ -44,8 +76,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       SnackbarHelper.showError('Passwords do not match');
       return;
     }
-    if (password.length < 6) {
-      SnackbarHelper.showError('Password must be at least 6 characters');
+    if (!_isPasswordValid()) {
+      SnackbarHelper.showError('Please meet all password requirements');
       return;
     }
 
@@ -53,7 +85,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       final apiClient = ref.read(apiClientProvider);
-      // TODO: Lagyan ng Confirm Email
       final response = await apiClient.register(
         email,
         password,
@@ -61,13 +92,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
 
       if (mounted) {
-        SnackbarHelper.showMessage('Registration successful');
-        // Go to login page after successful registration
-        context.go('/login');
+        SnackbarHelper.showMessage('Registration successful! Please verify your email first.');
+        context.go('/email-verification?email=${Uri.encodeComponent(email)}');
       }
     } on DioException catch (e, stackTrace) {
       String errorMessage = 'Registration failed';
-      // String errorMessage = 'RF: $e';
 
       _log.severe(e, stackTrace);
 
@@ -75,7 +104,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         errorMessage = e.response?.data['message'];
       } else if (e.response?.data != null &&
           e.response?.data['errors'] != null) {
-        // Handle express-validator errors
         final errors = e.response?.data['errors'] as List;
         if (errors.isNotEmpty) {
           errorMessage = errors[0]['msg'];
@@ -106,6 +134,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               labelText: 'Password',
               inputType: 'password',
             ),
+            if (_requirements != null) 
+              PasswordStrengthMeter(
+                password: _passwordController.text,
+                requirements: _requirements,
+              ),
             const SizedBox(height: AppColors.spaceMD),
             AppTextField(
               controller: _confirmPasswordController,

@@ -5,8 +5,9 @@ class PublicAppRoutes {
   static const String login = '/login';
   static const String register = '/register';
   static const String unauthorized = '/unauthorized';
+  static const String emailVerification = '/email-verification';
 
-  static const publicRoutes = [login, register, unauthorized];
+  static const publicRoutes = [login, register, unauthorized, emailVerification];
 }
 
 // Only accessible by authenticated users

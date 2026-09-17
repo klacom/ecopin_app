@@ -43,19 +43,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (sessionData != null) {
         // Establish the Supabase session from the tokens returned by the
-        // backend.  The installed gotrue API (2.22.0) signature is:
-        //   setSession(String refreshToken, {String? accessToken})
-        // Passing both avoids an extra /token round-trip and immediately
-        // constructs a valid session so the Dio interceptor can attach
-        // the access token to subsequent requests.
+        // backend.
         await Supabase.instance.client.auth.setSession(
           sessionData['refresh_token'],
           accessToken: sessionData['access_token'],
         );
-
-        if (mounted) {
-          context.go('/maps'); // Initial Screen
-        }
+        // Do not use context.go() here. GoRouter's refreshListenable 
+        // handles redirection to the appropriate screen based on the user's role.
       } else {
         SnackbarHelper.showError('Login failed: Invalid session data');
       }
@@ -87,6 +81,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/landing'),
+        ),
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceXL),
@@ -131,7 +131,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   "Don't have an account? Sign Up",
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).brightness == Brightness.light ? Colors.black : Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),

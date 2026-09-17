@@ -1,5 +1,6 @@
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
+import 'package:ecopin_app/shared/auth/presentation/screens/landing_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/login_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/register_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/email_verification_screen.dart';
@@ -82,11 +83,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             return ProtectedAppRoutes.maps;
           } else {
             log.info('Redirecting from splash to Login (Logout)');
-            return PublicAppRoutes.login;
+            return PublicAppRoutes.landing;
           }
         } else {
           // Not logged in: go to login screen
-          return PublicAppRoutes.login;
+          return PublicAppRoutes.landing;
         }
       }
 
@@ -121,7 +122,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (!loggedIn && !isPublicRoute) {
-        return PublicAppRoutes.login;
+        return PublicAppRoutes.landing;
       }
 
       // Role-based route protection
@@ -160,6 +161,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: PublicAppRoutes.splash,
         builder: (_, _) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: PublicAppRoutes.landing,
+        builder: (_, _) => const LandingScreen(),
       ),
       GoRoute(
         path: PublicAppRoutes.login,

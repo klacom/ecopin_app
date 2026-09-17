@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/status_badge.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/validation_badge.dart';
@@ -53,9 +54,24 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 final isSelected = _selectedFilter == filter;
                 // Display a human-readable label; internal filter value stays canonical.
                 final label = reportStatusLabels[filter] ?? filter;
+                final isDark = Theme.of(context).brightness == Brightness.dark;
                 return ChoiceChip(
-                  label: Text(label),
+                  label: Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected
+                          ? (isDark ? Colors.black : Colors.white)
+                          : (isDark ? Colors.white : Colors.black),
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
                   selected: isSelected,
+                  selectedColor: isDark ? Colors.white : Colors.black,
+                  backgroundColor: isDark
+                      ? AppColors.surfaceDark
+                      : AppColors.surfaceLight,
                   onSelected: (selected) {
                     if (selected) {
                       setState(() => _selectedFilter = filter);

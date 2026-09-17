@@ -11,7 +11,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
-import 'package:ecopin_app/core/services/location_search_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'package:go_router/go_router.dart';
@@ -20,6 +19,7 @@ import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_layer.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/search_overlay.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logging/logging.dart';
@@ -47,17 +47,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   final Logger log = Logger("Maps Screen");
   final MapController _mapController = MapController();
 
-  // TODO: Make own Text Editing Controller + Separate controller in different file.
-  final TextEditingController _searchController = TextEditingController();
-  final LocationSearchService _searchService = LocationSearchService();
-  final FocusNode _searchFocusNode = FocusNode();
-
-  List<LocationSuggestion> _suggestions = [];
-  bool _showSuggestions = false;
-  Timer? _debounce;
   bool _showHeatmap = false;
   bool _isLoadingLocation = false;
-  bool _isSearching = false;
 
   @override
   void initState() {
@@ -65,10 +56,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _runOnce(); // check and ask for user data/location disclosure initially.
     });
-    _searchController.addListener(() {
-      setState(() {});
-    });
-  }
+}
 
   void _runOnce() async {
     final apiClient = ref.read(apiClientProvider);
@@ -88,10 +76,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _searchFocusNode.dispose();
-    _debounce?.cancel();
-    super.dispose();
+super.dispose();
   }
 
   // For Data/Location Disclosure
@@ -226,43 +211,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-    if (query.length >= 2) {
-      setState(() {
-        _isSearching = true;
-      });
-    }
-
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
-      if (query.length >= 2) {
-        final results = await _searchService.searchLocations(query);
-        setState(() {
-          _suggestions = results;
-          _showSuggestions = results.isNotEmpty;
-          _isSearching = false;
-        });
-      } else {
-        setState(() {
-          _showSuggestions = false;
-          _suggestions = [];
-          _isSearching = false;
-        });
-      }
-    });
-  }
-
-  void _onSuggestionTap(LocationSuggestion suggestion) {
-    _mapController.move(suggestion.latLng, 16.0);
-    _searchController.text = suggestion.displayName;
-    setState(() {
-      _showSuggestions = false;
-      _suggestions = [];
-    });
-    _searchFocusNode.unfocus();
-  }
-
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(reportsStreamProvider);
@@ -309,8 +257,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 children: [
                   TileLayer(
                     urlTemplate: Theme.of(context).brightness == Brightness.dark
-                        ? 'https://api.maptiler.com/maps/backdrop-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}'
-                        : 'https://api.maptiler.com/maps/backdrop-v2/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
+                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
+                        : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                    subdomains: const ['a', 'b', 'c'],
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   if (_showHeatmap)
@@ -379,357 +328,147 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       );
                     }).toList(),
                   ),
-                  RichAttributionWidget(
-                    attributions: [
-                      TextSourceAttribution(
-                        'OpenStreetMap contributors',
-                        onTap: () => launchUrl(
-                          Uri.parse('https://openstreetmap.org/copyright'),
-                        ),
-                      ),
-                    ],
-                  ),
+
                 ],
               ),
-              // ── Search bar (hidden in field crew mode) ─────────────────
+              // ── Right Side Controls (Search, Heatmap, Center, OSM) ─────────────────
               if (!widget.isFieldCrewMode)
                 Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
+                  top: AppColors.spaceMD,
+                  right: AppColors.spaceMD,
                   child: SafeArea(
-                    child: Container(
-                      color: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Consumer(
-                            builder: (context, ref, child) {
-                              final isDark =
-                                  Theme.of(context).brightness ==
-                                  Brightness.dark;
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppColors.spaceLG,
-                                  vertical: AppColors.spaceSM,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? AppColors.surfaceDark
-                                      : AppColors.surfaceLight,
-                                  borderRadius: BorderRadius.circular(24),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.search,
-                                      color: isDark
-                                          ? AppColors.secondaryDark
-                                          : AppColors.secondaryLight,
-                                    ),
-                                    const SizedBox(width: AppColors.spaceMD),
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _searchController,
-                                        focusNode: _searchFocusNode,
-                                        onChanged: _onSearchChanged,
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? AppColors.textPrimaryDark
-                                              : AppColors.textPrimaryLight,
-                                          fontSize: 16,
-                                        ),
-                                        decoration: InputDecoration(
-                                          hintText: 'Search location...',
-                                          hintStyle: TextStyle(
-                                            color: isDark
-                                                ? AppColors.secondaryDark
-                                                : AppColors.secondaryLight,
-                                            fontSize: 16,
-                                          ),
-                                          border: InputBorder.none,
-                                        ),
-                                      ),
-                                    ),
-                                    if (_searchController.text.isNotEmpty)
-                                      GestureDetector(
-                                        onTap: () {
-                                          _searchController.clear();
-                                          setState(() {
-                                            _showSuggestions = false;
-                                            _suggestions = [];
-                                          });
-                                        },
-                                        child: Container(
-                                          margin: const EdgeInsets.only(
-                                            right: AppColors.spaceSM,
-                                          ),
-                                          padding: const EdgeInsets.all(
-                                            AppColors.spaceXS,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isDark
-                                                ? AppColors.surfaceLight
-                                                : AppColors.surfaceDark,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.close,
-                                            color: isDark
-                                                ? AppColors.secondaryLight
-                                                : AppColors.secondaryDark,
-                                            size: 18,
-                                          ),
-                                        ),
-                                      ),
-                                    if (_isSearching)
-                                      Container(
-                                        margin: const EdgeInsets.only(
-                                          right: AppColors.spaceSM,
-                                        ),
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: isDark
-                                              ? AppColors.textPrimaryDark
-                                              : AppColors.textPrimaryLight,
-                                        ),
-                                      ),
-                                    if (_suggestions.isNotEmpty)
-                                      GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _showSuggestions =
-                                                !_showSuggestions;
-                                          });
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.all(
-                                            AppColors.spaceXS,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: _showSuggestions
-                                                ? isDark
-                                                      ? AppColors.surfaceLight
-                                                      : AppColors.surfaceDark
-                                                : isDark
-                                                ? AppColors.surfaceDark
-                                                : AppColors.surfaceLight,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            _showSuggestions
-                                                ? Icons.keyboard_arrow_up
-                                                : Icons.keyboard_arrow_down,
-                                            color: isDark
-                                                ? AppColors.secondaryDark
-                                                : AppColors.secondaryLight,
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: AppColors.spaceSM),
-                          if (_showSuggestions)
-                            Consumer(
-                              builder: (context, ref, child) {
-                                final isDark =
-                                    Theme.of(context).brightness ==
-                                    Brightness.dark;
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    color: isDark
-                                        ? AppColors.surfaceDark
-                                        : AppColors.surfaceLight,
-                                    borderRadius: BorderRadius.circular(
-                                      AppColors.radiusInput,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  width: double.infinity,
-                                  height: 250,
-                                  child: ListView.builder(
-                                    padding: const EdgeInsets.all(
-                                      AppColors.spaceSM,
-                                    ),
-                                    itemCount: _suggestions.length,
-                                    itemBuilder: (context, index) {
-                                      final suggestion = _suggestions[index];
-                                      return InkWell(
-                                        onTap: () =>
-                                            _onSuggestionTap(suggestion),
-                                        child: Container(
-                                          margin: const EdgeInsets.only(
-                                            bottom: AppColors.spaceXS,
-                                          ),
-                                          padding: const EdgeInsets.all(
-                                            AppColors.spaceSM,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isDark
-                                                ? AppColors.backgroundDark
-                                                : AppColors.backgroundLight,
-                                            borderRadius: BorderRadius.circular(
-                                              AppColors.radiusButton,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.location_pin,
-                                                color: isDark
-                                                    ? AppColors.secondaryDark
-                                                    : AppColors.secondaryLight,
-                                              ),
-                                              const SizedBox(
-                                                width: AppColors.spaceSM,
-                                              ),
-                                              Expanded(
-                                                child: Text(
-                                                  suggestion.displayName,
-                                                  style: TextStyle(
-                                                    color: isDark
-                                                        ? AppColors
-                                                              .textPrimaryDark
-                                                        : AppColors
-                                                              .textPrimaryLight,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                    child: Consumer(
+                      builder: (context, ref, child) {
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // 1. Search
+                            GestureDetector(
+                              onTap: () {
+                                showGeneralDialog(
+                                  context: context,
+                                  pageBuilder: (context, animation, secondaryAnimation) => SearchOverlay(mapController: _mapController),
                                 );
                               },
+                              child: Container(
+                                padding: const EdgeInsets.all(AppColors.spaceSM + 4),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.15),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.search,
+                                  color: isDark ? AppColors.secondaryDark : AppColors.secondaryLight,
+                                  size: 24,
+                                ),
+                              ),
                             ),
-                        ],
-                      ),
+                            const SizedBox(height: AppColors.spaceMD),
+                            // 2. Heatmap
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _showHeatmap = !_showHeatmap;
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(AppColors.spaceSM + 4),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.15),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.thermostat,
+                                  color: _showHeatmap
+                                      ? AppColors.success
+                                      : (isDark ? AppColors.secondaryDark : AppColors.secondaryLight),
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: AppColors.spaceMD),
+                            // 3. Center
+                            GestureDetector(
+                              onTap: _getCurrentLocation,
+                              child: Container(
+                                padding: const EdgeInsets.all(AppColors.spaceSM + 4),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.15),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: _isLoadingLocation
+                                    ? SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.my_location,
+                                        color: isDark ? AppColors.secondaryDark : AppColors.secondaryLight,
+                                        size: 24,
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: AppColors.spaceMD),
+                            // 4. Attribution
+                            GestureDetector(
+                              onTap: () => launchUrl(Uri.parse('https://openstreetmap.org/copyright')),
+                              child: Container(
+                                padding: const EdgeInsets.all(AppColors.spaceSM + 4),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).brightness == Brightness.dark 
+                                      ? AppColors.surfaceDark.withValues(alpha: 0.8)
+                                      : AppColors.surfaceLight.withValues(alpha: 0.8),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.15),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.info_outline,
+                                  color: Theme.of(context).brightness == Brightness.dark 
+                                      ? AppColors.textPrimaryDark 
+                                      : AppColors.textPrimaryLight,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
                     ),
                   ),
                 ),
-              Positioned(
-                right: AppColors.spaceLG,
-                bottom: 100,
-                child: SafeArea(
-                  child: Consumer(
-                    builder: (context, ref, child) {
-                      final isDark =
-                          Theme.of(context).brightness == Brightness.dark;
-                      return Column(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _showHeatmap = !_showHeatmap;
-                              });
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(
-                                bottom: AppColors.spaceMD,
-                              ),
-                              padding: const EdgeInsets.all(
-                                AppColors.spaceSM + 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppColors.surfaceDark
-                                    : AppColors.surfaceLight,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.15),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.thermostat,
-                                color: _showHeatmap
-                                    ? AppColors.success
-                                    : isDark
-                                    ? AppColors.secondaryDark
-                                    : AppColors.secondaryLight,
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: _getCurrentLocation,
-                            child: Container(
-                              padding: const EdgeInsets.all(
-                                AppColors.spaceSM + 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppColors.surfaceDark
-                                    : AppColors.surfaceLight,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.15),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: _isLoadingLocation
-                                  ? SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: isDark
-                                            ? AppColors.textPrimaryDark
-                                            : AppColors.textPrimaryLight,
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.my_location,
-                                      color: isDark
-                                          ? AppColors.secondaryDark
-                                          : AppColors.secondaryLight,
-                                      size: 24,
-                                    ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
               // ── Field Crew Route Card (top of screen) ──────────────────
               if (widget.isFieldCrewMode)
                 Positioned(
@@ -881,17 +620,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       elevation: 0,
+      isScrollControlled: true,
+      useRootNavigator: true,
       builder: (context) => Container(
-        margin: const EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          110,
-        ), // Margin at bottom to stay above floating navbar
+        margin: EdgeInsets.zero,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppColors.radiusCard),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppColors.radiusCard)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.2),

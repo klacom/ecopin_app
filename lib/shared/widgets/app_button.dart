@@ -69,6 +69,9 @@ class AppButton extends StatelessWidget {
               ? _backgroundColor(context).withValues(alpha: 0.5)
               : _backgroundColor(context),
           foregroundColor: _textColor(context),
+          side: variant == ButtonVariant.secondary 
+              ? BorderSide(color: Theme.of(context).brightness == Brightness.light ? Colors.black26 : Colors.white24, width: 1.5)
+              : BorderSide.none,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(
               Radius.circular(AppColors.radiusButton),

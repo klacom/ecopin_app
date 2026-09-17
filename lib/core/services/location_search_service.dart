@@ -18,6 +18,14 @@ class LocationSuggestion {
       ),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'display_name': displayName,
+      'lat': latLng.latitude.toString(),
+      'lon': latLng.longitude.toString(),
+    };
+  }
 }
 
 class LocationSearchService {

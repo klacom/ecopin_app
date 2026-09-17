@@ -527,8 +527,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: _changePassword,
-                        icon: const Icon(Icons.lock_reset),
-                        label: const Text('Change Password'),
+                        icon: Icon(Icons.lock_reset, color: Theme.of(context).brightness == Brightness.light ? Colors.black : null),
+                        label: Text('Change Password', style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? Colors.black : null)),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                             vertical: AppColors.spaceMD,

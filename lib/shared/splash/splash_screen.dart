@@ -45,11 +45,22 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              'EcoPin',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
+            RichText(
+              text: TextSpan(
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.0,
+                ),
+                children: [
+                  const TextSpan(
+                    text: 'ECOPIN',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  const TextSpan(
+                    text: '.AI',
+                    style: TextStyle(color: AppColors.accentBlue),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 40),

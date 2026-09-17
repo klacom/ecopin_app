@@ -17,6 +17,11 @@ class MyMarkerClusterLayerState extends State<MyMarkerClusterLayer> {
   Widget build(BuildContext context) {
     return MarkerClusterLayerWidget(
       options: MarkerClusterLayerOptions(
+        polygonOptions: const PolygonOptions(
+          borderColor: Colors.transparent,
+          color: Colors.transparent,
+          borderStrokeWidth: 0,
+        ),
         markers: widget.markers,
         builder: (context, markers) {
           return Container(

@@ -40,7 +40,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       appBar: AppBar(
         title: const Text('Notifications'),
         actions: [
-          TextButton(
+          IconButton(
+            icon: const Icon(Icons.done_all),
+            tooltip: 'Mark all as read',
             onPressed: () async {
               final user = Supabase.instance.client.auth.currentUser;
               if (user != null) {
@@ -52,7 +54,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 ref.invalidate(unreadNotificationsCountProvider);
               }
             },
-            child: const Text('Mark all as read'),
           ),
         ],
       ),
@@ -134,37 +135,41 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     ],
                   ),
                   child: ListTile(
-                    tileColor: isRead
-                        ? null
-                        : Colors.blue.withValues(alpha: 0.05),
-                    leading: CircleAvatar(
-                      backgroundColor: isRead ? Colors.grey : Colors.green,
-                      child: isDeleting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Icon(Icons.notifications, color: Colors.white),
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: isDeleting
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            isRead ? Icons.notifications_none : Icons.notifications,
+                            color: isRead ? Colors.grey : Colors.blue,
+                            size: 28,
+                          ),
                     title: Text(
                       notification['title'] ?? 'No Title',
                       style: TextStyle(
                         fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(notification['body'] ?? ''),
                         const SizedBox(height: 4),
                         Text(
-                          DateTime.parse(
-                            notification['created_at'],
-                          ).toLocal().toString().split('.')[0],
+                          notification['body'] ?? '',
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark 
+                                ? Colors.grey[400] 
+                                : Colors.grey[800],
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          DateTime.parse(notification['created_at']).toLocal().toString().split('.')[0],
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
@@ -172,6 +177,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         ),
                       ],
                     ),
+                    trailing: isRead 
+                        ? null 
+                        : Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                     onTap: () async {
                       if (isDeleting) return;
                       // Mark as read

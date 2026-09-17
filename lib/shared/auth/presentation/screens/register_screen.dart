@@ -133,7 +133,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
+      appBar: AppBar(
+        title: const Text('Register'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/landing'),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppColors.spaceMD),
         child: Column(
@@ -167,7 +173,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               onPressed: () {
                 context.go('/login');
               },
-              child: const Text('Already have an account? Log in'),
+              child: Text(
+                'Already have an account? Log in',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light ? Colors.black : Theme.of(context).colorScheme.primary,
+                ),
+              ),
             ),
           ],
         ),

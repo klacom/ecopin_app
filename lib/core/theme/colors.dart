@@ -13,6 +13,7 @@ class AppColors {
 
   // ── Brand: Accent Green ───────────────────────────────────
   static const Color accent = Color(0xFFCCFF00);
+  static const Color accentBlue = Color(0xFF3300FF);
 
   // ── Neutrals ──────────────────────────────────────────────
   static const Color textPrimaryLight = Color(0xFF000000);

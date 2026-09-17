@@ -91,6 +91,19 @@ const List<String> funFacts = [
   "A plastic bottle can take up to 450 years to decompose!",
   "Planting native species helps local wildlife thrive!",
   "Turning off tap while brushing teeth saves up to 200 gallons/month!",
+  "Recycling one ton of paper saves 17 mature trees and 7,000 gallons of water.",
+  "Only about 9% of all plastic ever made has likely been recycled.",
+  "A single reusable bag can replace up to 600 plastic bags over its lifetime.",
+  "Composting organic waste reduces methane emissions from landfills.",
+  "It takes 2,700 liters of water to make one cotton shirt—enough for one person to drink for 2.5 years!",
+  "Switching to LED bulbs uses 75% less energy and lasts 25 times longer than incandescent lighting.",
+  "Up to 40% of all food produced in the world goes uneaten. Reduce food waste to help the planet!",
+  "E-waste is the fastest-growing waste stream in the world. Always recycle electronics properly.",
+  "Fun Fact: Pasig was established by Augustinian missionaries in 1572, making it one of the oldest towns in the Philippines!",
+  "Did you know? Pasig served as the capital of the province of Rizal prior to the formation of Metro Manila in 1975.",
+  "The name 'Pasig' is believed to come from the Sanskrit word 'passis', or Tagalog 'mabagsik', meaning a river flowing from one body of water to another.",
+  "The Pasig Cathedral (Immaculate Conception Cathedral) is one of the oldest structures in the city, dating back to the Spanish colonial era.",
+  "Pasig City is known as a 'Green City' for its various environmental initiatives and eco-friendly programs.",
 ];
 
 // Create Report Issue Types - Notice: Kapag naging dynamic yung issue types sa suapbase, baka mapalitan.

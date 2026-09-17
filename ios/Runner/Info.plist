@@ -74,5 +74,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>EcoPin needs speech recognition for voice search.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>EcoPin needs microphone access to hear your voice search.</string>
 </dict>
 </plist>

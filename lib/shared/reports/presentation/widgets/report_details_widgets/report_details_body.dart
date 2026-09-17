@@ -1,5 +1,3 @@
-
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/reports/data/models/cleanup_task_model.dart';
@@ -46,12 +44,31 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
 }
 
 class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
+  Color _getSeverityColor(String level) {
+    switch (level.toLowerCase()) {
+      case 'minimal':
+        return Colors.green;
+      case 'low':
+        return Colors.lightGreen;
+      case 'moderate':
+        return Colors.orange;
+      case 'high':
+        return Colors.deepOrange;
+      case 'critical':
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
   /// Navigate to the Create Report screen with the rejected report's details
   /// prefilled. The citizen can edit everything and must add new media.
   /// This does NOT call the backend yet — submission happens normally through
   /// the standard Create Report flow.
   void _handleCreateNewReport() {
-    ref.invalidate(myReportsProvider); // ensure My Reports refreshes after submit
+    ref.invalidate(
+      myReportsProvider,
+    ); // ensure My Reports refreshes after submit
 
     final prefill = ReportPrefillData(
       location: widget.report.location,
@@ -104,6 +121,72 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               ValidationBadge(status: widget.report.validationStatus),
             ],
           ),
+          if (widget.report.severityScore != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _getSeverityColor(
+                  widget.report.severityLevel ?? 'Moderate',
+                ).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _getSeverityColor(
+                    widget.report.severityLevel ?? 'Moderate',
+                  ),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Severity',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getSeverityColor(
+                            widget.report.severityLevel ?? 'Moderate',
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          '${widget.report.severityScore}/100 - ${widget.report.severityLevel ?? 'Moderate'}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (widget.report.severityFactors != null &&
+                      widget.report.severityFactors!['explanation'] !=
+                          null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.report.severityFactors!['explanation'],
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
           // Show rejection reason if report is rejected
           if (widget.report.validationStatus.toLowerCase() == 'rejected' &&
               widget.report.rejectionReason != null) ...[
@@ -221,7 +304,8 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
+                    urlTemplate:
+                        'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   MarkerLayer(
@@ -262,12 +346,13 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
-                    SizedBox(height: 8),
-                    Text(
-                      'No evidence',
-                      style: TextStyle(color: Colors.grey),
+                    Icon(
+                      Icons.image_not_supported,
+                      size: 48,
+                      color: Colors.grey,
                     ),
+                    SizedBox(height: 8),
+                    Text('No evidence', style: TextStyle(color: Colors.grey)),
                   ],
                 ),
               ),
@@ -281,7 +366,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 itemBuilder: (context, index) {
                   final evidence = widget.evidence[index];
                   final isVideo = evidence['resource_type'] == 'video';
-                  
+
                   return Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: ClipRRect(
@@ -677,15 +762,17 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
 
   Future<void> _initializeVideo() async {
     try {
-      final controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.videoUrl),
+      );
       await controller.initialize();
-      
+
       if (mounted) {
         setState(() {
           _controller = controller;
           _isInitialized = true;
         });
-        
+
         controller.addListener(() {
           if (mounted) {
             setState(() {
@@ -713,7 +800,7 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
   void _togglePlayPause() {
     final controller = _controller;
     if (controller == null) return;
-    
+
     setState(() {
       if (controller.value.isPlaying) {
         controller.pause();
@@ -732,9 +819,7 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
         width: 200,
         height: 200,
         color: Colors.grey.shade300,
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -750,7 +835,10 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
             children: [
               Icon(Icons.error_outline, size: 32, color: Colors.grey),
               SizedBox(height: 8),
-              Text('Video load failed', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(
+                'Video load failed',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
             ],
           ),
         ),
@@ -792,4 +880,3 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
     );
   }
 }
-

@@ -113,6 +113,8 @@ class ApiClient {
     List<String>? imagePaths,
     String? videoPath,
     bool onPrivateProperty = false,
+    String scaleLevel = 'medium',
+    String obstructionLevel = 'none',
   }) async {
     // Require at least one media type
     if ((imagePaths == null || imagePaths.isEmpty) && videoPath == null) {
@@ -125,6 +127,8 @@ class ApiClient {
     formData.fields.add(MapEntry('latitude', latitude.toString()));
     formData.fields.add(MapEntry('longitude', longitude.toString()));
     formData.fields.add(MapEntry('on_private_property', onPrivateProperty.toString()));
+    formData.fields.add(MapEntry('scale_level', scaleLevel));
+    formData.fields.add(MapEntry('obstruction_level', obstructionLevel));
 
     if (imagePaths != null && imagePaths.isNotEmpty) {
       for (final imagePath in imagePaths) {

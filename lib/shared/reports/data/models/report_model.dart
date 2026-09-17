@@ -25,6 +25,11 @@ class ReportModel {
   final String? afterPhotoUrl;
   final String? rejectionReason;
   final DateTime? rejectedAt;
+  final String scaleLevel;
+  final String obstructionLevel;
+  final int? severityScore;
+  final String? severityLevel;
+  final Map<String, dynamic>? severityFactors;
 
   ReportModel({
     required this.id,
@@ -49,6 +54,11 @@ class ReportModel {
     this.afterPhotoUrl,
     this.rejectionReason,
     this.rejectedAt,
+    this.scaleLevel = 'medium',
+    this.obstructionLevel = 'none',
+    this.severityScore,
+    this.severityLevel,
+    this.severityFactors,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -132,6 +142,11 @@ class ReportModel {
       rejectedAt: json['rejected_at'] != null
           ? DateTime.tryParse(json['rejected_at']?.toString() ?? '')
           : null,
+      scaleLevel: json['scale_level']?.toString() ?? 'medium',
+      obstructionLevel: json['obstruction_level']?.toString() ?? 'none',
+      severityScore: json['severity_score'] as int?,
+      severityLevel: json['severity_level']?.toString(),
+      severityFactors: json['severity_factors'] as Map<String, dynamic>?,
     );
   }
 
@@ -152,6 +167,11 @@ class ReportModel {
       'is_overdue': isOverdue,
       'rejection_reason': rejectionReason,
       'rejected_at': rejectedAt?.toIso8601String(),
+      'scale_level': scaleLevel,
+      'obstruction_level': obstructionLevel,
+      'severity_score': severityScore,
+      'severity_level': severityLevel,
+      'severity_factors': severityFactors,
     };
   }
 }

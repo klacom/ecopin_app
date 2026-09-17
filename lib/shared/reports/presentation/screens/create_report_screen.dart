@@ -46,6 +46,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final List<File> _capturedVideos = [];
   final Map<String, int> _videoDurationSeconds = {};
   bool _onPrivateProperty = false;
+  String _selectedScale = 'medium';
+  String _selectedObstruction = 'none';
 
   static const List<String> _validImageExtensions = ['jpeg', 'jpg', 'png', 'webp'];
   static const List<String> _validVideoExtensions = ['mp4', 'mov', 'webm'];
@@ -242,6 +244,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         imagePaths: _capturedImages.isNotEmpty ? _capturedImages.map((img) => img.path).toList() : null,
         videoPath: mainVideo?.path,
         onPrivateProperty: _onPrivateProperty,
+        scaleLevel: _selectedScale,
+        obstructionLevel: _selectedObstruction,
       );
       if (mounted) {
         ref.invalidate(myReportsProvider);
@@ -455,6 +459,36 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             value: _onPrivateProperty,
             contentPadding: EdgeInsets.zero,
             onChanged: (value) => setState(() => _onPrivateProperty = value),
+          ),
+          const SizedBox(height: 24),
+          DropdownButtonFormField<String>(
+            value: _selectedScale,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Estimated Scale',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'small', child: Text('Small (e.g., localized litter, minor puddle)')),
+              DropdownMenuItem(value: 'medium', child: Text('Medium (e.g., standard pile of waste)')),
+              DropdownMenuItem(value: 'large', child: Text('Large (e.g., illegal dumpsite, extensive)')),
+            ],
+            onChanged: (val) => setState(() => _selectedScale = val ?? 'medium'),
+          ),
+          const SizedBox(height: 24),
+          DropdownButtonFormField<String>(
+            value: _selectedObstruction,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Obstruction Level',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'none', child: Text('None (No interference with public ways)')),
+              DropdownMenuItem(value: 'partial', child: Text('Partial (Partially blocking sidewalk/road)')),
+              DropdownMenuItem(value: 'complete', child: Text('Complete (Fully blocking access)')),
+            ],
+            onChanged: (val) => setState(() => _selectedObstruction = val ?? 'none'),
           ),
           const SizedBox(height: 48),
           AppButton(

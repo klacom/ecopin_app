@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class OfficerMainScreen extends ConsumerStatefulWidget {
   final Widget child;
@@ -209,25 +210,20 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
       body: widget.child,
       bottomNavigationBar: SafeArea(
         child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           height: 70,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+            color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : AppColors.surfaceLight,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
+                width: 4,
               ),
-            ],
+            ),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BottomAppBar(
-              elevation: 0,
-              color: Theme.of(context).colorScheme.surface,
-              child: Row(
+          child: BottomAppBar(
+            elevation: 0,
+            color: Colors.transparent,
+            child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -272,7 +268,6 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
@@ -284,8 +279,9 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
     int selectedIndex,
   ) {
     final isSelected = index == selectedIndex;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isSelected
-        ? Theme.of(context).colorScheme.primary
+        ? (isDark ? AppColors.primaryLight : Colors.black)
         : Colors.grey;
 
     return InkWell(

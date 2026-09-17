@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class MyMarkerClusterLayer extends StatefulWidget {
   final List<Marker> markers;
@@ -14,21 +15,33 @@ class MyMarkerClusterLayer extends StatefulWidget {
 class MyMarkerClusterLayerState extends State<MyMarkerClusterLayer> {
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return MarkerClusterLayerWidget(
       options: MarkerClusterLayerOptions(
         markers: widget.markers,
         builder: (context, markers) {
           return Container(
             decoration: BoxDecoration(
-              color: Colors.green,
-              borderRadius: BorderRadius.circular(20),
+              color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+              border: Border.all(
+                color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
+                width: 3,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark ? AppColors.accent : AppColors.shadowCard,
+                  offset: const Offset(4, 4),
+                ),
+              ],
             ),
             child: Center(
               child: Text(
                 markers.length.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                style: TextStyle(
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                  fontFamily: 'monospace',
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),

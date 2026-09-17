@@ -562,16 +562,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     color: isDark
                                         ? AppColors.surfaceDark
                                         : AppColors.surfaceLight,
-                                    borderRadius: BorderRadius.circular(
-                                      AppColors.radiusCard,
+                                    border: Border.all(
+                                      color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
+                                      width: 4,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                        blurRadius: 15,
-                                        offset: const Offset(0, 8),
+                                        color: isDark ? AppColors.accent : AppColors.shadowCard,
+                                        offset: const Offset(6, 6),
                                       ),
                                     ],
                                   ),
@@ -665,12 +663,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 color: isDark
                                     ? AppColors.surfaceDark
                                     : AppColors.surfaceLight,
-                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
+                                  width: 4,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.15),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                                    color: isDark ? AppColors.accent : AppColors.shadowCard,
+                                    offset: const Offset(4, 4),
                                   ),
                                 ],
                               ),
@@ -693,12 +693,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 color: isDark
                                     ? AppColors.surfaceDark
                                     : AppColors.surfaceLight,
-                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
+                                  width: 4,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.15),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                                    color: isDark ? AppColors.accent : AppColors.shadowCard,
+                                    offset: const Offset(4, 4),
                                   ),
                                 ],
                               ),
@@ -741,22 +743,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         padding: const EdgeInsets.all(AppColors.spaceMD),
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.surfaceDark : Colors.white,
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radiusCard,
+                          border: Border.all(
+                            color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
+                            width: 4,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
+                              color: isDark ? AppColors.accent : AppColors.shadowCard,
+                              offset: const Offset(6, 6),
                             ),
                           ],
-                          border: Border.all(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.2),
-                            width: 1.5,
-                          ),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -895,12 +891,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.dividerDark
+                : AppColors.dividerLight,
+            width: 4,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.accent
+                  : AppColors.shadowCard,
+              offset: const Offset(8, 8),
             ),
           ],
         ),
@@ -973,8 +975,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               label,
               style: TextStyle(
                 color: textSecondary,
-                fontSize: 9,
-                fontFamily: 'Outfit',
+                fontSize: 10,
+                fontFamily: 'monospace',
+                letterSpacing: 1.0,
               ),
             ),
             Text(
@@ -982,8 +985,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               style: TextStyle(
                 color: textPrimary,
                 fontSize: 12,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Outfit',
+                fontWeight: FontWeight.w900,
               ),
             ),
           ],
@@ -1015,8 +1017,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         label: Text(
           isWithinRadius ? 'Update Status' : 'Update Status (out of range)',
           style: TextStyle(
-            fontFamily: 'Outfit',
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w900,
             color: isWithinRadius ? null : textSecondary,
           ),
         ),
@@ -1025,7 +1026,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           disabledForegroundColor: textSecondary,
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(0),
           ),
         ),
       ),

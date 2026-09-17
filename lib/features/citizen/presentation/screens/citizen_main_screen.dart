@@ -2,6 +2,7 @@ import 'package:ecopin_app/shared/notifications/providers/notifications_provider
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/core/services/location_service.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
@@ -68,44 +69,52 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
       body: widget.child,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       // Floating Action Button in the Center
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // Fetch current GPS location, then open Create Report screen.
-          final location = await LocationService.getCurrentLocation();
-          if (context.mounted) {
-            context.push(
-              ProtectedAppRoutes.createReport,
-              extra: ReportPrefillData(location: location),
-            );
-          }
-        },
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: const Icon(Icons.add),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).brightness == Brightness.dark ? AppColors.accent : AppColors.shadowCard,
+              offset: const Offset(4, 4),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () async {
+            // Fetch current GPS location, then open Create Report screen.
+            final location = await LocationService.getCurrentLocation();
+            if (context.mounted) {
+              context.push(
+                ProtectedAppRoutes.createReport,
+                extra: ReportPrefillData(location: location),
+              );
+            }
+          },
+          elevation: 0,
+          backgroundColor: AppColors.primaryLight,
+          foregroundColor: Colors.black,
+          shape: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
+            width: 3,
+          ),
+          child: const Icon(Icons.add, size: 28),
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           height: 70,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+            color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : AppColors.surfaceLight,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
+                width: 4,
               ),
-            ],
+            ),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BottomAppBar(
-              elevation: 0,
-              color: Colors.transparent,
-              shape: const CircularNotchedRectangle(),
-              notchMargin: 8,
-              child: Row(
+          child: BottomAppBar(
+            elevation: 0,
+            color: Colors.transparent,
+            child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -137,7 +146,6 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
@@ -148,8 +156,9 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
     String? fullName,
   ) {
     final isSelected = index == selectedIndex;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isSelected
-        ? Theme.of(context).colorScheme.primary
+        ? (isDark ? AppColors.primaryLight : Colors.black)
         : Colors.grey;
 
     return InkWell(
@@ -202,8 +211,9 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
   ) {
     final unreadCount = ref.watch(unreadNotificationsCountProvider).value ?? 0;
     final isSelected = index == selectedIndex;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isSelected
-        ? Theme.of(context).colorScheme.primary
+        ? (isDark ? AppColors.primaryLight : Colors.black)
         : Colors.grey;
 
     return InkWell(
@@ -242,8 +252,9 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
     int selectedIndex,
   ) {
     final isSelected = index == selectedIndex;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isSelected
-        ? Theme.of(context).colorScheme.primary
+        ? (isDark ? AppColors.primaryLight : Colors.black)
         : Colors.grey;
 
     return InkWell(

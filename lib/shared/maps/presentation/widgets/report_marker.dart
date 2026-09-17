@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 
 class ReportMarker extends StatelessWidget {
   final String status;
@@ -11,35 +12,41 @@ class ReportMarker extends StatelessWidget {
     switch (status.toLowerCase()) {
       case 'resolved':
       case 'closed':
-        color = Colors.green;
+        color = AppColors.success;
         break;
       case 'in progress':
       case 'acknowledged':
       case 'waiting_for_feedback':
-        color = Colors.orange;
+        color = AppColors.warning;
         break;
       case 'pending_owner_consent':
-        color = Colors.yellow;
+        color = AppColors.info;
         break;
       default:
-        color = Colors.red;
+        color = AppColors.error;
         break;
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Transform.rotate(
+      angle: -0.2,
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          border: Border.all(
+            color: isDark ? AppColors.dividerDark : AppColors.dividerLight, 
+            width: 3
           ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? color : AppColors.shadowCard,
+              offset: const Offset(4, 4),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.center_focus_strong, color: Colors.black, size: 20),
       ),
-      child: const Icon(Icons.location_pin, color: Colors.white, size: 20),
     );
   }
 }

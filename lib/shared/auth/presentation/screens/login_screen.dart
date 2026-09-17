@@ -60,12 +60,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         SnackbarHelper.showError('Login failed: Invalid session data');
       }
     } on DioException catch (e) {
+      if (e.response?.data != null && e.response?.data['code'] == 'EMAIL_NOT_VERIFIED') {
+        if (mounted) {
+          context.go('/email-verification?email=${Uri.encodeComponent(email)}');
+        }
+        return;
+      }
+      
       String errorMessage = 'Login failed';
       if (e.response?.data != null && e.response?.data['message'] != null) {
         errorMessage = e.response?.data['message'];
       }
       _log.severe(e);
       SnackbarHelper.showError("LOGIN ERROR: $errorMessage");
+
     } catch (e, stackTrace) {
       _log.severe(e, stackTrace);
       SnackbarHelper.showError('An unexpected error occurred: $e');

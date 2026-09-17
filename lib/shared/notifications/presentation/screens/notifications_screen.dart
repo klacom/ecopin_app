@@ -5,7 +5,7 @@ import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:ecopin_app/core/constants/app_constants.dart';
+
 import 'package:pull_to_refresh/pull_to_refresh.dart' as pull_refresh;
 
 class NotificationsScreen extends ConsumerStatefulWidget {

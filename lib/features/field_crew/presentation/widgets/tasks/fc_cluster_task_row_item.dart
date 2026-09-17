@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/core/theme/typography.dart';
+
 
 class FcClusterTaskRowItem extends StatelessWidget {
   final String title;
@@ -31,9 +31,6 @@ class FcClusterTaskRowItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDark ? AppColors.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(AppColors.radiusCard),
-          border: Border.all(
-            color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-          ),
           boxShadow: [
             BoxShadow(
               color: AppColors.shadowCard,

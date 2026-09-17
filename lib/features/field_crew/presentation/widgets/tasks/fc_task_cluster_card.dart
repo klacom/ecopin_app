@@ -13,7 +13,7 @@ class FcTaskClusterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -21,9 +21,6 @@ class FcTaskClusterCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: AppColors.spaceMD, vertical: AppColors.spaceSM),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        side: BorderSide(
-          color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-        ),
       ),
       child: InkWell(
         onTap: onTapCard,
@@ -159,7 +156,6 @@ class FcTaskClusterCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(AppColors.radiusButton),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

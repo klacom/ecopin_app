@@ -66,40 +66,42 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
       body: widget.child,
       bottomNavigationBar: SafeArea(
         child: Container(
-          height: 70,
+          height: 72,
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppColors.spaceMD,
+            vertical: AppColors.spaceSM,
+          ),
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : AppColors.surfaceLight,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
-                width: 4,
+            borderRadius: BorderRadius.circular(AppColors.radiusCard),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
-            ),
+            ],
           ),
-          child: BottomAppBar(
-            elevation: 0,
-            color: Colors.transparent,
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard, 'Dashboard', selectedIndex),
-                  _buildNavItem(1, Icons.map_outlined, Icons.map, 'Map', selectedIndex),
-                  _buildNavItem(2, Icons.task_outlined, Icons.task, 'Tasks', selectedIndex),
-                  _buildNavItem(3, Icons.report_outlined, Icons.report, 'Reports', selectedIndex),
-                  _buildProfileNavItem(4, selectedIndex, avatarUrl, fullName),
-                ],
-              ),
+          child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard, 'Dashboard', selectedIndex),
+                _buildNavItem(1, Icons.map_outlined, Icons.map, 'Map', selectedIndex),
+                _buildNavItem(2, Icons.task_outlined, Icons.task, 'Tasks', selectedIndex),
+                _buildNavItem(3, Icons.report_outlined, Icons.report, 'Reports', selectedIndex),
+                _buildProfileNavItem(4, selectedIndex, avatarUrl, fullName),
+              ],
             ),
-          ),
         ),
+      ),
     );
   }
 
   Widget _buildProfileNavItem(int index, int selectedIndex, String? avatarUrl, String? fullName) {
     final isSelected = index == selectedIndex;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isSelected ? (isDark ? AppColors.primaryLight : Colors.black) : Colors.grey;
+    final color = isSelected ? AppColors.accent : (isDark ? Colors.grey.shade600 : Colors.grey);
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),
@@ -135,7 +137,7 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
   Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label, int selectedIndex) {
     final isSelected = index == selectedIndex;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isSelected ? (isDark ? AppColors.primaryLight : Colors.black) : Colors.grey;
+    final color = isSelected ? AppColors.accent : (isDark ? Colors.grey.shade600 : Colors.grey);
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),

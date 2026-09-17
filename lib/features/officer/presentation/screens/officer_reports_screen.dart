@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -205,7 +206,7 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
               Flexible(
                 flex: 1,
                 child: DropdownButtonFormField<String>(
-                  value: _statusFilter,
+                  initialValue: _statusFilter,
                   decoration: const InputDecoration(
                     labelText: 'Status',
                     border: OutlineInputBorder(),
@@ -240,7 +241,7 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
               Flexible(
                 flex: 1,
                 child: DropdownButtonFormField<String>(
-                  value: _issueTypeFilter,
+                  initialValue: _issueTypeFilter,
                   decoration: const InputDecoration(
                     labelText: 'Issue Type',
                     border: OutlineInputBorder(),
@@ -280,7 +281,7 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
               Flexible(
                 flex: 1,
                 child: DropdownButtonFormField<String>(
-                  value: _validationStatusFilter,
+                  initialValue: _validationStatusFilter,
                   decoration: const InputDecoration(
                     labelText: 'Validation',
                     border: OutlineInputBorder(),
@@ -315,7 +316,7 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
               Flexible(
                 flex: 1,
                 child: DropdownButtonFormField<String>(
-                  value: _lifecycleStageFilter,
+                  initialValue: _lifecycleStageFilter,
                   decoration: const InputDecoration(
                     labelText: 'Lifecycle',
                     border: OutlineInputBorder(),
@@ -354,7 +355,7 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _sortBy,
+            initialValue: _sortBy,
             decoration: const InputDecoration(
               labelText: 'Sort By',
               border: OutlineInputBorder(),
@@ -493,8 +494,7 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red),
+                        borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
                       ),
                       child: const Text(
                         'OVERDUE',

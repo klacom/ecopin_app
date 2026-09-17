@@ -199,9 +199,8 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
-    final profileAsync = ref.watch(profileProvider);
-    final fullName = profileAsync.value?['full_name'] as String?;
-    final avatarUrl = profileAsync.value?['avatar_url'] as String?;
+    // unused variable removed
+    // unused variables removed
 
     final isFieldCrew = ref.watch(authNotifierProvider).state.role == UserRole.fieldCrew;
 
@@ -210,64 +209,66 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
       body: widget.child,
       bottomNavigationBar: SafeArea(
         child: Container(
-          height: 70,
+          height: 72,
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppColors.spaceMD,
+            vertical: AppColors.spaceSM,
+          ),
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : AppColors.surfaceLight,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
-                width: 4,
+            borderRadius: BorderRadius.circular(AppColors.radiusCard),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
-            ),
+            ],
           ),
-          child: BottomAppBar(
-            elevation: 0,
-            color: Colors.transparent,
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
+          child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildNavItem(
+                  0,
+                  Icons.dashboard_outlined,
+                  Icons.dashboard,
+                  'Dashboard',
+                  selectedIndex,
+                ),
+                if (!isFieldCrew)
                   _buildNavItem(
-                    0,
-                    Icons.dashboard_outlined,
-                    Icons.dashboard,
-                    'Dashboard',
+                    1,
+                    Icons.group_work_outlined,
+                    Icons.group_work,
+                    'Clusters',
                     selectedIndex,
                   ),
-                  if (!isFieldCrew)
-                    _buildNavItem(
-                      1,
-                      Icons.group_work_outlined,
-                      Icons.group_work,
-                      'Clusters',
-                      selectedIndex,
-                    ),
-                  _buildNavItem(
-                    2,
-                    Icons.task_outlined,
-                    Icons.task,
-                    'Tasks',
-                    selectedIndex,
-                  ),
-                  _buildNavItem(
-                    3,
-                    Icons.report_outlined,
-                    Icons.report,
-                    'Reports',
-                    selectedIndex,
-                  ),
-                  _buildNavItem(
-                    4,
-                    Icons.menu_outlined,
-                    Icons.menu,
-                    'More',
-                    selectedIndex,
-                  ),
-                ],
-              ),
+                _buildNavItem(
+                  2,
+                  Icons.task_outlined,
+                  Icons.task,
+                  'Tasks',
+                  selectedIndex,
+                ),
+                _buildNavItem(
+                  3,
+                  Icons.report_outlined,
+                  Icons.report,
+                  'Reports',
+                  selectedIndex,
+                ),
+                _buildNavItem(
+                  4,
+                  Icons.menu_outlined,
+                  Icons.menu,
+                  'More',
+                  selectedIndex,
+                ),
+              ],
             ),
-          ),
         ),
+      ),
     );
   }
 
@@ -281,8 +282,8 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
     final isSelected = index == selectedIndex;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isSelected
-        ? (isDark ? AppColors.primaryLight : Colors.black)
-        : Colors.grey;
+        ? AppColors.accent
+        : (isDark ? Colors.grey.shade600 : Colors.grey);
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),

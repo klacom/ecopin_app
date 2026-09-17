@@ -32,7 +32,6 @@ class StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
-        border: Border.all(color: color),
       ),
       child: Text(
         // Use human-readable labels from the canonical map where available.

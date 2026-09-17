@@ -1,4 +1,4 @@
-import 'dart:ui';
+
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
@@ -221,7 +221,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                    urlTemplate: 'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   MarkerLayer(

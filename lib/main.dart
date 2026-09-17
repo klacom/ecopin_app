@@ -15,7 +15,7 @@ Future<void> main() async {
   Logger.root.level = Level.ALL;
 
   Logger.root.onRecord.listen((record){
-    print(
+    debugPrint(
       '${record.time} '
       '[${record.level.name}] '
       '${record.loggerName}: '
@@ -40,6 +40,7 @@ Future<void> main() async {
 
   // Get initial link if app was opened by a deep link
   final initialLink = await appLinks.getInitialLink();
+  Logger('main').info('Skipping migration initialization on web');
   if (initialLink != null) {
     await Supabase.instance.client.auth.getSessionFromUrl(initialLink);
   }

@@ -52,7 +52,7 @@ class _AppTextFieldState extends State<AppTextField> {
           hintText: (widget.hintText != null && widget.hintText!.isNotEmpty)
               ? widget.hintText
               : widget.placeholderText,
-          border: const OutlineInputBorder(),
+          // Inherits border styling from app_theme.dart
           suffixIcon: widget.inputType == 'password'
               ? IconButton(
                   icon: Icon(

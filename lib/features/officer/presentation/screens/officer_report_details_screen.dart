@@ -435,7 +435,7 @@ class _OfficerReportDetailsScreenState
                   children: [
                     const Text(
                       'Error loading report',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -633,7 +633,7 @@ class _OfficerReportDetailsScreenState
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: currentLifecycleValue,
+              initialValue: currentLifecycleValue,
               decoration: const InputDecoration(
                 labelText: 'Update Lifecycle Stage',
                 border: OutlineInputBorder(),
@@ -649,7 +649,7 @@ class _OfficerReportDetailsScreenState
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: currentValidationValue,
+              initialValue: currentValidationValue,
               decoration: const InputDecoration(
                 labelText: 'Update Validation Status',
                 border: OutlineInputBorder(),

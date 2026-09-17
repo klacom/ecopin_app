@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
-import '../widgets/tasks/fc_cluster_task_row_item.dart';
+
 
 class FcClusterDetailScreen extends StatelessWidget {
   const FcClusterDetailScreen({super.key});
@@ -115,9 +115,6 @@ class FcClusterDetailScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        border: Border.all(
-          color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.shadowCard,

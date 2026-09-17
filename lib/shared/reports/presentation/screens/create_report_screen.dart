@@ -524,7 +524,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                   children: [
                     TileLayer(
                       urlTemplate:
-                          'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                          'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
                       userAgentPackageName: 'dev.ecopinas.ecopin_app',
                     ),
                     MarkerLayer(

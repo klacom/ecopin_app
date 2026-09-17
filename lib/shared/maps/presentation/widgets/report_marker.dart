@@ -15,6 +15,7 @@ class ReportMarker extends StatelessWidget {
         color = AppColors.success;
         break;
       case 'in progress':
+      case 'in_progress':
       case 'acknowledged':
       case 'waiting_for_feedback':
         color = AppColors.warning;
@@ -27,25 +28,24 @@ class ReportMarker extends StatelessWidget {
         break;
     }
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Transform.rotate(
-      angle: -0.2,
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          border: Border.all(
-            color: isDark ? AppColors.dividerDark : AppColors.dividerLight, 
-            width: 3
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.6),
+            blurRadius: 12,
+            spreadRadius: 2,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? color : AppColors.shadowCard,
-              offset: const Offset(4, 4),
-            ),
-          ],
-        ),
-        child: const Icon(Icons.center_focus_strong, color: Colors.black, size: 20),
+        ],
+      ),
+      child: const Icon(
+        Icons.location_on,
+        color: Colors.black,
+        size: 18,
       ),
     );
   }

@@ -127,7 +127,7 @@ class _EmailVerificationScreenState
                   textAlign: TextAlign.center,
                   text: TextSpan(
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.textPrimaryDark.withOpacity(0.8),
+                      color: AppColors.textPrimaryDark.withValues(alpha: 0.8),
                     ),
                     children: [
                       const TextSpan(text: 'We sent a verification link to\n'),
@@ -147,7 +147,7 @@ class _EmailVerificationScreenState
                   'Please click the link in the email to activate your account.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimaryDark.withOpacity(0.6),
+                    color: AppColors.textPrimaryDark.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: AppColors.spaceLG),

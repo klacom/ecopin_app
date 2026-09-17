@@ -188,7 +188,7 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _sortBy,
+                  initialValue: _sortBy,
                   decoration: const InputDecoration(
                     labelText: 'Sort By',
                     border: OutlineInputBorder(),

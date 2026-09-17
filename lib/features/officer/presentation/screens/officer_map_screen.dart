@@ -18,7 +18,6 @@ import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_la
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/status_badge.dart';
 import 'package:logging/logging.dart';
-import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 
 class OfficerMapScreen extends ConsumerStatefulWidget {
@@ -199,9 +198,8 @@ class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
               children: [
                 TileLayer(
                   urlTemplate: Theme.of(context).brightness == Brightness.dark
-                      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
-                      : 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
-                  subdomains: const ['a', 'b', 'c'],
+                      ? 'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}'
+                      : 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
                   userAgentPackageName: 'dev.ecopinas.ecopin_app',
                 ),
                 if (_showHeatmap)
@@ -621,7 +619,7 @@ class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),

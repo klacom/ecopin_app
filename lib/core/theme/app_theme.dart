@@ -11,7 +11,7 @@ class AppTheme {
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
       primary: AppColors.primaryLight,
-      onPrimary: Colors.white,
+      onPrimary: Colors.black,
       secondary: AppColors.secondaryLight,
       onSecondary: Colors.white,
       tertiary: AppColors.accent,
@@ -29,7 +29,7 @@ class AppTheme {
     const colorScheme = ColorScheme(
       brightness: Brightness.dark,
       primary: AppColors.primaryDark,
-      onPrimary: AppColors.backgroundDark,
+      onPrimary: Colors.black,
       secondary: AppColors.secondaryDark,
       onSecondary: AppColors.backgroundDark,
       tertiary: AppColors.accent,
@@ -60,6 +60,16 @@ class AppTheme {
       scaffoldBackgroundColor: scaffoldBg,
       fontFamily: 'Outfit',
 
+      // ── App Bar ─────────────────────────────────────────────
+      appBarTheme: AppBarTheme(
+        backgroundColor: scaffoldBg,
+        foregroundColor: textColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        titleTextStyle: AppTypography.h5.copyWith(color: textColor),
+      ),
+
       // ── Text Theme ─────────────────────────────────────────
       textTheme: TextTheme(
         displayLarge: AppTypography.display.copyWith(color: textColor),
@@ -81,8 +91,9 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: colorScheme.primary,
-          foregroundColor: colorScheme.onPrimary,
-          textStyle: AppTypography.button.copyWith(color: colorScheme.onPrimary),
+          foregroundColor: Colors.black,
+          textStyle: AppTypography.button.copyWith(color: Colors.black),
+          elevation: 0,
           shape: const RoundedRectangleBorder(
             borderRadius:
                 BorderRadius.all(Radius.circular(AppColors.radiusButton)),
@@ -110,7 +121,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: colorScheme.primary,
-          side: BorderSide(color: colorScheme.primary),
+          side: BorderSide(color: colorScheme.primary, width: 1.5),
           textStyle: AppTypography.button.copyWith(color: colorScheme.primary),
           shape: const RoundedRectangleBorder(
             borderRadius:
@@ -145,26 +156,31 @@ class AppTheme {
         border: const OutlineInputBorder(
           borderRadius:
               BorderRadius.all(Radius.circular(AppColors.radiusInput)),
-          borderSide: BorderSide(color: AppColors.dividerLight),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius:
               const BorderRadius.all(Radius.circular(AppColors.radiusInput)),
-          borderSide: BorderSide(color: dividerColor),
+          borderSide: BorderSide(color: dividerColor, width: 1),
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius:
               BorderRadius.all(Radius.circular(AppColors.radiusInput)),
-          borderSide: BorderSide(color: AppColors.primaryLight, width: 2),
+          borderSide: BorderSide(color: AppColors.primaryLight, width: 1.5),
         ),
         errorBorder: const OutlineInputBorder(
           borderRadius:
               BorderRadius.all(Radius.circular(AppColors.radiusInput)),
-          borderSide: BorderSide(color: AppColors.error),
+          borderSide: BorderSide(color: AppColors.error, width: 1),
+        ),
+        focusedErrorBorder: const OutlineInputBorder(
+          borderRadius:
+              BorderRadius.all(Radius.circular(AppColors.radiusInput)),
+          borderSide: BorderSide(color: AppColors.error, width: 1.5),
         ),
         labelStyle: AppTypography.label.copyWith(color: textColor),
         hintStyle: AppTypography.body.copyWith(
-          color: textColor.withValues(alpha: 0.5),
+          color: textColor.withValues(alpha: 0.4),
         ),
       ),
 
@@ -179,6 +195,18 @@ class AppTheme {
         contentTextStyle: AppTypography.body.copyWith(color: textColor),
       ),
 
+      // ── Bottom Sheet ───────────────────────────────────────
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppColors.radiusCard),
+          ),
+        ),
+        showDragHandle: true,
+        dragHandleColor: isDark ? Colors.white24 : Colors.black12,
+      ),
+
       // ── Chip ───────────────────────────────────────────────
       chipTheme: ChipThemeData(
         backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
@@ -186,9 +214,10 @@ class AppTheme {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppColors.radiusChip)),
         ),
+        side: BorderSide.none,
         padding: const EdgeInsets.symmetric(
-          horizontal: AppColors.spaceSM,
-          vertical: AppColors.spaceXS,
+          horizontal: AppColors.spaceSM + 4,
+          vertical: AppColors.spaceXS + 2,
         ),
       ),
 
@@ -204,11 +233,19 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: isDark ? AppColors.surfaceDark : AppColors.textPrimaryLight,
         contentTextStyle:
-            AppTypography.body.copyWith(color: isDark ? Colors.white : Colors.white),
-        shape: const RoundedRectangleBorder(
+            AppTypography.body.copyWith(color: Colors.white),
+        shape: RoundedRectangleBorder(
           borderRadius:
-              BorderRadius.all(Radius.circular(AppColors.radiusButton)),
+              BorderRadius.all(Radius.circular(AppColors.radiusCard)),
         ),
+      ),
+
+      // ── Floating Action Button ─────────────────────────────
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.black,
+        elevation: 4,
+        shape: const CircleBorder(),
       ),
 
       // ── Color scheme extension for status colors ───────────

@@ -51,7 +51,6 @@ class ValidationBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
-        border: Border.all(color: color),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -120,9 +120,6 @@ class _FcOfflineSyncBannerState extends State<FcOfflineSyncBanner> {
               ? const Color(0xFF1B5E20).withValues(alpha: 0.2)
               : const Color(0xFFF1F8E9)); // Success green tint
 
-    final Color borderColor = !_isOnline
-        ? AppColors.warning.withValues(alpha: 0.5)
-        : AppColors.success.withValues(alpha: 0.4);
 
     final Color iconColor = !_isOnline ? AppColors.warning : AppColors.success;
 
@@ -193,7 +190,6 @@ class _FcOfflineSyncBannerState extends State<FcOfflineSyncBanner> {
           decoration: BoxDecoration(
             color: bannerBg,
             borderRadius: BorderRadius.circular(AppColors.radiusCard),
-            border: Border.all(color: borderColor, width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: AppColors.shadowCard,

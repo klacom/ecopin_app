@@ -53,7 +53,7 @@ class ReportModel {
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
     LatLng latLng;
-    final Logger _log = Logger("Report Model");
+    final Logger log = Logger("Report Model");
 
     // 1. Try direct latitude/longitude (from reports_view)
     if (json.containsKey('latitude') &&
@@ -88,7 +88,7 @@ class ReportModel {
         // _log.info('point: $point');
         latLng = LatLng(point.position.y, point.position.x);
       } catch (e, stackTrace) {
-        _log.severe('Error parsing EWKB: $e', stackTrace);
+        log.severe('Error parsing EWKB: $e', stackTrace);
         latLng = const LatLng(0, 0);
       }
     } else {

@@ -166,10 +166,6 @@ class FcTaskListItem extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: status.color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(AppColors.radiusChip),
-                        border: Border.all(
-                          color: status.color.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
                       ),
                       child: Text(
                         status.label,

@@ -40,7 +40,6 @@ class ValidationBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
-        border: Border.all(color: color, width: 0.5),
       ),
       child: Text(
         label,

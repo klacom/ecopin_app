@@ -15,33 +15,31 @@ class MyMarkerClusterLayer extends StatefulWidget {
 class MyMarkerClusterLayerState extends State<MyMarkerClusterLayer> {
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return MarkerClusterLayerWidget(
       options: MarkerClusterLayerOptions(
         markers: widget.markers,
         builder: (context, markers) {
           return Container(
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-              border: Border.all(
-                color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-                width: 3,
-              ),
+              color: AppColors.accent,
+              shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: isDark ? AppColors.accent : AppColors.shadowCard,
-                  offset: const Offset(4, 4),
+                  color: AppColors.accent.withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  spreadRadius: 2,
                 ),
               ],
             ),
             child: Center(
               child: Text(
                 markers.length.toString(),
-                style: TextStyle(
-                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.w900,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
                 ),
               ),
             ),

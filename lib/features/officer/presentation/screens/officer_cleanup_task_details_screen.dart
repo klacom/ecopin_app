@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:go_router/go_router.dart';
@@ -288,37 +289,6 @@ class _OfficerCleanupTaskDetailsScreenState
     }
   }
 
-  Future<void> _uploadTaskPhoto(String photoType) async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
-    if (pickedFile == null) return;
-
-    final key = "task-$photoType";
-    setState(() => _isUploadingPhotos[key] = true);
-    try {
-      final apiClient = ref.read(apiClientProvider);
-      final file = File(pickedFile.path);
-      await apiClient.uploadCleanupPhoto(
-        taskId: widget.taskId,
-        photoType: photoType,
-        image: file,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo uploaded successfully')),
-      );
-      await _loadTaskDetails();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to upload photo: $e')));
-    } finally {
-      if (mounted) setState(() => _isUploadingPhotos.remove(key));
-    }
-  }
-
   Future<void> _deleteTaskPhoto(String photoType) async {
     final key = "task-$photoType";
     setState(() => _isDeletingPhotos[key] = true);
@@ -553,11 +523,7 @@ class _OfficerCleanupTaskDetailsScreenState
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: _getStatusColor(report.status),
-          width: report.status == 'resolved' ? 2 : 1,
-        ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppColors.radiusCard),
       ),
       child: Card(
         color: Theme.of(context).colorScheme.surface,
@@ -643,8 +609,7 @@ class _OfficerCleanupTaskDetailsScreenState
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.blue.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.blue),
+                                    borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
                                   ),
                                   child: Text(
                                     report.stage!
@@ -1011,44 +976,7 @@ class _OfficerCleanupTaskDetailsScreenState
     );
   }
 
-  Widget _buildPhotoGrid(String label, List<String> photoUrls) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-          ),
-          itemCount: photoUrls.length,
-          itemBuilder: (context, index) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                photoUrls[index],
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[200],
-                    child: const Center(child: Icon(Icons.broken_image)),
-                  );
-                },
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-      ],
-    );
-  }
+
 
   Widget _buildMarkCompleteButton() {
     return SizedBox(

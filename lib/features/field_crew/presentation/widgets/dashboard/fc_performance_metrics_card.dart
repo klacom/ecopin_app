@@ -428,10 +428,6 @@ class _WorkQualityBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(AppColors.radiusChip),
-        border: Border.all(
-          color: quality.color.withValues(alpha: 0.35),
-          width: 1,
-        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

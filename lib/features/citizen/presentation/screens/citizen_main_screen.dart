@@ -63,89 +63,79 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
     final profileAsync = ref.watch(profileProvider);
     final fullName = profileAsync.value?['full_name'] as String?;
     final avatarUrl = profileAsync.value?['avatar_url'] as String?;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       extendBody: true,
       body: widget.child,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       // Floating Action Button in the Center
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).brightness == Brightness.dark ? AppColors.accent : AppColors.shadowCard,
-              offset: const Offset(4, 4),
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: () async {
-            // Fetch current GPS location, then open Create Report screen.
-            final location = await LocationService.getCurrentLocation();
-            if (context.mounted) {
-              context.push(
-                ProtectedAppRoutes.createReport,
-                extra: ReportPrefillData(location: location),
-              );
-            }
-          },
-          elevation: 0,
-          backgroundColor: AppColors.primaryLight,
-          foregroundColor: Colors.black,
-          shape: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
-            width: 3,
-          ),
-          child: const Icon(Icons.add, size: 28),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          // Fetch current GPS location, then open Create Report screen.
+          final location = await LocationService.getCurrentLocation();
+          if (context.mounted) {
+            context.push(
+              ProtectedAppRoutes.createReport,
+              extra: ReportPrefillData(location: location),
+            );
+          }
+        },
+        elevation: 4,
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.black,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.add, size: 28),
       ),
       bottomNavigationBar: SafeArea(
         child: Container(
-          height: 70,
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : AppColors.surfaceLight,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
-                width: 4,
-              ),
-            ),
+          height: 72,
+          margin: const EdgeInsets.symmetric(
+            horizontal: AppColors.spaceMD,
+            vertical: AppColors.spaceSM,
           ),
-          child: BottomAppBar(
-            elevation: 0,
-            color: Colors.transparent,
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _buildNavItem(
-                    0,
-                    Icons.map_outlined,
-                    Icons.map,
-                    'Maps',
-                    selectedIndex,
-                  ),
-                  _buildNavItem(
-                    1,
-                    Icons.location_on_outlined,
-                    Icons.location_on,
-                    'Reports',
-                    selectedIndex,
-                  ),
-                  const SizedBox(width: 40), // Space for FAB
-                  _buildNotificationNavItem(
-                    2,
-                    Icons.notifications_outlined,
-                    Icons.notifications,
-                    'Alerts',
-                    selectedIndex,
-                  ),
-                  _buildProfileNavItem(3, selectedIndex, avatarUrl, fullName),
-                ],
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(AppColors.radiusCard),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
               ),
-            ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildNavItem(
+                0,
+                Icons.map_outlined,
+                Icons.map,
+                'Maps',
+                selectedIndex,
+              ),
+              _buildNavItem(
+                1,
+                Icons.location_on_outlined,
+                Icons.location_on,
+                'Reports',
+                selectedIndex,
+              ),
+              const SizedBox(width: 56), // Space for FAB
+              _buildNotificationNavItem(
+                2,
+                Icons.notifications_outlined,
+                Icons.notifications,
+                'Alerts',
+                selectedIndex,
+              ),
+              _buildProfileNavItem(3, selectedIndex, avatarUrl, fullName),
+            ],
           ),
         ),
+      ),
     );
   }
 
@@ -158,46 +148,50 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
     final isSelected = index == selectedIndex;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isSelected
-        ? (isDark ? AppColors.primaryLight : Colors.black)
-        : Colors.grey;
+        ? AppColors.accent
+        : (isDark ? Colors.grey.shade600 : Colors.grey);
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: CircleAvatar(
-              key: ValueKey(avatarUrl),
-              radius: 12,
-              backgroundColor: color,
-              foregroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                  ? NetworkImage(avatarUrl)
-                  : null,
-              child: avatarUrl == null || avatarUrl.isEmpty
-                  ? Text(
-                      _getInitials(fullName),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
-                      ),
-                    )
-                  : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 26,
+              height: 26,
+              child: CircleAvatar(
+                key: ValueKey(avatarUrl),
+                radius: 13,
+                backgroundColor: color,
+                foregroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                    ? NetworkImage(avatarUrl)
+                    : null,
+                child: avatarUrl == null || avatarUrl.isEmpty
+                    ? Text(
+                        _getInitials(fullName),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                        ),
+                      )
+                    : null,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Profile',
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            const SizedBox(height: 4),
+            Text(
+              'Profile',
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -213,33 +207,37 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
     final isSelected = index == selectedIndex;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isSelected
-        ? (isDark ? AppColors.primaryLight : Colors.black)
-        : Colors.grey;
+        ? AppColors.accent
+        : (isDark ? Colors.grey.shade600 : Colors.grey);
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          badges.Badge(
-            showBadge: unreadCount > 0,
-            badgeContent: Text(
-              unreadCount.toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 10),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            badges.Badge(
+              showBadge: unreadCount > 0,
+              badgeContent: Text(
+                unreadCount.toString(),
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+              position: badges.BadgePosition.topEnd(top: -10, end: -10),
+              child: Icon(isSelected ? activeIcon : icon, color: color, size: 24),
             ),
-            position: badges.BadgePosition.topEnd(top: -10, end: -10),
-            child: Icon(isSelected ? activeIcon : icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -254,25 +252,29 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
     final isSelected = index == selectedIndex;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = isSelected
-        ? (isDark ? AppColors.primaryLight : Colors.black)
-        : Colors.grey;
+        ? AppColors.accent
+        : (isDark ? Colors.grey.shade600 : Colors.grey);
 
     return InkWell(
       onTap: () => _onItemTapped(index, context),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(isSelected ? activeIcon : icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(isSelected ? activeIcon : icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

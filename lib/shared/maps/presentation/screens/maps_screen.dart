@@ -20,7 +20,7 @@ import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_layer.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
-import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logging/logging.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -309,9 +309,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 children: [
                   TileLayer(
                     urlTemplate: Theme.of(context).brightness == Brightness.dark
-                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
-                        : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
-                    subdomains: const ['a', 'b', 'c'],
+                        ? 'https://api.maptiler.com/maps/backdrop-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}'
+                        : 'https://api.maptiler.com/maps/backdrop-v2/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   if (_showHeatmap)
@@ -561,18 +560,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     color: isDark
                                         ? AppColors.surfaceDark
                                         : AppColors.surfaceLight,
-                                    border: Border.all(
-                                      color: isDark
-                                          ? AppColors.dividerDark
-                                          : AppColors.dividerLight,
-                                      width: 4,
+                                    borderRadius: BorderRadius.circular(
+                                      AppColors.radiusInput,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: isDark
-                                            ? AppColors.accent
-                                            : AppColors.shadowCard,
-                                        offset: const Offset(6, 6),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
@@ -661,23 +658,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               margin: const EdgeInsets.only(
                                 bottom: AppColors.spaceMD,
                               ),
-                              padding: const EdgeInsets.all(AppColors.spaceMD),
+                              padding: const EdgeInsets.all(
+                                AppColors.spaceSM + 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? AppColors.surfaceDark
                                     : AppColors.surfaceLight,
-                                border: Border.all(
-                                  color: isDark
-                                      ? AppColors.dividerDark
-                                      : AppColors.dividerLight,
-                                  width: 4,
-                                ),
+                                borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: isDark
-                                        ? AppColors.accent
-                                        : AppColors.shadowCard,
-                                    offset: const Offset(4, 4),
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
@@ -695,23 +688,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           GestureDetector(
                             onTap: _getCurrentLocation,
                             child: Container(
-                              padding: const EdgeInsets.all(AppColors.spaceMD),
+                              padding: const EdgeInsets.all(
+                                AppColors.spaceSM + 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? AppColors.surfaceDark
                                     : AppColors.surfaceLight,
-                                border: Border.all(
-                                  color: isDark
-                                      ? AppColors.dividerDark
-                                      : AppColors.dividerLight,
-                                  width: 4,
-                                ),
+                                borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: isDark
-                                        ? AppColors.accent
-                                        : AppColors.shadowCard,
-                                    offset: const Offset(4, 4),
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
@@ -754,18 +743,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         padding: const EdgeInsets.all(AppColors.spaceMD),
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.surfaceDark : Colors.white,
-                          border: Border.all(
-                            color: isDark
-                                ? AppColors.dividerDark
-                                : AppColors.dividerLight,
-                            width: 4,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusCard,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: isDark
-                                  ? AppColors.accent
-                                  : AppColors.shadowCard,
-                              offset: const Offset(6, 6),
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 20,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
@@ -906,18 +891,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? AppColors.dividerDark
-                : AppColors.dividerLight,
-            width: 4,
-          ),
+          borderRadius: BorderRadius.circular(AppColors.radiusCard),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? AppColors.accent
-                  : AppColors.shadowCard,
-              offset: const Offset(8, 8),
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -991,8 +970,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               style: TextStyle(
                 color: textSecondary,
                 fontSize: 10,
-                fontFamily: 'monospace',
-                letterSpacing: 1.0,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
               ),
             ),
             Text(
@@ -1040,7 +1019,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           disabledBackgroundColor: Colors.grey.withValues(alpha: 0.12),
           disabledForegroundColor: textSecondary,
           padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppColors.radiusButton),
+          ),
         ),
       ),
     );

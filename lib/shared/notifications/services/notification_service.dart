@@ -6,11 +6,11 @@ import 'dart:async';
 final notificationServiceProvider = Provider((ref) => NotificationService(ref));
 
 class NotificationService {
-  final Ref _ref;
+  final Ref ref;
   final _localNotifications = FlutterLocalNotificationsPlugin();
   RealtimeChannel? _channel;
 
-  NotificationService(this._ref);
+  NotificationService(this.ref);
 
   Future<void> init() async {
     const androidSettings = AndroidInitializationSettings(

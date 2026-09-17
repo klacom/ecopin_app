@@ -20,14 +20,14 @@ class AppButton extends StatelessWidget {
     this.icon,
     this.variant = ButtonVariant.primary,
     this.width = double.infinity,
-    this.height = 50.0,
+    this.height = 56.0,
   });
 
   Color _backgroundColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (variant) {
       case ButtonVariant.primary:
-        return isDark ? AppColors.primaryDark : AppColors.primaryLight;
+        return AppColors.accent;
 
       case ButtonVariant.secondary:
         return isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
@@ -44,13 +44,14 @@ class AppButton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (variant) {
       case ButtonVariant.primary:
-        return isDark ? AppColors.textPrimaryLight : AppColors.textPrimaryDark;
+        return Colors.black;
       case ButtonVariant.danger:
         return Colors.white;
 
       case ButtonVariant.secondary:
-      case ButtonVariant.link:
         return isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
+      case ButtonVariant.link:
+        return AppColors.accent;
     }
   }
 
@@ -64,7 +65,9 @@ class AppButton extends StatelessWidget {
       child: TextButton(
         onPressed: disabled ? null : onPressed,
         style: TextButton.styleFrom(
-          backgroundColor: _backgroundColor(context),
+          backgroundColor: disabled
+              ? _backgroundColor(context).withValues(alpha: 0.5)
+              : _backgroundColor(context),
           foregroundColor: _textColor(context),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(
@@ -79,10 +82,10 @@ class AppButton extends StatelessWidget {
         ),
         child: isLoading
             ? SizedBox(
-                width: 20,
-                height: 20,
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
+                  strokeWidth: 2.5,
                   color: _textColor(context),
                 ),
               )
@@ -90,7 +93,7 @@ class AppButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon),
+                    Icon(icon, size: 20),
                     const SizedBox(width: AppColors.spaceSM),
                   ],
                   Text(text),

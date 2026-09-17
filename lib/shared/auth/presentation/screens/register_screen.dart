@@ -96,7 +96,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       final apiClient = ref.read(apiClientProvider);
-      final response = await apiClient.register(
+      await apiClient.register(
         email,
         password,
         confirmPassword,

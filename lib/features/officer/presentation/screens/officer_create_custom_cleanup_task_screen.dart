@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -323,8 +324,7 @@ class _OfficerCreateCustomCleanupTaskScreenState
             Container(
               height: 400,
               decoration: BoxDecoration(
-                border: Border.all(color: Theme.of(context).dividerColor),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppColors.radiusCard),
               ),
               child: FlutterMap(
                 mapController: _mapController,
@@ -337,9 +337,8 @@ class _OfficerCreateCustomCleanupTaskScreenState
                 children: [
                   TileLayer(
                     urlTemplate: Theme.of(context).brightness == Brightness.dark
-                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
-                        : 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
-                    subdomains: const ['a', 'b', 'c'],
+                        ? 'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}'
+                        : 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   MarkerLayer(
@@ -368,10 +367,6 @@ class _OfficerCreateCustomCleanupTaskScreenState
                                   decoration: BoxDecoration(
                                     color: Colors.black.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 3,
-                                    ),
                                   ),
                                   width: 44,
                                   height: 44,

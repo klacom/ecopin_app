@@ -24,21 +24,21 @@ class AppColors {
   // ── Status ────────────────────────────────────────────────
   static const Color success = Color(0xFFCCFF00);
   static const Color warning = Color(0xFFFFCC00);
-  static const Color error = Color(0xFFFF0000);
+  static const Color error = Color(0xFFFF3B30);
   static const Color info = Color(0xFF00CCFF);
 
   // ── Surface / Elevated ────────────────────────────────────
   static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color surfaceDark = Color(0xFF111111);
+  static const Color surfaceDark = Color(0xFF1A1A1A);
 
   // ── Divider / Border ──────────────────────────────────────
-  static const Color dividerLight = Color(0xFF000000);
-  static const Color dividerDark = Color(0xFFCCFF00);
+  static const Color dividerLight = Color(0xFFE0E0E0);
+  static const Color dividerDark = Color(0xFF2A2A2A);
 
   // ── Shadows ───────────────────────────────────────────────
-  static const Color shadowCard = Color(0xFF000000);
-  static const Color shadowFloating = Color(0xFF000000);
-  static const Color shadowDialog = Color(0xFF000000);
+  static const Color shadowCard = Color(0x1A000000);
+  static const Color shadowFloating = Color(0x33000000);
+  static const Color shadowDialog = Color(0x40000000);
 
   // ── Spacing tokens (8-point grid) ────────────────────────
   static const double spaceXS = 4;
@@ -50,9 +50,9 @@ class AppColors {
   static const double spaceXXXL = 64;
 
   // ── Border Radius tokens ──────────────────────────────────
-  static const double radiusButton = 0;
-  static const double radiusCard = 0;
-  static const double radiusInput = 0;
-  static const double radiusDialog = 0;
-  static const double radiusChip = 0;
+  static const double radiusButton = 999;
+  static const double radiusCard = 24;
+  static const double radiusInput = 16;
+  static const double radiusDialog = 24;
+  static const double radiusChip = 999;
 }

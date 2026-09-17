@@ -1,6 +1,7 @@
 import 'package:ecopin_app/shared/notifications/providers/notifications_provider.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/core/services/location_service.dart';
+import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
@@ -69,11 +70,13 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
       // Floating Action Button in the Center
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          // Fetch current GPS location
+          // Fetch current GPS location, then open Create Report screen.
           final location = await LocationService.getCurrentLocation();
           if (context.mounted) {
-            // If location is null, the CreateReportScreen will fallback to default coordinates
-            context.push(ProtectedAppRoutes.createReport, extra: location);
+            context.push(
+              ProtectedAppRoutes.createReport,
+              extra: ReportPrefillData(location: location),
+            );
           }
         },
         elevation: 4,

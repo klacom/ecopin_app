@@ -38,7 +38,7 @@ import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/reports/presentation/screens/report_details_screen.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
 import 'package:logging/logging.dart';
 
 // Guides user to Public and Protected Routes
@@ -206,8 +206,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: ProtectedAppRoutes.createReport,
         builder: (_, state) {
-          final location = state.extra as LatLng?;
-          return CreateReportScreen(initialLocation: location);
+          // extra is always a ReportPrefillData — from the FAB (location only)
+          // or from a rejected-report resubmission (title + description + location).
+          final prefill = state.extra as ReportPrefillData?;
+          return CreateReportScreen(prefillData: prefill);
         },
       ),
       // Officer Shell Route

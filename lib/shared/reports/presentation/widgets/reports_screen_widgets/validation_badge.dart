@@ -25,6 +25,10 @@ class ValidationBadge extends StatelessWidget {
         color = AppColors.error;
         label = 'INVALID';
         break;
+      case 'pending_ai_validation':
+        color = Colors.grey;
+        label = 'AI PENDING';
+        break;
       default:
         color = Colors.grey;
         label = 'PENDING';

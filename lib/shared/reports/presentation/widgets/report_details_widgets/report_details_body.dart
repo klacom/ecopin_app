@@ -1,14 +1,19 @@
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
+import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
 import 'package:ecopin_app/shared/reports/presentation/screens/satisfaction_rating_screen.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/fullscreen_image_view.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/info_row.dart';
+import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:video_player/video_player.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
@@ -41,45 +46,20 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
 }
 
 class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
-  bool _isCreatingNewReport = false;
+  /// Navigate to the Create Report screen with the rejected report's details
+  /// prefilled. The citizen can edit everything and must add new media.
+  /// This does NOT call the backend yet — submission happens normally through
+  /// the standard Create Report flow.
+  void _handleCreateNewReport() {
+    ref.invalidate(myReportsProvider); // ensure My Reports refreshes after submit
 
-  Future<void> _handleCreateNewReport() async {
-    setState(() => _isCreatingNewReport = true);
-    try {
-      final apiClient = ref.read(apiClientProvider);
-      final response = await apiClient.createReportFromRejected(
-        widget.report.id,
-      );
+    final prefill = ReportPrefillData(
+      location: widget.report.location,
+      title: widget.report.title,
+      description: widget.report.description,
+    );
 
-      if (response.statusCode == 201) {
-        final newReportId = response.data['report']['id'];
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('New report created successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          // Navigate to the new report
-          Navigator.of(
-            context,
-          ).pushReplacementNamed('/report-details', arguments: newReportId);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create new report: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isCreatingNewReport = false);
-      }
-    }
+    context.push(ProtectedAppRoutes.createReport, extra: prefill);
   }
 
   @override
@@ -173,15 +153,15 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             SizedBox(
               width: double.infinity,
               child: AppButton(
-                onPressed: _isCreatingNewReport
-                    ? null
-                    : () => _handleCreateNewReport(),
+                onPressed: _handleCreateNewReport,
                 text: 'Create New Report',
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'This will copy the title, description, and location to a new report. You will need to add new evidence photos.',
+              'Opens the report creation form with your original title,'
+              ' description, and location pre-filled.'
+              ' You can edit all fields and must add new evidence photos.',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey.shade600,
@@ -224,6 +204,44 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 '${widget.report.location.latitude.toStringAsFixed(6)}, ${widget.report.location.longitude.toStringAsFixed(6)}',
           ),
           InfoRow(icon: Icons.calendar_today, text: dateStr),
+          const SizedBox(height: 12),
+          // Static, non-interactive map showing the report location.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 180,
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: widget.report.location,
+                  initialZoom: 15.0,
+                  // Disable all gestures — this map is view-only.
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.none,
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                    userAgentPackageName: 'dev.ecopinas.ecopin_app',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: widget.report.location,
+                        width: 40,
+                        height: 40,
+                        child: const Icon(
+                          Icons.location_pin,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
           const Text(
             'Evidence',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
 
 class StatusBadge extends StatelessWidget {
   final String status;
@@ -13,7 +14,10 @@ class StatusBadge extends StatelessWidget {
       case 'resolved':
         color = AppColors.success;
         break;
-      case 'in progress':
+      case 'in_progress':
+        color = AppColors.warning;
+        break;
+      case 'waiting_for_feedback':
         color = AppColors.warning;
         break;
       case 'unresolved':
@@ -31,7 +35,8 @@ class StatusBadge extends StatelessWidget {
         border: Border.all(color: color),
       ),
       child: Text(
-        status.toUpperCase(),
+        // Use human-readable labels from the canonical map where available.
+        (reportStatusLabels[status.toLowerCase()] ?? status).toUpperCase(),
         style: TextStyle(
           color: color,
           fontSize: 10,

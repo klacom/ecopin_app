@@ -21,6 +21,7 @@ import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_layer.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logging/logging.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 
@@ -46,34 +47,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   final Logger log = Logger("Maps Screen");
   final MapController _mapController = MapController();
 
-  // Mock Field Crew Data for high-fidelity visualization
-  final LatLng _baseLocation = LatLng(14.5762, 121.0855);
-
-  final List<Map<String, dynamic>> _otherCrews = [
-    {
-      'name': 'Juan Cruz',
-      'location': LatLng(14.5710, 121.0820),
-      'status': 'Active',
-      'color': const Color(0xFF2E7D32),
-    },
-    {
-      'name': 'Pedro Santos',
-      'location': LatLng(14.5780, 121.0760),
-      'status': 'Active',
-      'color': const Color(0xFFF9A825),
-    },
-  ];
-
-  final List<LatLng> _optimizedRoutePoints = [
-    LatLng(14.5762, 121.0855), // Base
-    LatLng(14.5745, 121.0830),
-    LatLng(14.5720, 121.0815),
-    LatLng(14.5710, 121.0820), // Crew 1
-    LatLng(14.5680, 121.0840), // Task location 1
-    LatLng(14.5700, 121.0900), // Task location 2
-    LatLng(14.5735, 121.0880),
-    LatLng(14.5762, 121.0855), // Back to base
-  ];
   // TODO: Make own Text Editing Controller + Separate controller in different file.
   final TextEditingController _searchController = TextEditingController();
   final LocationSearchService _searchService = LocationSearchService();
@@ -331,20 +304,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   interactionOptions: const InteractionOptions(
                     flags: InteractiveFlag.all,
                   ),
-                  onTap: widget.isFieldCrewMode
-                      ? null
-                      : (tapPosition, point) {
-                          context.push(
-                            ProtectedAppRoutes.createReport,
-                            extra: point,
-                          );
-                        },
+                  onTap: null,
                 ),
                 children: [
                   TileLayer(
                     urlTemplate: Theme.of(context).brightness == Brightness.dark
-                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
+                        : 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
                     subdomains: const ['a', 'b', 'c'],
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
@@ -397,112 +363,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                   ),
                   if (widget.showOptimizedRoute)
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: _optimizedRoutePoints,
-                          strokeWidth: 4.5,
-                          color: const Color(0xFF699834),
-                          borderColor: const Color(0xFF457113),
-                          borderStrokeWidth: 1.5,
-                        ),
-                      ],
-                    ),
+                    const PolylineLayer(polylines: <Polyline<Object>>[]),
                   if (widget.showBaseOfOperations)
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: _baseLocation,
-                          width: 45,
-                          height: 45,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF457113),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.25),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.home_work_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    const MarkerLayer(markers: []),
                   if (widget.showOtherCrews)
-                    MarkerLayer(
-                      markers: _otherCrews.map((crew) {
-                        return Marker(
-                          point: crew['location'] as LatLng,
-                          width: 42,
-                          height: 42,
-                          child: Tooltip(
-                            message: '${crew['name']} (${crew['status']})',
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // Pulsing/glow ring
-                                Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: (crew['color'] as Color).withValues(
-                                      alpha: 0.2,
-                                    ),
-                                    border: Border.all(
-                                      color: crew['color'] as Color,
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                ),
-                                // Avatar circle
-                                CircleAvatar(
-                                  radius: 14,
-                                  backgroundColor: crew['color'] as Color,
-                                  child: Text(
-                                    (crew['name'] as String)
-                                        .split(' ')
-                                        .map((n) => n[0])
-                                        .join(''),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                // Live dot indicator
-                                Positioned(
-                                  right: 4,
-                                  bottom: 4,
-                                  child: Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF2E7D32),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 1,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                    const MarkerLayer(markers: []),
                   MyMarkerClusterLayer(
                     markers: visibleReports.map((report) {
                       return Marker(

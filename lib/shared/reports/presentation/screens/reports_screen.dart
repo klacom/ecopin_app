@@ -51,8 +51,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               itemBuilder: (context, index) {
                 final filter = reportFilters[index];
                 final isSelected = _selectedFilter == filter;
+                // Display a human-readable label; internal filter value stays canonical.
+                final label = reportStatusLabels[filter] ?? filter;
                 return ChoiceChip(
-                  label: Text(filter[0].toUpperCase() + filter.substring(1)),
+                  label: Text(label),
                   selected: isSelected,
                   onSelected: (selected) {
                     if (selected) {

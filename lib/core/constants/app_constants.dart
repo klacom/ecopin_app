@@ -59,14 +59,28 @@ final int itemsPerPage = 10;
 int displayedItems = 10;
 
 // Report Filters
+// Values must match the canonical status strings stored by the backend.
+// Backend writes 'in_progress' (underscore) via updateLifecycleStage.
 
 const List<String> reportFilters = [
   'All',
   'unresolved',
-  'in progress',
+  'in_progress',
   'resolved',
   'rejected',
 ];
+
+// Human-readable labels for report status filter chips and display.
+const Map<String, String> reportStatusLabels = {
+  'All': 'All',
+  'unresolved': 'Unresolved',
+  'in_progress': 'In Progress',
+  'resolved': 'Resolved',
+  'rejected': 'Rejected',
+  'pending_owner_consent': 'Awaiting Consent',
+  'waiting_for_feedback': 'Waiting for Feedback',
+  'closed': 'Closed',
+};
 
 // Create Report Fun Facts - Notice: May get removed after image validation logic change.
 

@@ -22,16 +22,20 @@ class MyMarkerClusterLayerState extends State<MyMarkerClusterLayer> {
         markers: widget.markers,
         builder: (context, markers) {
           return Container(
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+              shape: BoxShape.circle,
               border: Border.all(
-                color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-                width: 3,
+                color: Colors.white,
+                width: 2,
               ),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                  color: isDark ? AppColors.accent : AppColors.shadowCard,
-                  offset: const Offset(4, 4),
+                  color: AppColors.shadowCard,
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
@@ -40,8 +44,8 @@ class MyMarkerClusterLayerState extends State<MyMarkerClusterLayer> {
                 markers.length.toString(),
                 style: TextStyle(
                   color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
                 ),
               ),
             ),

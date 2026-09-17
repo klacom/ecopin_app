@@ -310,7 +310,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   TileLayer(
                     urlTemplate: Theme.of(context).brightness == Brightness.dark
                         ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
-                        : 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
                     subdomains: const ['a', 'b', 'c'],
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
@@ -424,14 +424,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   color: isDark
                                       ? AppColors.surfaceDark
                                       : AppColors.surfaceLight,
-                                  borderRadius: BorderRadius.circular(24),
-                                  boxShadow: [
+                                  borderRadius: BorderRadius.circular(AppColors.radiusInput),
+                                  border: Border.all(
+                                    color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
+                                    width: 1,
+                                  ),
+                                  boxShadow: const [
                                     BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 5),
+                                      color: AppColors.shadowCard,
+                                      blurRadius: 16,
+                                      offset: Offset(0, 4),
                                     ),
                                   ],
                                 ),
@@ -562,14 +564,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     color: isDark
                                         ? AppColors.surfaceDark
                                         : AppColors.surfaceLight,
+                                    borderRadius: BorderRadius.circular(AppColors.radiusCard),
                                     border: Border.all(
                                       color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-                                      width: 4,
+                                      width: 1,
                                     ),
-                                    boxShadow: [
+                                    boxShadow: const [
                                       BoxShadow(
-                                        color: isDark ? AppColors.accent : AppColors.shadowCard,
-                                        offset: const Offset(6, 6),
+                                        color: AppColors.shadowCard,
+                                        blurRadius: 16,
+                                        offset: Offset(0, 4),
                                       ),
                                     ],
                                   ),
@@ -663,14 +667,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 color: isDark
                                     ? AppColors.surfaceDark
                                     : AppColors.surfaceLight,
+                                borderRadius: BorderRadius.circular(AppColors.radiusButton),
                                 border: Border.all(
                                   color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-                                  width: 4,
+                                  width: 1,
                                 ),
-                                boxShadow: [
+                                boxShadow: const [
                                   BoxShadow(
-                                    color: isDark ? AppColors.accent : AppColors.shadowCard,
-                                    offset: const Offset(4, 4),
+                                    color: AppColors.shadowFloating,
+                                    blurRadius: 12,
+                                    offset: Offset(0, 4),
                                   ),
                                 ],
                               ),
@@ -693,14 +699,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 color: isDark
                                     ? AppColors.surfaceDark
                                     : AppColors.surfaceLight,
+                                borderRadius: BorderRadius.circular(AppColors.radiusButton),
                                 border: Border.all(
                                   color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-                                  width: 4,
+                                  width: 1,
                                 ),
-                                boxShadow: [
+                                boxShadow: const [
                                   BoxShadow(
-                                    color: isDark ? AppColors.accent : AppColors.shadowCard,
-                                    offset: const Offset(4, 4),
+                                    color: AppColors.shadowFloating,
+                                    blurRadius: 12,
+                                    offset: Offset(0, 4),
                                   ),
                                 ],
                               ),
@@ -743,14 +751,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         padding: const EdgeInsets.all(AppColors.spaceMD),
                         decoration: BoxDecoration(
                           color: isDark ? AppColors.surfaceDark : Colors.white,
+                          borderRadius: BorderRadius.circular(AppColors.radiusCard),
                           border: Border.all(
                             color: isDark ? AppColors.dividerDark : AppColors.dividerLight,
-                            width: 4,
+                            width: 1,
                           ),
-                          boxShadow: [
+                          boxShadow: const [
                             BoxShadow(
-                              color: isDark ? AppColors.accent : AppColors.shadowCard,
-                              offset: const Offset(6, 6),
+                              color: AppColors.shadowCard,
+                              blurRadius: 16,
+                              offset: Offset(0, 4),
                             ),
                           ],
                         ),

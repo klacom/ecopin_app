@@ -1,125 +1,94 @@
-# Ecopin Design System: Neo-Brutalist / Cyber-Matrix 
+# Ecopin Design System: Eco-Tech Subtle
 
-This document outlines the core design language, aesthetic principles, and technical implementation details for the Ecopin neo-brutalist redesign. This system is designed to be reusable across web, mobile, and any other platforms within the Ecopin ecosystem.
+This document outlines the core design language, aesthetic principles, and technical implementation details for the Ecopin app. This system takes inspiration from world-class mapping applications (like Google Maps), focusing on legibility, subtle visual hierarchy, and clean integration of data over complex map tiles.
 
 ## 1. Core Philosophy
-The design bridges the gap between raw civic action and cutting-edge geospatial technology. Moving away from friendly, rounded, "corporate-green" aesthetics, this style embraces a **Cyber-Brutalist** / **Terminal** look. 
+The design bridges the gap between civic action and modern geospatial technology. Moving away from heavy, noisy brutalism, this style embraces a **Clean, Subtle, and Integrated** look. 
 
-It communicates urgency, transparency, and grassroots action. It feels like a high-tech control center combined with a rebellious underground movement.
+It communicates reliability, ease-of-use, and focus. The UI should float seamlessly above the map without competing for the user's attention.
 
 ### Key Characteristics:
-*   **High Contrast:** Absolute blacks and blinding neon greens.
-*   **Raw & Unapologetic:** Sharp edges, thick borders, no soft drop shadows (except for glowing elements).
-*   **System/Terminal Accents:** Monospace typography, code-like brackets `[08]`, and system readouts.
-*   **Kinetic & Glitchy:** Overlapping elements, blend modes, and harsh hover interactions.
+*   **High Legibility:** Elements are clearly distinguishable from the map using soft shadows and subtle white/grey strokes.
+*   **Approachable Geometry:** Generous border radiuses (pills, rounded rectangles, perfect circles) for a modern, friendly feel.
+*   **Subtle Elevation:** Soft, diffused drop shadows to establish hierarchy (no hard/solid offsets).
+*   **Balanced Visual Weight:** Avoid overly thick borders or massive icons that dominate the screen real estate.
 
 ---
 
 ## 2. Color Palette
 
-The color system is highly restricted to maintain maximum impact. Avoid using gradients unless they are used to create structural noise or glowing light effects.
+The color system relies on neutral backgrounds with semantic accent colors used sparingly to direct attention.
 
-| Role | Hex | RGB | Usage |
-| :--- | :--- | :--- | :--- |
-| **Deep Black (Base)** | `#000000` | `rgb(0,0,0)` | Primary background, text on neon, heavy borders. |
-| **Neon Lime (Primary)** | `#CCFF00` | `rgb(204,255,0)` | Main accent, primary buttons, borders, highlights, glowing orbs. |
-| **Pure White** | `#FFFFFF` | `rgb(255,255,255)` | Primary text, secondary borders, secondary accent. |
-| **Dark Grey (Surface)**| `#111111` | `rgb(17,17,17)` | Secondary backgrounds (e.g., inside mockups/cards). |
-| **Status: Urgent** | `#FF0000` | `rgb(255,0,0)` | Urgent report tags, critical errors. |
+| Role | Hex | Usage |
+| :--- | :--- | :--- |
+| **Surface (Light)** | `#FFFFFF` | Primary background for cards, navbars, and search bars in Light Mode. |
+| **Surface (Dark)** | `#1E1E1E` | Primary background for UI elements in Dark Mode. |
+| **Primary Accent** | `#0F9D58` | Main brand accent, primary buttons, user location indicator. |
+| **Status: Resolved** | `#34A853` | Map markers for resolved/closed issues (Green). |
+| **Status: Progress** | `#FBBC05` | Map markers for in-progress/acknowledged issues (Yellow). |
+| **Status: Urgent** | `#EA4335` | Map markers for pending/urgent reports (Red). |
+| **Divider / Stroke** | `#E0E0E0` | Subtle 1px borders to separate elements in Light Mode (`#333333` in Dark Mode). |
 
 ---
 
 ## 3. Typography
 
-The typography discards modern geometric sans-serifs (like Inter or Outfit) in favor of raw, unpolished, native fonts. 
+Typography should be clean, modern, and highly legible even at small sizes.
 
 ### Font Families
-1.  **Primary/Display:** `Helvetica`, `Arial`, `sans-serif`
-    *   *Usage:* Headlines, massive hero text, primary buttons.
-    *   *Styling:* Always use the heaviest weight available (`font-black`), tightly tracked (`tracking-tighter`), and often uppercase.
-2.  **Secondary/System:** `monospace` (System default like `Courier New` or `SF Mono`)
-    *   *Usage:* System readouts, timestamps, small labels, UI chips, footer text.
-    *   *Styling:* Small, uppercase, widely spaced (`tracking-widest`).
-
-### Typographic Rules
-*   **Headlines:** Keep line-heights extremely tight (e.g., `leading-[0.85]`). Break lines manually for structural effect.
-*   **Outline Text:** Use CSS text strokes (`-webkit-text-stroke: 2px #ccff00`) with transparent fills for massive background text or secondary headline lines.
-*   **Text Highlights:** Wrap inline text in a solid `#ccff00` block with `#000000` text for immediate emphasis.
+1.  **Primary/UI:** `Inter`, `Roboto`, or System Default Sans-Serif
+    *   *Usage:* All standard UI elements (Search bars, navigation, card content).
+    *   *Styling:* Use regular weights (`400`) for standard text, and medium/semibold (`500`/`600`) for headers and active states. Avoid overly heavy (`900`) weights.
+2.  **Secondary/Data:** `monospace` (Only when strictly necessary)
+    *   *Usage:* Specific technical data points like exact coordinates or IDs. Keep it minimal.
 
 ---
 
 ## 4. UI Elements & Motifs
 
 ### A. Borders & Shapes
-*   **Thickness:** Use thick, unapologetic borders (`border-4`, `border-8`). 
-*   **Corners:** Sharp (`rounded-none`). If rounding is necessary (like on a phone mockup), use exaggerated curves juxtaposed against sharp outer containers.
+*   **Thickness:** Use minimal, subtle borders (`1px`). Avoid thick outlines.
+*   **Corners:** Highly rounded. Use `BorderRadius.circular(24)` or fully rounded "pill" shapes (`BorderRadius.circular(999)`) for search bars, floating buttons, and navbars.
 
-### B. Interactions & Hover States (Brutalist Shadows)
-Avoid soft, blurry drop shadows for standard UI elements. Use **solid, offset shadows**.
-*   **Resting State:** Button has a solid shadow, e.g., `box-shadow: 8px 8px 0px 0px #ccff00;`
-*   **Hover State:** Button translates to "press down" into the shadow, e.g., `transform: translate(8px, 8px); box-shadow: 0px 0px 0px 0px #ccff00;`
+### B. Interactions & Elevation (Soft Shadows)
+*   **Containers (Nav, Search):** Use soft, widespread drop shadows to lift the UI off the map.
+    *   *Example (Light):* `box-shadow: 0px 8px 24px rgba(0,0,0,0.12);`
+    *   *Example (Dark):* `box-shadow: 0px 8px 24px rgba(0,0,0,0.40);`
+*   **Floating Action Buttons:** Should appear slightly closer to the user with a tighter shadow.
 
-### C. Mix-Blend Modes
-Use CSS `mix-blend-difference` and `mix-blend-exclusion` for overlapping text and shapes. This ensures text remains readable even when intersecting with solid neon blocks, while adding a glitchy, technical feel.
+### C. Map Markers (Pins)
+*   **Size:** Keep them small and precise (e.g., 20x20 or 24x24). They should point to a specific location, not obscure an entire city block.
+*   **Design:** Use simple, elegant circles or teardrops. 
+*   **Map Separation:** Every pin **must** have a `2px` pure white (`#FFFFFF`) border. This stroke is critical for ensuring the pin remains visible regardless of the map tile colors behind it, especially in Light Mode.
 
-### D. System Overlays & Grids
-The "Matrix" look is achieved through CSS background patterns.
-*   **Map Grids:** Linear gradients creating technical intersection points and crosshairs, mimicking satellite maps or targeting systems.
-*   *Implementation (CSS):*
-    ```css
-    background-image: linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px);
-    background-size: 100px 100px;
-    ```
-
-### E. Interactive Backgrounds & 3D Objects
-*   Instead of static background blobs, utilize **Interactive Particle Systems** that respond to the user's cursor.
-*   Particles should mimic "specks navigating through a map", pulling gently towards the cursor when hovered and leaving motion-blurred trails behind them to emphasize the real-time tracking aspect of the platform.
-*   **3D Elements:** Key presentation items (like phone mockups) should utilize CSS 3D transforms (`rotateX`, `rotateY` with `perspective`) to tilt responsively based on cursor movement.
-
-### F. Glitch Triggers
-*   Glitch text effects (like sliced typography) should **strictly be triggered on `:hover`**.
-*   Do not leave heavy CSS animations looping infinitely, as this causes cognitive overload. The glitch is a reward/feedback for user interaction.
-
-### G. Floating "UI Chips"
-Scatter small, tilted UI cards across the layout to represent the "live" nature of the platform (e.g., `[ ✅ RESOLVED ]`, `[ 🔴 URGENT ]`). Rotate them slightly (`rotate-[-12deg]`) and give them thick borders.
+### D. Map Controls (Right Side)
+*   Must be secondary in visual hierarchy.
+*   Use stacked, rounded squares (or circles) with a subtle shadow and solid white/dark-grey background.
+*   Icons inside should be minimal and correctly scaled (e.g., 20px icons inside a 40px container).
 
 ---
 
-## 5. Light Mode Implementation
-The brutalist aesthetic is inherently neon-on-black. When implementing **Light Mode**, follow these inversion rules:
-*   **Backgrounds:** Pure white (`#ffffff`).
-*   **Text & Borders:** Pure black (`#000000`).
-*   **Accents:** Keep Neon Green (`#ccff00`) as the primary punch color for highlights and solid blocks.
-*   **Shadows:** In light mode, solid black drop shadows (`shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]`) provide incredible brutalist contrast against white containers.
+## 5. Light vs Dark Mode Implementation
+
+The design must feel native and cohesive in both modes.
+
+### Light Mode
+*   **Map Tiles:** Standard, detailed map tiles (like Google Maps or OSM). 
+*   **UI Elements:** Pure white containers (`#FFFFFF`) with soft, transparent black shadows. 
+*   **Text:** Dark grey/black for high readability.
+
+### Dark Mode
+*   **Map Tiles:** Dark, muted map tiles (e.g., CartoDB Dark Matter or customized dark styles).
+*   **UI Elements:** Dark grey containers (`#1E1E1E` or `#2A2A2A`). 
+*   **Shadows:** Shadows are less visible in dark mode; rely on subtle `1px` lighter grey borders (`#333333`) to separate floating containers from the dark map.
+*   **Text:** Pure white or light grey.
 
 ---
 
-## 6. Layout Structure (Web Specifics)
+## 6. Implementation Checklist for Mobile/App
 
-1.  **Header/Nav:** Thick bottom border. Navigation links should be uppercase, monospace, or heavy sans-serif. Hover states should invert colors (black text on neon green background).
-2.  **Hero Section:** 
-    *   Large, bold typography with hard line breaks.
-    *   Text strokes (`-webkit-text-stroke`) used for hollow "ghost" text effects.
-    *   Subtle map/coordinate overlays behind elements.
-3.  **Data Displays (How it Works/Features):** Monospace fonts with high-contrast text. Use borders and neon highlights to direct attention.
-4.  **3D Containers:**
-    *   When embedding 3D interactive objects (like phone mockups), allow the object to intentionally break out of the container bounds using negative margins or oversized dimensions.
-    *   Ensure floating UI chips maintain a high `z-index` (e.g., `z-30`) so they never clip behind the 3D transforms.
-5.  **Footer:** 
-    *   Must be heavily structured, utilizing multiple columns with a clear separation of Brand, Navigation, and Legal information.
-    *   Use monospace font (`font-mono`) and muted colors (`text-gray-400`) for secondary information like copyright and status indicators (e.g., `SYSTEM: ONLINE`).
-6.  **Section Dividers:** 
-    *   Use infinite CSS marquees with thick top and bottom borders.
-    *   Text should be repeating calls to action: `REPORT IT. TRACK IT. WATCH IT DISAPPEAR. //`
-7.  **Content Sections:** Use asymmetrical grid layouts. Wrap text in heavily bordered containers.
-
----
-
-## 6. Implementation Checklist for Other Platforms (Mobile/App)
-
-If adapting this design to the Flutter/React Native mobile app:
-- [x] Override default navigation bars with absolute black backgrounds and neon green bottom borders.
-- [x] Replace soft shadows with solid, non-blurred offset shadows.
-- [x] Use system Sans-Serif (iOS: San Francisco bold/black, Android: Roboto Black) and System Monospace.
-- [x] Map pins should not be standard teardrops; they should be glowing orbs or sharp, technical squares.
-- [x] **Light Mode Support:** Support both Dark and Light modes by following the inversion rules in Section 5.
+- [ ] Revert thick `4px` borders to subtle `1px` borders or remove them entirely in favor of shadows.
+- [ ] Implement `BorderRadius.circular(24)` or pill shapes for the Search Bar, Bottom Navbar, and Map Controls.
+- [ ] Replace solid offset shadows with soft, modern drop shadows (e.g., `blurRadius: 16`, `offset: 0, 4`).
+- [ ] Redesign pins and clusters to be small, circular, and feature a strict `2px` white stroke for map separation.
+- [ ] Standardize visual weight: ensure icons and text are properly proportioned and not competing for attention.

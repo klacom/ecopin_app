@@ -27,25 +27,23 @@ class ReportMarker extends StatelessWidget {
         break;
     }
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Transform.rotate(
-      angle: -0.2,
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          border: Border.all(
-            color: isDark ? AppColors.dividerDark : AppColors.dividerLight, 
-            width: 3
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? color : AppColors.shadowCard,
-              offset: const Offset(4, 4),
-            ),
-          ],
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white, 
+          width: 2
         ),
-        child: const Icon(Icons.center_focus_strong, color: Colors.black, size: 20),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadowCard,
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
     );
   }

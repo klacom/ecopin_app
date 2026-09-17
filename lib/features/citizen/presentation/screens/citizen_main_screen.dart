@@ -69,47 +69,37 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
       body: widget.child,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       // Floating Action Button in the Center
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).brightness == Brightness.dark ? AppColors.accent : AppColors.shadowCard,
-              offset: const Offset(4, 4),
-            ),
-          ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          // Fetch current GPS location, then open Create Report screen.
+          final location = await LocationService.getCurrentLocation();
+          if (context.mounted) {
+            context.push(
+              ProtectedAppRoutes.createReport,
+              extra: ReportPrefillData(location: location),
+            );
+          }
+        },
+        elevation: 4,
+        backgroundColor: AppColors.primaryLight,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusButton),
         ),
-        child: FloatingActionButton(
-          onPressed: () async {
-            // Fetch current GPS location, then open Create Report screen.
-            final location = await LocationService.getCurrentLocation();
-            if (context.mounted) {
-              context.push(
-                ProtectedAppRoutes.createReport,
-                extra: ReportPrefillData(location: location),
-              );
-            }
-          },
-          elevation: 0,
-          backgroundColor: AppColors.primaryLight,
-          foregroundColor: Colors.black,
-          shape: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
-            width: 3,
-          ),
-          child: const Icon(Icons.add, size: 28),
-        ),
+        child: const Icon(Icons.add, size: 28),
       ),
       bottomNavigationBar: SafeArea(
         child: Container(
           height: 70,
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : AppColors.surfaceLight,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
-                width: 4,
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadowCard,
+                blurRadius: 16,
+                offset: Offset(0, -4),
               ),
-            ),
+            ],
           ),
           child: BottomAppBar(
             elevation: 0,

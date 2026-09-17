@@ -4,41 +4,41 @@ class AppColors {
   AppColors._();
 
   // ── Brand: Primary Green ──────────────────────────────────
-  static const Color primaryLight = Color(0xFFCCFF00); // Neon Lime
-  static const Color primaryDark = Color(0xFFCCFF00);
+  static const Color primaryLight = Color(0xFF0F9D58);
+  static const Color primaryDark = Color(0xFF0F9D58);
 
   // ── Brand: Secondary Green ────────────────────────────────
-  static const Color secondaryLight = Color(0xFF000000);
-  static const Color secondaryDark = Color(0xFFFFFFFF);
+  static const Color secondaryLight = Color(0xFFFFFFFF);
+  static const Color secondaryDark = Color(0xFF1E1E1E);
 
   // ── Brand: Accent Green ───────────────────────────────────
-  static const Color accent = Color(0xFFCCFF00);
+  static const Color accent = Color(0xFF0F9D58);
 
   // ── Neutrals ──────────────────────────────────────────────
-  static const Color textPrimaryLight = Color(0xFF000000);
-  static const Color textPrimaryDark = Color(0xFFFFFFFF);
+  static const Color textPrimaryLight = Color(0xFF202124);
+  static const Color textPrimaryDark = Color(0xFFE8EAED);
 
-  static const Color backgroundLight = Color(0xFFFFFFFF);
-  static const Color backgroundDark = Color(0xFF000000);
+  static const Color backgroundLight = Color(0xFFF8F9FA);
+  static const Color backgroundDark = Color(0xFF121212);
 
   // ── Status ────────────────────────────────────────────────
-  static const Color success = Color(0xFFCCFF00);
-  static const Color warning = Color(0xFFFFCC00);
-  static const Color error = Color(0xFFFF0000);
-  static const Color info = Color(0xFF00CCFF);
+  static const Color success = Color(0xFF34A853);
+  static const Color warning = Color(0xFFFBBC05);
+  static const Color error = Color(0xFFEA4335);
+  static const Color info = Color(0xFF4285F4);
 
   // ── Surface / Elevated ────────────────────────────────────
   static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color surfaceDark = Color(0xFF111111);
+  static const Color surfaceDark = Color(0xFF1E1E1E);
 
   // ── Divider / Border ──────────────────────────────────────
-  static const Color dividerLight = Color(0xFF000000);
-  static const Color dividerDark = Color(0xFFCCFF00);
+  static const Color dividerLight = Color(0xFFE0E0E0);
+  static const Color dividerDark = Color(0xFF333333);
 
   // ── Shadows ───────────────────────────────────────────────
-  static const Color shadowCard = Color(0xFF000000);
-  static const Color shadowFloating = Color(0xFF000000);
-  static const Color shadowDialog = Color(0xFF000000);
+  static const Color shadowCard = Color(0x1A000000); // 10% black
+  static const Color shadowFloating = Color(0x33000000); // 20% black
+  static const Color shadowDialog = Color(0x33000000);
 
   // ── Spacing tokens (8-point grid) ────────────────────────
   static const double spaceXS = 4;
@@ -50,9 +50,9 @@ class AppColors {
   static const double spaceXXXL = 64;
 
   // ── Border Radius tokens ──────────────────────────────────
-  static const double radiusButton = 0;
-  static const double radiusCard = 0;
-  static const double radiusInput = 0;
-  static const double radiusDialog = 0;
-  static const double radiusChip = 0;
+  static const double radiusButton = 24;
+  static const double radiusCard = 16;
+  static const double radiusInput = 24;
+  static const double radiusDialog = 24;
+  static const double radiusChip = 16;
 }

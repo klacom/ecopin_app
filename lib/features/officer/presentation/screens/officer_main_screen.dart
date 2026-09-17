@@ -213,12 +213,13 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
           height: 70,
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : AppColors.surfaceLight,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark ? AppColors.dividerDark : AppColors.dividerLight,
-                width: 4,
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadowCard,
+                blurRadius: 16,
+                offset: Offset(0, -4),
               ),
-            ),
+            ],
           ),
           child: BottomAppBar(
             elevation: 0,

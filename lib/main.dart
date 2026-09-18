@@ -6,21 +6,23 @@ import 'app.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-
 Future<void> main() async {
 
   // Logger Package for Logging
 
-  Logger.root.level = Level.ALL;
+  Logger.root.level = kReleaseMode ? Level.WARNING : Level.ALL;
 
-  Logger.root.onRecord.listen((record){
-    debugPrint(
-      '${record.time} '
-      '[${record.level.name}] '
-      '${record.loggerName}: '
-      '${record.message}'
-    );
+  Logger.root.onRecord.listen((record) {
+    if (kDebugMode || record.level >= Level.WARNING) {
+      debugPrint(
+        '${record.time} '
+        '[${record.level.name}] '
+        '${record.loggerName}: '
+        '${record.message}'
+      );
+    }
   });
 
   // dafuq is this

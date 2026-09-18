@@ -11,7 +11,7 @@ final Logger log = Logger("API Service: ");
 
 class ApiClient {
   static String get baseUrl =>
-      dotenv.env['BACKEND_URL'] ?? 'http://localhost:3002';
+      dotenv.env['BACKEND_URL'] ?? 'https://ecopin-backend-node.onrender.com';
 
   final dio.Dio _dio = dio.Dio(
     dio.BaseOptions(

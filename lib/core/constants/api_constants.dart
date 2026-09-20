@@ -8,6 +8,7 @@ class ApiConstants {
   static const String createReport = '/api/reports';
   static const String getMyReports = '/api/reports/my';
   static const String getPublicReports = '/api/reports/public';
+  static const String statsCompletedCleanups = '/api/stats/completed-cleanups';
 
   static String getReportById(String reportId) {
     return '/api/reports/$reportId';

@@ -7,6 +7,8 @@ import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/core/providers/theme_mode_provider.dart';
+import 'package:ecopin_app/core/services/sync_service.dart';
+import 'package:ecopin_app/shared/common/presentation/widgets/offline_sync_banner.dart';
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -28,18 +30,32 @@ class App extends ConsumerWidget {
       builder: (context, child) {
         return connectivityAsync.when(
           data: (connectivityResults) {
-            final hasConnection = !connectivityResults.contains(
-              ConnectivityResult.none,
-            );
-            if (!hasConnection) {
-              return const NoInternetScreen(); // show now interenet
+            final hasConnection = !connectivityResults.contains(ConnectivityResult.none);
+            
+            // Trigger sync when connection is restored
+            if (hasConnection) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                ref.read(syncServiceProvider).syncAll();
+              });
             }
-            return child!;
+
+            return Column(
+              children: [
+                if (!hasConnection)
+                  const Material(
+                    child: SafeArea(
+                      bottom: false,
+                      child: OfflineSyncBanner(),
+                    ),
+                  ),
+                Expanded(
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ],
+            );
           },
-          loading: () =>
-              const Scaffold(body: Center(child: CircularProgressIndicator())),
-          error: (error, stackTrace) =>
-              Scaffold(body: Center(child: Text('Error: $error'))),
+          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (error, stackTrace) => Scaffold(body: Center(child: Text('Error: $error'))),
         );
       },
     );

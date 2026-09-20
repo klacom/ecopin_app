@@ -6,7 +6,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/constants/api_constants.dart';
 import 'package:logging/logging.dart';
 
-final apiClientProvider = Provider((ref) => ApiClient());
+import 'package:ecopin_app/core/database/app_database.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:uuid/uuid.dart';
+import 'package:drift/drift.dart' as drift;
+
+final apiClientProvider = Provider((ref) {
+  final db = ref.watch(databaseProvider);
+  return ApiClient(db);
+});
 final Logger log = Logger("API Service: ");
 
 class ApiClient {
@@ -22,7 +30,9 @@ class ApiClient {
     ),
   );
 
-  ApiClient() {
+  final AppDatabase? _db;
+
+  ApiClient([this._db]) {
     _dio.interceptors.add(
       dio.InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -121,6 +131,46 @@ class ApiClient {
       throw ArgumentError('Must provide either an image or a video.');
     }
 
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      if (_db == null) throw Exception("Database not initialized for offline mode");
+      
+      final idempotencyKey = const Uuid().v4();
+      final imageList = imagePaths?.join(',') ?? '';
+      
+      await _db.into(_db.offlineReports).insert(
+        OfflineReportsCompanion.insert(
+          idempotencyKey: idempotencyKey,
+          title: title,
+          description: description,
+          latitude: latitude,
+          longitude: longitude,
+          onPrivateProperty: drift.Value(onPrivateProperty),
+          scaleLevel: drift.Value(scaleLevel),
+          obstructionLevel: drift.Value(obstructionLevel),
+          imagePaths: drift.Value(imageList),
+          videoPath: drift.Value(videoPath),
+        ),
+      );
+      
+      // If we have media, insert into the new OfflineMedia table
+      if (imageList.isNotEmpty || videoPath != null) {
+        await _db.into(_db.offlineMedia).insert(
+          OfflineMediaCompanion.insert(
+            idempotencyKey: idempotencyKey,
+            imagePaths: drift.Value(imageList.isEmpty ? null : imageList),
+            videoPath: drift.Value(videoPath),
+          )
+        );
+      }
+      
+      return dio.Response(
+        requestOptions: dio.RequestOptions(),
+        statusCode: 201,
+        data: {'message': 'You are offline. Your report has been saved locally and will be synced when you reconnect.', 'report': {}},
+      );
+    }
+
     final formData = dio.FormData();
     formData.fields.add(MapEntry('title', title));
     formData.fields.add(MapEntry('description', description));
@@ -147,6 +197,35 @@ class ApiClient {
     }
 
     return _dio.post(ApiConstants.createReport, data: formData);
+  }
+
+  Future<dio.Response> syncReportMedia(
+    String idempotencyKey,
+    List<String>? imagePaths,
+    String? videoPath,
+  ) async {
+    final formData = dio.FormData();
+    
+    if (imagePaths != null && imagePaths.isNotEmpty) {
+      for (final path in imagePaths) {
+        if (path.isNotEmpty) {
+          formData.files.add(
+            MapEntry('image', await dio.MultipartFile.fromFile(path)),
+          );
+        }
+      }
+    }
+    
+    if (videoPath != null && videoPath.isNotEmpty) {
+      formData.files.add(
+        MapEntry('video', await dio.MultipartFile.fromFile(videoPath)),
+      );
+    }
+
+    return _dio.post(
+      '/api/reports/sync/media/$idempotencyKey', 
+      data: formData
+    );
   }
 
   Future<dio.Response> getMyReports() async {
@@ -297,6 +376,25 @@ class ApiClient {
   }
 
   Future<dio.Response> markCleanupTaskComplete(String taskId) async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      if (_db == null) throw Exception("Database not initialized for offline mode");
+      
+      await _db.into(_db.offlineTaskUpdates).insert(
+        OfflineTaskUpdatesCompanion.insert(
+          taskId: int.parse(taskId),
+          payloadJson: '{"status":"completed"}',
+          clientKnownUpdatedAt: DateTime.now(),
+        ),
+      );
+      
+      return dio.Response(
+        requestOptions: dio.RequestOptions(),
+        statusCode: 200,
+        data: {'message': 'You are offline. Task update saved locally.', 'task': {}},
+      );
+    }
+
     return _dio.patch(ApiConstants.markCleanupTaskComplete(taskId));
   }
 
@@ -327,6 +425,20 @@ class ApiClient {
 
   Future<dio.Response> getClusterById(String clusterId) async {
     return _dio.get(ApiConstants.clusterById(clusterId));
+  }
+
+  Future<dio.Response> getCleanupsCompleted() async {
+    return _dio.get(ApiConstants.statsCompletedCleanups);
+  }
+
+  // Sync methods
+
+  Future<dio.Response> batchSyncReports(List<Map<String, dynamic>> payload) async {
+    return _dio.post('/api/reports/sync/batch', data: {'reports': payload});
+  }
+
+  Future<dio.Response> batchSyncTaskUpdates(List<Map<String, dynamic>> payload) async {
+    return _dio.post('/api/cleanup-tasks/sync/batch', data: {'updates': payload});
   }
 
   Future<dio.Response> getCleanupTasks() async {

@@ -9,7 +9,8 @@ import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -49,8 +50,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           sessionData['refresh_token'],
           accessToken: sessionData['access_token'],
         );
-        // Do not use context.go() here. GoRouter's refreshListenable 
-        // handles redirection to the appropriate screen based on the user's role.
+        
+        // Parse role directly from response to bypass AuthNotifier async delays
+        final userData = response.data['user'];
+        final roleString = userData?['role'] as String?;
+        UserRole role = UserRole.citizen; // Default
+
+        if (roleString != null) {
+          if (roleString == 'field_crew') {
+            role = UserRole.fieldCrew;
+          } else {
+            role = UserRole.values.firstWhere(
+              (e) => e.name == roleString,
+              orElse: () => UserRole.citizen,
+            );
+          }
+        }
+
+        if (mounted) {
+          // Force the notifier to instantly recognize the authenticated state 
+          // so GoRouter doesn't intercept the navigation and throw us back to login!
+          ref.read(authNotifierProvider.notifier).manualOverrideAuthenticatedState(role);
+
+          if (role == UserRole.officer) {
+            context.go('/officer/dashboard');
+          } else if (role == UserRole.admin) {
+            context.go('/admin/dashboard');
+          } else if (role == UserRole.fieldCrew) {
+            context.go('/field-crew/dashboard');
+          } else {
+            context.go('/maps');
+          }
+        }
       } else {
         SnackbarHelper.showError('Login failed: Invalid session data');
       }

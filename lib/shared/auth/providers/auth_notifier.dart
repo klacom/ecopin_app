@@ -66,6 +66,11 @@ class AuthNotifier extends ChangeNotifier {
     }
   }
 
+  void manualOverrideAuthenticatedState(UserRole role) {
+    _state = AppAuthState.authenticated(role);
+    notifyListeners();
+  }
+
   Future<void> _updateState(Session? session) async {
     if (session == null) {
       _state = AppAuthState.unauthenticated();

@@ -48,7 +48,7 @@ import 'package:logging/logging.dart';
 final Logger log = Logger("App Router");
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authNotifier = ref.watch(authNotifierProvider);
+  final authNotifier = ref.read(authNotifierProvider);
 
   return GoRouter(
     initialLocation: PublicAppRoutes.splash,

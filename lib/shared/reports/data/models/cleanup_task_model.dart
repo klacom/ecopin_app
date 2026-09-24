@@ -3,6 +3,8 @@ class CleanupTaskModel {
   final String? clusterId;
   final String title;
   final String? description;
+  final String? expectedAction;
+  final String? requiredResources;
   final String status;
   final String? beforePhotoUrl;
   final String? afterPhotoUrl;
@@ -18,6 +20,8 @@ class CleanupTaskModel {
     this.clusterId,
     required this.title,
     this.description,
+    this.expectedAction,
+    this.requiredResources,
     required this.status,
     this.beforePhotoUrl,
     this.afterPhotoUrl,
@@ -35,6 +39,8 @@ class CleanupTaskModel {
       clusterId: json['cluster_id']?.toString(),
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString(),
+      expectedAction: json['expected_action']?.toString(),
+      requiredResources: json['required_resources']?.toString(),
       status: json['status']?.toString() ?? 'pending',
       beforePhotoUrl: json['before_photo_url']?.toString(),
       afterPhotoUrl: json['after_photo_url']?.toString(),

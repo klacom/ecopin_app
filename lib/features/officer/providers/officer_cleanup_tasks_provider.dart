@@ -9,6 +9,8 @@ class CleanupTask {
   final String? title;
   final String? description;
   final String? status;
+  final String? expectedAction;
+  final String? requiredResources;
   final DateTime? createdAt;
   final String? createdBy;
   final Map<String, dynamic>? cluster;
@@ -23,6 +25,8 @@ class CleanupTask {
     this.title,
     this.description,
     this.status,
+    this.expectedAction,
+    this.requiredResources,
     this.createdAt,
     this.createdBy,
     this.cluster,
@@ -39,6 +43,8 @@ class CleanupTask {
       title: json['title'] as String?,
       description: json['description'] as String?,
       status: json['status'] as String?,
+      expectedAction: json['expected_action'] as String?,
+      requiredResources: json['required_resources'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'])
           : null,

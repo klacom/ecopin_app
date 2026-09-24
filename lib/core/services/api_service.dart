@@ -19,7 +19,7 @@ final Logger log = Logger("API Service: ");
 
 class ApiClient {
   static String get baseUrl =>
-      dotenv.env['BACKEND_URL'] ?? 'https://ecopin-backend-node.onrender.com';
+      dotenv.env['BACKEND_URL'] ?? 'http://47.129.254.120';
 
   final dio.Dio _dio = dio.Dio(
     dio.BaseOptions(
@@ -86,23 +86,33 @@ class ApiClient {
     String password,
     String confirmPassword,
   ) async {
-    return _dio.post(
-      ApiConstants.register,
-      data: {
-        'email': email,
-        'password': password,
-        'confirmPassword': confirmPassword,
-      },
-    );
+    log.info('Registering user: $email');
+    try {
+      final response = await _dio.post(
+        ApiConstants.register,
+        data: {
+          'email': email,
+          'password': password,
+          'confirmPassword': confirmPassword,
+        },
+      );
+      log.info(
+        'Register response status: ${response.statusCode}, data: ${response.data}',
+      );
+      return response;
+    } on dio.DioException catch (e) {
+      log.severe(
+        'Register DioException: ${e.message}, status: ${e.response?.statusCode}, response: ${e.response?.data}',
+      );
+      rethrow;
+    } catch (e) {
+      log.severe('Register Exception: $e');
+      rethrow;
+    }
   }
 
   Future<dio.Response> resendVerification(String email) async {
-    return _dio.post(
-      ApiConstants.resendVerification,
-      data: {
-        'email': email,
-      },
-    );
+    return _dio.post(ApiConstants.resendVerification, data: {'email': email});
   }
 
   Future<dio.Response> getPasswordRequirements() async {
@@ -187,24 +197,24 @@ class ApiClient {
     formData.fields.add(MapEntry('description', description));
     formData.fields.add(MapEntry('latitude', latitude.toString()));
     formData.fields.add(MapEntry('longitude', longitude.toString()));
-    formData.fields.add(MapEntry('on_private_property', onPrivateProperty.toString()));
+    formData.fields.add(
+      MapEntry('on_private_property', onPrivateProperty.toString()),
+    );
     formData.fields.add(MapEntry('scale_level', scaleLevel));
     formData.fields.add(MapEntry('obstruction_level', obstructionLevel));
 
     if (imagePaths != null && imagePaths.isNotEmpty) {
       for (final imagePath in imagePaths) {
-        formData.files.add(MapEntry(
-          'image',
-          await dio.MultipartFile.fromFile(imagePath),
-        ));
+        formData.files.add(
+          MapEntry('image', await dio.MultipartFile.fromFile(imagePath)),
+        );
       }
     }
 
     if (videoPath != null) {
-      formData.files.add(MapEntry(
-        'video',
-        await dio.MultipartFile.fromFile(videoPath),
-      ));
+      formData.files.add(
+        MapEntry('video', await dio.MultipartFile.fromFile(videoPath)),
+      );
     }
 
     return _dio.post(ApiConstants.createReport, data: formData);
@@ -454,6 +464,16 @@ class ApiClient {
 
   Future<dio.Response> getCleanupTasks() async {
     return _dio.get(ApiConstants.cleanupTasks);
+  }
+
+  Future<dio.Response> completeCleanupTask(String taskId, String outcome, String notes) async {
+    return _dio.post(
+      '${ApiConstants.cleanupTasks}/$taskId/complete',
+      data: {
+        'outcome': outcome,
+        'notes': notes,
+      },
+    );
   }
 
   Future<dio.Response> getCleanupTaskById(String taskId) async {

@@ -5,12 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class CleanupTaskDetail {
   final String id;
   final String? clusterId;
   final String? title;
   final String? description;
+  final String? expectedAction;
+  final String? requiredResources;
   final String? status;
   final DateTime? createdAt;
   final String? beforePhotoUrl;
@@ -24,6 +27,8 @@ class CleanupTaskDetail {
     this.clusterId,
     this.title,
     this.description,
+    this.expectedAction,
+    this.requiredResources,
     this.status,
     this.createdAt,
     this.beforePhotoUrl,
@@ -39,6 +44,8 @@ class CleanupTaskDetail {
       clusterId: json['cluster_id']?.toString(),
       title: json['title'] as String?,
       description: json['description'] as String?,
+      expectedAction: json['expected_action'] as String?,
+      requiredResources: json['required_resources'] as String?,
       status: json['status'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'])
@@ -203,42 +210,106 @@ class _OfficerCleanupTaskDetailsScreenState
     });
   }
 
-  Future<void> _markTaskComplete() async {
-    // Check if all reports are resolved (lifecycle stage)
-    if (_reports.isNotEmpty) {
-      final unresolvedReports = _reports.where((r) => r.stage != 'resolved');
-      if (unresolvedReports.isNotEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Task can only be complete when all reports are resolved',
-            ),
-          ),
-        );
-        return;
-      }
-    }
-
+  Future<void> _submitTaskFeedback(String outcome, String notes) async {
     setState(() => _isMarkingComplete = true);
     try {
       final apiClient = ref.read(apiClientProvider);
-      await apiClient.markCleanupTaskComplete(widget.taskId);
+      await apiClient.completeCleanupTask(widget.taskId, outcome, notes);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Cleanup task marked as complete successfully!'),
+          content: Text('Task feedback submitted successfully!'),
         ),
       );
       await _loadTaskDetails();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to mark task complete: $e')),
+        SnackBar(content: Text('Failed to submit feedback: $e')),
       );
     } finally {
       if (mounted) setState(() => _isMarkingComplete = false);
     }
+  }
+
+  void _showFeedbackDialog() {
+    String selectedOutcome = 'completed';
+    final notesController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16,
+                right: 16,
+                top: 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Submit Task Feedback',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Outcome', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedOutcome,
+                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    items: const [
+                      DropdownMenuItem(value: 'completed', child: Text('Completed')),
+                      DropdownMenuItem(value: 'partially_completed', child: Text('Partially Completed')),
+                      DropdownMenuItem(value: 'issue_still_exists', child: Text('Issue Still Exists')),
+                      DropdownMenuItem(value: 'requires_escalation', child: Text('Requires Escalation')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedOutcome = val);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Notes (Optional)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: notesController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Any additional details...',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _submitTaskFeedback(selectedOutcome, notesController.text);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Theme.of(context).primaryColor,
+                      ),
+                      child: const Text('Submit', style: TextStyle(fontSize: 16, color: Colors.white)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
   }
 
   Future<void> _uploadReportPhoto(String reportId, String photoType) async {
@@ -386,6 +457,24 @@ class _OfficerCleanupTaskDetailsScreenState
                         _task?.description ?? 'No description',
                         style: TextStyle(color: Colors.grey[600]),
                       ),
+                      if (_task?.expectedAction != null) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Expected Action',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        MarkdownBody(data: _task!.expectedAction!),
+                      ],
+                      if (_task?.requiredResources != null) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Required Resources',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        MarkdownBody(data: _task!.requiredResources!),
+                      ],
                     ],
                   ),
                 ),
@@ -982,16 +1071,16 @@ class _OfficerCleanupTaskDetailsScreenState
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _isMarkingComplete ? null : _markTaskComplete,
+        onPressed: _isMarkingComplete ? null : _showFeedbackDialog,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
+          backgroundColor: Theme.of(context).primaryColor,
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
         child: _isMarkingComplete
             ? const CircularProgressIndicator(color: Colors.white)
             : const Text(
-                'Mark Task as Complete',
-                style: TextStyle(fontSize: 16),
+                'Submit Feedback',
+                style: TextStyle(fontSize: 16, color: Colors.white),
               ),
       ),
     );

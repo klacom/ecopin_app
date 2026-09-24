@@ -4,6 +4,7 @@ import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_wi
 import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/validation_badge.dart';
 import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
+import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -114,7 +115,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => const NoInternetScreen(),
       ),
     );
   }

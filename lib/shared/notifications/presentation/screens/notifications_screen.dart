@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/shared/notifications/providers/notifications_provider.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
@@ -212,7 +213,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => const NoInternetScreen(),
       ),
     );
   }

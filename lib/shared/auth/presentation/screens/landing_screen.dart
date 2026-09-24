@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
 
@@ -30,14 +31,11 @@ class LandingScreen extends StatelessWidget {
                   const Spacer(flex: 2),
                   
                   // App Title / Logo area
-                  Text(
-                    'Ecopin',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      color: Theme.of(context).brightness == Brightness.light ? Colors.black : const Color(0xFFCCFF00),
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -1,
-                    ),
+                  Image.asset(
+                    Theme.of(context).brightness == Brightness.light 
+                        ? 'assets/logos/Full Logo Light.png' 
+                        : 'assets/logos/Full Logo Dark.png',
+                    height: 80,
                   ),
                   const SizedBox(height: AppColors.spaceMD),
                   

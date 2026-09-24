@@ -4,6 +4,7 @@ import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/shared/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_details_body.dart';
 import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
+import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
@@ -118,7 +119,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
             isOfficerUser: isOfficerUser,
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => Center(child: Text('Error: $err')),
+          error: (err, stack) => const NoInternetScreen(),
         ),
       ),
     );

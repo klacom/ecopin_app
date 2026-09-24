@@ -45,6 +45,7 @@ dependencies:
   path_provider: ^2.1.6
   sqflite: ^2.4.4
   path: ^1.9.1
+  flutter_svg: ^2.3.0
   
 dev_dependencies:
   flutter_test:
@@ -52,7 +53,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.15.1
   drift_dev: ^2.35.0
-
+  flutter_launcher_icons: ^0.14.4
+  image: ^4.10.1
 dependency_overrides:
   flutter_rotation_sensor:
     path: packages/flutter_rotation_sensor
@@ -61,6 +63,7 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/logos/
 
   fonts:
     - family: Outfit
@@ -83,3 +86,11 @@ flutter:
           weight: 800
         - asset: assets/fonts/Outfit-Black.ttf
           weight: 900
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/logos/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/logos/app_icon.png"
+  remove_alpha_ios: true

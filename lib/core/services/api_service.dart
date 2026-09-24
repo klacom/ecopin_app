@@ -36,6 +36,17 @@ class ApiClient {
     _dio.interceptors.add(
       dio.InterceptorsWrapper(
         onRequest: (options, handler) async {
+          final connectivityResult = await Connectivity().checkConnectivity();
+          if (connectivityResult.contains(ConnectivityResult.none)) {
+            return handler.reject(
+              dio.DioException(
+                requestOptions: options,
+                type: dio.DioExceptionType.connectionError,
+                error: 'No internet connection',
+              ),
+            );
+          }
+
           final session = Supabase.instance.client.auth.currentSession;
           final token = session?.accessToken;
           if (token != null) {

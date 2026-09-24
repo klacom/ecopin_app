@@ -8,6 +8,7 @@ import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
+import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -610,8 +611,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) =>
-              Center(child: Text('Error loading profile: $err')),
+          error: (err, stack) => const NoInternetScreen(),
         ),
       ),
     );

@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -94,10 +95,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Ecopin',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineLarge,
+              Image.asset(
+                Theme.of(context).brightness == Brightness.light 
+                    ? 'assets/logos/Full Logo Light.png' 
+                    : 'assets/logos/Full Logo Dark.png',
+                height: 60,
               ),
               const SizedBox(height: AppColors.spaceSM),
               Text(

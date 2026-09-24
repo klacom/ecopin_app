@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/status_badge.dart';
 import 'package:flutter/material.dart';
@@ -610,7 +611,7 @@ super.dispose();
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => const NoInternetScreen(),
       ),
     );
   }

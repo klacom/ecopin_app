@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
-
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,49 +19,16 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.accent.withValues(alpha: 0.4),
-                    blurRadius: 24,
-                    spreadRadius: 4,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.eco,
-                size: 44,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 24),
-            RichText(
-              text: TextSpan(
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.0,
-                ),
-                children: [
-                  const TextSpan(
-                    text: 'ECOPIN',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  const TextSpan(
-                    text: '.AI',
-                    style: TextStyle(color: AppColors.accentBlue),
-                  ),
-                ],
-              ),
+            Image.asset(
+              Theme.of(context).brightness == Brightness.light
+                  ? 'assets/logos/Full Logo Light.png'
+                  : 'assets/logos/Full Logo Dark.png',
+              height: 100,
             ),
             const SizedBox(height: 40),
             SizedBox(

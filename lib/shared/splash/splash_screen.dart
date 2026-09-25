@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 
 class SplashScreen extends StatefulWidget {

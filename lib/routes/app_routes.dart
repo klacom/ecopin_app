@@ -45,6 +45,8 @@ class OfficerAppRoutes {
   static const String analytics = '/officer/analytics';
   static const String profile = '/officer/profile';
   static const String notifications = '/officer/notifications';
+  static const String spatialScan = '/officer/spatial-scan';
+  static const String optimization = '/officer/optimization';
 
   static const officerRoutes = [
     dashboard,
@@ -56,6 +58,8 @@ class OfficerAppRoutes {
     analytics,
     profile,
     notifications,
+    spatialScan,
+    optimization,
   ];
 }
 

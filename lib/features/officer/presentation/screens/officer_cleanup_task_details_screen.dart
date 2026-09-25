@@ -264,7 +264,7 @@ class _OfficerCleanupTaskDetailsScreenState
                   const Text('Outcome', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: selectedOutcome,
+                    initialValue: selectedOutcome,
                     decoration: const InputDecoration(border: OutlineInputBorder()),
                     items: const [
                       DropdownMenuItem(value: 'completed', child: Text('Completed')),

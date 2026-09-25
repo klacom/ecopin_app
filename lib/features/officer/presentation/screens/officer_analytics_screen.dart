@@ -11,7 +11,7 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
     final statsAsync = ref.watch(officerDashboardProvider).stats;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Analytics'), elevation: 0),
+      appBar: AppBar(title: const Text('Metrics'), elevation: 0),
       body: RefreshIndicator(
         onRefresh: () => ref.read(officerDashboardProvider).loadStats(),
         child: statsAsync.when(

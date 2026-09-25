@@ -461,8 +461,6 @@ class _OfficerReportDetailsScreenState
                 children: [
                   _buildReportDetailsSection(),
                   const SizedBox(height: 24),
-                  _buildActionsSection(),
-                  const SizedBox(height: 24),
                   _buildLifecycleSection(),
                   const SizedBox(height: 24),
                   if (_report?.discloseIdentity == true ||
@@ -595,104 +593,6 @@ class _OfficerReportDetailsScreenState
     }
   }
 
-  Widget _buildActionsSection() {
-    // Get valid lifecycle items first
-    final lifecycleItems = _getLifecycleStageItems();
-    final validLifecycleValues = lifecycleItems
-        .map((item) => item.value)
-        .toSet();
-    // Ensure current stage is in the list, fallback to null or first valid value
-    String? currentLifecycleValue = _report?.stage;
-    if (currentLifecycleValue != null &&
-        !validLifecycleValues.contains(currentLifecycleValue)) {
-      currentLifecycleValue = null;
-    }
-
-    // Handle validation status similarly
-    const validValidationValues = {
-      'pending',
-      'automatically_valid',
-      'manual_review',
-      'rejected',
-    };
-    String? currentValidationValue = _report?.validationStatus;
-    if (currentValidationValue != null &&
-        !validValidationValues.contains(currentValidationValue)) {
-      currentValidationValue = null;
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Actions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: currentLifecycleValue,
-              decoration: const InputDecoration(
-                labelText: 'Update Lifecycle Stage',
-                border: OutlineInputBorder(),
-              ),
-              items: lifecycleItems,
-              onChanged: _isUpdating || _report?.stage == 'resolved'
-                  ? null
-                  : (value) {
-                      if (value != null) {
-                        _updateLifecycleStage(value);
-                      }
-                    },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: currentValidationValue,
-              decoration: const InputDecoration(
-                labelText: 'Update Validation Status',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                // Add current validation status if it's not in the list
-                if (currentValidationValue != null &&
-                    !validValidationValues.contains(currentValidationValue))
-                  DropdownMenuItem(
-                    value: currentValidationValue,
-                    enabled: false,
-                    child: Text(currentValidationValue.replaceAll('_', ' ')),
-                  ),
-                const DropdownMenuItem(
-                  value: 'pending',
-                  child: Text('Pending'),
-                ),
-                const DropdownMenuItem(
-                  value: 'automatically_valid',
-                  child: Text('Automatically Valid'),
-                ),
-                const DropdownMenuItem(
-                  value: 'manual_review',
-                  child: Text('Manual Review'),
-                ),
-                const DropdownMenuItem(
-                  value: 'rejected',
-                  child: Text('Rejected'),
-                ),
-              ],
-              onChanged: _isUpdating
-                  ? null
-                  : (value) {
-                      if (value != null) {
-                        _updateValidationStatus(value);
-                      }
-                    },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildLifecycleSection() {
     return Card(

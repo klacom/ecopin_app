@@ -356,10 +356,15 @@ class ApiClient {
     return _dio.get(ApiConstants.getCleanupTasksByCluster(clusterId));
   }
 
+  Future<dio.Response> getAvailableCrew() async {
+    return _dio.get('${ApiConstants.cleanupTasks}/available-crew');
+  }
+
   Future<dio.Response> createCustomCleanupTask({
     required List<String> reportIds,
     required String title,
     String? description,
+    List<String>? assignedCrewIds,
   }) async {
     return _dio.post(
       ApiConstants.createCustomCleanupTask,
@@ -367,6 +372,7 @@ class ApiClient {
         'report_ids': reportIds,
         'title': title,
         'description': description,
+        'assigned_crew_ids': ?assignedCrewIds,
       },
     );
   }
@@ -557,5 +563,81 @@ class ApiClient {
 
   Future<dio.Response> createReportFromRejected(String reportId) async {
     return _dio.post('/api/reports/$reportId/create-new');
+  }
+
+  // Spatial Scan (Forecast) methods
+  
+  Future<dio.Response> generateSpatialForecast({
+    String timeHorizon = 'weekly',
+    Map<String, dynamic>? boundingBox,
+  }) async {
+    return _dio.post(
+      ApiConstants.spatialForecastGenerate,
+      data: {
+        'time_horizon': timeHorizon,
+        'bounding_box': boundingBox,
+      },
+    );
+  }
+
+  Future<dio.Response> getSpatialForecastPredictions({
+    String? timeHorizon,
+    String? clusterId,
+    String? startDate,
+    String? endDate,
+    bool? isSignificant,
+    int? limit,
+  }) async {
+    final params = <String, dynamic>{};
+    if (timeHorizon != null) params['time_horizon'] = timeHorizon;
+    if (clusterId != null) params['cluster_id'] = clusterId;
+    if (startDate != null) params['start_date'] = startDate;
+    if (endDate != null) params['end_date'] = endDate;
+    if (isSignificant != null) params['is_significant'] = isSignificant;
+    if (limit != null) params['limit'] = limit;
+
+    return _dio.get(
+      ApiConstants.spatialForecastPredictions,
+      queryParameters: params,
+    );
+  }
+
+  Future<dio.Response> getCurrentSpatialForecast(String horizon) async {
+    return _dio.get(ApiConstants.spatialForecastCurrent(horizon));
+  }
+
+  Future<dio.Response> getSpatialForecastAccuracy({String? timeHorizon}) async {
+    final params = <String, dynamic>{};
+    if (timeHorizon != null) params['time_horizon'] = timeHorizon;
+    
+    return _dio.get(
+      '/api/spatial-forecast/accuracy',
+      queryParameters: params,
+    );
+  }
+
+  Future<dio.Response> getAvailablePredictionDates() async {
+    return _dio.get('/api/spatial-forecast/available-dates');
+  }
+
+  // Optimization methods
+  Future<dio.Response> runOptimization(Map<String, dynamic> params) async {
+    return _dio.post(ApiConstants.optimizationRun, data: params);
+  }
+
+  Future<dio.Response> getOptimizationRuns() async {
+    return _dio.get(ApiConstants.optimizationRuns);
+  }
+
+  Future<dio.Response> getOptimizationRunById(String id) async {
+    return _dio.get(ApiConstants.optimizationRunById(id));
+  }
+
+  Future<dio.Response> approveOptimization(String id) async {
+    return _dio.post(ApiConstants.approveOptimizationRun(id));
+  }
+
+  Future<dio.Response> discardOptimization(String id) async {
+    return _dio.post(ApiConstants.discardOptimizationRun(id));
   }
 }

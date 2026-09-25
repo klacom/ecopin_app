@@ -3,6 +3,7 @@ import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/officer/providers/officer_clusters_provider.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_reports_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 
@@ -17,55 +18,93 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
   String _searchQuery = '';
   String _severityFilter = 'all';
   String _statusFilter = 'all';
+  int _currentPage = 1;
+  static const int _pageSize = 10;
 
   @override
   Widget build(BuildContext context) {
     final clustersAsync = ref.watch(officerClustersProvider).clusters;
+    final reportsAsync = ref.watch(officerReportsProvider).reports;
 
     return Scaffold(
       appBar: AppBar(
         actions: const [NotificationBadgeAction()],
-        title: const Text('Clusters'), elevation: 0),
+        title: const Text('Hotzone Intel'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),
           Expanded(
             child: clustersAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Error: $error'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () =>
-                          ref.read(officerClustersProvider).loadClusters(),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
+              error: (error, stack) => _buildError(error.toString(), () => ref.read(officerClustersProvider).loadClusters()),
               data: (clusters) {
-                final filteredClusters = _filterClusters(clusters);
-                if (filteredClusters.isEmpty) {
-                  return const Center(child: Text('No clusters found'));
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.only(
-                    left: 16,
-                    right: 16,
-                    top: 16,
-                    bottom: 80,
-                  ),
-                  itemCount: filteredClusters.length,
-                  itemBuilder: (context, index) {
-                    final cluster = filteredClusters[index];
-                    return _buildClusterCard(cluster);
+                return reportsAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, stack) => _buildError(error.toString(), () => ref.read(officerReportsProvider).loadReports()),
+                  data: (reports) {
+                    final processedClusters = clusters.map((c) {
+                      final clusterReports = reports.where((r) => r.clusterId == c.id).toList();
+                      final resolvedCount = clusterReports.where((r) => r.status == 'resolved').length;
+                      final totalCount = clusterReports.length;
+
+                      String status = 'unresolved';
+                      if (totalCount == 0) {
+                        status = 'unresolved';
+                      } else if (resolvedCount == totalCount) status = 'resolved';
+                      else if (resolvedCount > 0) status = 'in_progress';
+
+                      return Cluster(
+                        id: c.id,
+                        issueType: c.issueType,
+                        severity: c.severity,
+                        reportCount: c.reportCount,
+                        createdAt: c.createdAt,
+                        status: status,
+                      );
+                    }).toList();
+
+                    final filteredClusters = _filterClusters(processedClusters);
+                    final paginatedClusters = _paginateClusters(filteredClusters);
+
+                    if (filteredClusters.isEmpty) {
+                      return const Center(child: Text('No clusters found'));
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.only(
+                        left: 16,
+                        right: 16,
+                        top: 16,
+                        bottom: 80,
+                      ),
+                      itemCount: paginatedClusters.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == paginatedClusters.length) {
+                          return _buildPaginationControls(filteredClusters.length);
+                        }
+                        final cluster = paginatedClusters[index];
+                        return _buildClusterCard(cluster);
+                      },
+                    );
                   },
                 );
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError(String error, VoidCallback onRetry) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('Error: $error'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
           ),
         ],
       ),
@@ -88,6 +127,7 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
             onChanged: (value) {
               setState(() {
                 _searchQuery = value;
+                _currentPage = 1;
               });
             },
           ),
@@ -111,6 +151,7 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
                   onChanged: (value) {
                     setState(() {
                       _severityFilter = value ?? 'all';
+                      _currentPage = 1;
                     });
                   },
                 ),
@@ -142,6 +183,7 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
                   onChanged: (value) {
                     setState(() {
                       _statusFilter = value ?? 'all';
+                      _currentPage = 1;
                     });
                   },
                 ),
@@ -155,6 +197,8 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
 
   List<Cluster> _filterClusters(List<Cluster> clusters) {
     return clusters.where((cluster) {
+      if ((cluster.reportCount ?? 0) < 2) return false;
+
       final matchesSearch =
           _searchQuery.isEmpty ||
           (cluster.issueType?.toLowerCase().contains(
@@ -171,6 +215,48 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
 
       return matchesSearch && matchesSeverity && matchesStatus;
     }).toList();
+  }
+
+  List<Cluster> _paginateClusters(List<Cluster> clusters) {
+    final start = (_currentPage - 1) * _pageSize;
+    final end = start + _pageSize;
+    if (start >= clusters.length) return [];
+    return clusters.sublist(start, end > clusters.length ? clusters.length : end);
+  }
+
+  Widget _buildPaginationControls(int totalClusters) {
+    final totalPages = (totalClusters / _pageSize).ceil();
+    return Padding(
+      padding: const EdgeInsets.all(4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() {
+                      _currentPage--;
+                    });
+                  }
+                : null,
+            child: const Text('Previous'),
+          ),
+          const SizedBox(width: 16),
+          Text('Page $_currentPage of $totalPages'),
+          const SizedBox(width: 16),
+          ElevatedButton(
+            onPressed: _currentPage < totalPages
+                ? () {
+                    setState(() {
+                      _currentPage++;
+                    });
+                  }
+                : null,
+            child: const Text('Next'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildClusterCard(Cluster cluster) {

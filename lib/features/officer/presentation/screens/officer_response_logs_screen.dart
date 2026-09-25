@@ -93,7 +93,7 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
     final logsAsync = ref.watch(officerResponseLogsProvider).logs;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Response Logs'), elevation: 0),
+      appBar: AppBar(title: const Text('Sys Logs'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),

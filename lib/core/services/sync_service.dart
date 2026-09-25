@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/core/services/connectivity_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 final syncServiceProvider = Provider<SyncService>((ref) {

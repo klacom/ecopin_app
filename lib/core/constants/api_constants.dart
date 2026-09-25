@@ -104,4 +104,18 @@ class ApiConstants {
   static String batchCompleteReportsByCluster(String clusterId) {
     return '/api/reports/cluster/$clusterId/complete';
   }
+
+  // Spatial Scan (Forecast) API Constants
+  static const String spatialForecastGenerate = '/api/spatial-forecast/generate';
+  static const String spatialForecastPredictions = '/api/spatial-forecast/predictions';
+  static String spatialForecastCurrent(String horizon) {
+    return '/api/spatial-forecast/current/$horizon';
+  }
+
+  // Optimization API Constants
+  static const String optimizationRuns = '/api/optimization/runs';
+  static const String optimizationRun = '/api/optimization/run';
+  static String optimizationRunById(String id) => '/api/optimization/runs/$id';
+  static String approveOptimizationRun(String id) => '/api/optimization/runs/$id/approve';
+  static String discardOptimizationRun(String id) => '/api/optimization/runs/$id/discard';
 }

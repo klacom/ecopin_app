@@ -48,6 +48,7 @@ dependencies:
   flutter_svg: ^2.3.0
   flutter_markdown: ^0.7.7+1
   
+  uuid: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

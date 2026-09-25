@@ -462,7 +462,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           ),
           const SizedBox(height: 24),
           DropdownButtonFormField<String>(
-            value: _selectedScale,
+            initialValue: _selectedScale,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Estimated Scale',
@@ -477,7 +477,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           ),
           const SizedBox(height: 24),
           DropdownButtonFormField<String>(
-            value: _selectedObstruction,
+            initialValue: _selectedObstruction,
             isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Obstruction Level',

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 class NoInternetScreen extends StatelessWidget {
   const NoInternetScreen({super.key});
 

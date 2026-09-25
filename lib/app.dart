@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ecopin_app/core/services/connectivity_service.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
-import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/core/providers/theme_mode_provider.dart';
 import 'package:ecopin_app/core/services/sync_service.dart';

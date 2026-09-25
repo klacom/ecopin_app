@@ -73,34 +73,50 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!isFieldCrew) ...[
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!isFieldCrew) ...[
+                _buildMoreMenuItem(
+                  icon: Icons.map_outlined,
+                  activeIcon: Icons.map,
+                  label: 'Map',
+                  route: OfficerAppRoutes.maps,
+                ),
+                const Divider(height: 1),
+                _buildMoreMenuItem(
+                  icon: Icons.radar_outlined,
+                  activeIcon: Icons.radar,
+                  label: 'Spatial Scan',
+                  route: OfficerAppRoutes.spatialScan,
+                ),
+                const Divider(height: 1),
+                _buildMoreMenuItem(
+                  icon: Icons.analytics_outlined,
+                  activeIcon: Icons.analytics,
+                  label: 'Metrics',
+                  route: OfficerAppRoutes.analytics,
+                ),
+                const Divider(height: 1),
+                _buildMoreMenuItem(
+                  icon: Icons.route_outlined,
+                  activeIcon: Icons.route,
+                  label: 'Optimization',
+                  route: OfficerAppRoutes.optimization,
+                ),
+                const Divider(height: 1),
+              ],
               _buildMoreMenuItem(
-                icon: Icons.map_outlined,
-                activeIcon: Icons.map,
-                label: 'Map',
-                route: OfficerAppRoutes.maps,
+                icon: Icons.history_outlined,
+                activeIcon: Icons.history,
+                label: 'Sys Logs',
+                route: OfficerAppRoutes.responseLogs,
               ),
               const Divider(height: 1),
-              _buildMoreMenuItem(
-                icon: Icons.analytics_outlined,
-                activeIcon: Icons.analytics,
-                label: 'Analytics',
-                route: OfficerAppRoutes.analytics,
-              ),
-              const Divider(height: 1),
+              _buildProfileMoreMenuItem(avatarUrl, fullName),
             ],
-            _buildMoreMenuItem(
-              icon: Icons.history_outlined,
-              activeIcon: Icons.history,
-              label: 'Logs',
-              route: OfficerAppRoutes.responseLogs,
-            ),
-            const Divider(height: 1),
-            _buildProfileMoreMenuItem(avatarUrl, fullName),
-          ],
+          ),
         ),
       ),
     );
@@ -241,21 +257,21 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
                     1,
                     Icons.group_work_outlined,
                     Icons.group_work,
-                    'Clusters',
+                    'Hotzone Intel',
                     selectedIndex,
                   ),
                 _buildNavItem(
                   2,
                   Icons.task_outlined,
                   Icons.task,
-                  'Tasks',
+                  'Operations',
                   selectedIndex,
                 ),
                 _buildNavItem(
                   3,
                   Icons.report_outlined,
                   Icons.report,
-                  'Reports',
+                  'Raw Data',
                   selectedIndex,
                 ),
                 _buildNavItem(

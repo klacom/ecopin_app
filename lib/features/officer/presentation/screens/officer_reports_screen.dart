@@ -19,6 +19,7 @@ class LguReport {
   final String? lifecycleStage;
   final String? rejectionReason;
   final DateTime? rejectedAt;
+  final String? clusterId;
 
   LguReport({
     required this.id,
@@ -32,6 +33,7 @@ class LguReport {
     this.lifecycleStage,
     this.rejectionReason,
     this.rejectedAt,
+    this.clusterId,
   });
 
   factory LguReport.fromJson(Map<String, dynamic> json) {
@@ -51,6 +53,7 @@ class LguReport {
       rejectedAt: json['rejected_at'] != null
           ? DateTime.tryParse(json['rejected_at'])
           : null,
+      clusterId: json['cluster_id']?.toString(),
     );
   }
 }
@@ -127,7 +130,7 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
     return Scaffold(
       appBar: AppBar(
         actions: const [NotificationBadgeAction()],
-        title: const Text('Reports'), elevation: 0),
+        title: const Text('Raw Data'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),

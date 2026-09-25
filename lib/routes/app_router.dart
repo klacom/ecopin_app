@@ -17,6 +17,8 @@ import 'package:ecopin_app/features/officer/presentation/screens/officer_cleanup
 import 'package:ecopin_app/features/officer/presentation/screens/officer_create_custom_cleanup_task_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_report_details_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_analytics_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_spatial_scan_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_optimization_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_cluster_create_task.dart';
 import 'package:ecopin_app/features/citizen/presentation/screens/citizen_main_screen.dart';
 import 'package:ecopin_app/shared/maps/presentation/screens/maps_screen.dart';
@@ -295,6 +297,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: OfficerAppRoutes.analytics,
             builder: (_, _) => const OfficerAnalyticsScreen(),
+          ),
+          GoRoute(
+            path: OfficerAppRoutes.spatialScan,
+            builder: (_, _) => const OfficerSpatialScanScreen(),
+          ),
+          GoRoute(
+            path: OfficerAppRoutes.optimization,
+            builder: (_, _) => const OfficerOptimizationScreen(),
           ),
           GoRoute(
             path: OfficerAppRoutes.profile,

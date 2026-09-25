@@ -24,7 +24,7 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
     return Scaffold(
       appBar: AppBar(
         actions: const [NotificationBadgeAction()],
-        title: const Text('Cleanup Tasks'), elevation: 0),
+        title: const Text('Operations'), elevation: 0),
       body: Column(
         children: [
           _buildFilters(),

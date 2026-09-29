@@ -3,8 +3,6 @@ import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
-import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
-import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 
 class OfficerMainScreen extends ConsumerStatefulWidget {
@@ -61,8 +59,6 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
     final fullName = profileAsync.value?['full_name'] as String?;
     final avatarUrl = profileAsync.value?['avatar_url'] as String?;
 
-    final isFieldCrew = ref.read(authNotifierProvider).state.role == UserRole.fieldCrew;
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -77,7 +73,6 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!isFieldCrew) ...[
                 _buildMoreMenuItem(
                   icon: Icons.map_outlined,
                   activeIcon: Icons.map,
@@ -106,7 +101,6 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
                   route: OfficerAppRoutes.optimization,
                 ),
                 const Divider(height: 1),
-              ],
               _buildMoreMenuItem(
                 icon: Icons.history_outlined,
                 activeIcon: Icons.history,
@@ -218,8 +212,6 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
     // unused variable removed
     // unused variables removed
 
-    final isFieldCrew = ref.watch(authNotifierProvider).state.role == UserRole.fieldCrew;
-
     return Scaffold(
       extendBody: true,
       body: widget.child,
@@ -252,14 +244,13 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
                   'Dashboard',
                   selectedIndex,
                 ),
-                if (!isFieldCrew)
-                  _buildNavItem(
-                    1,
-                    Icons.group_work_outlined,
-                    Icons.group_work,
-                    'Hotzone Intel',
-                    selectedIndex,
-                  ),
+                _buildNavItem(
+                  1,
+                  Icons.group_work_outlined,
+                  Icons.group_work,
+                  'Hotzone Intel',
+                  selectedIndex,
+                ),
                 _buildNavItem(
                   2,
                   Icons.task_outlined,

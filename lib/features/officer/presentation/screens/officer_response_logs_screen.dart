@@ -88,12 +88,40 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
   String _actionTypeFilter = 'all';
   String _sortBy = 'newest';
 
+  Widget _buildSectionContainer(Widget child) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade100,
+        ),
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final logsAsync = ref.watch(officerResponseLogsProvider).logs;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Response Logs'), elevation: 0),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('Response Logs', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
       body: Column(
         children: [
           _buildFilters(),
@@ -141,78 +169,151 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
     );
   }
 
+  void _showFilterSheet() {
+    String tempAction = _actionTypeFilter;
+    String tempSort = _sortBy;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final inputDecoration = InputDecoration(
+              filled: true,
+              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              isDense: true,
+            );
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Filters & Sort', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: tempAction,
+                        decoration: inputDecoration.copyWith(labelText: 'Action Type'),
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('All Actions')),
+                          DropdownMenuItem(value: 'status_update', child: Text('Status Update')),
+                          DropdownMenuItem(value: 'lifecycle_stage_update', child: Text('Lifecycle')),
+                          DropdownMenuItem(value: 'acknowledge_complaint', child: Text('Acknowledge')),
+                          DropdownMenuItem(value: 'manual_note', child: Text('Manual Note')),
+                        ],
+                        onChanged: (value) => setModalState(() => tempAction = value ?? 'all'),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: tempSort,
+                        decoration: inputDecoration.copyWith(labelText: 'Sort By'),
+                        items: const [
+                          DropdownMenuItem(value: 'newest', child: Text('Newest First')),
+                          DropdownMenuItem(value: 'oldest', child: Text('Oldest First')),
+                        ],
+                        onChanged: (value) => setModalState(() => tempSort = value ?? 'newest'),
+                      ),
+                      const SizedBox(height: 32),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () {
+                                setModalState(() {
+                                  tempAction = 'all';
+                                  tempSort = 'newest';
+                                });
+                              },
+                              child: const Text('Reset'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _actionTypeFilter = tempAction;
+                                  _sortBy = tempSort;
+                                });
+                                Navigator.pop(context);
+                              },
+                              child: const Text('Apply Filters'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildFilters() {
     return Container(
       padding: const EdgeInsets.all(16),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: _actionTypeFilter,
-                  decoration: const InputDecoration(
-                    labelText: 'Action Type',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'all', child: Text('All Actions')),
-                    DropdownMenuItem(
-                      value: 'status_update',
-                      child: Text('Status Update'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'lifecycle_stage_update',
-                      child: Text('Lifecycle'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'acknowledge_complaint',
-                      child: Text('Acknowledge'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'manual_note',
-                      child: Text('Manual Note'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _actionTypeFilter = value ?? 'all';
-                    });
-                  },
-                ),
+          InkWell(
+            onTap: _showFilterSheet,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
-          const SizedBox(width: 12, height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: _sortBy,
-                  decoration: const InputDecoration(
-                    labelText: 'Sort By',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'newest',
-                      child: Text('Newest First'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'oldest',
-                      child: Text('Oldest First'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _sortBy = value ?? 'newest';
-                    });
-                  },
-                ),
+              child: const Row(
+                children: [
+                  Icon(Icons.tune, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('Filter & Sort', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ],
               ),
-            ],
+            ),
           ),
-          const SizedBox(width: 12, height: 12),
         ],
       ),
     );
@@ -238,10 +339,10 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
   }
 
   Widget _buildLogCard(ResponseLog log) {
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
+      child: _buildSectionContainer(
+        Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,6 +375,7 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
               ),
           ],
         ),
+      ),
       ),
     );
   }

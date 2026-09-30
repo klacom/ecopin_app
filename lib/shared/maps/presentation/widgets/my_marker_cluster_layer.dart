@@ -42,7 +42,7 @@ class MyMarkerClusterLayerState extends State<MyMarkerClusterLayer> {
               child: Text(
                 markers.length.toString(),
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
                 ),

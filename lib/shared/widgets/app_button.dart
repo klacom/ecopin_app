@@ -44,7 +44,7 @@ class AppButton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (variant) {
       case ButtonVariant.primary:
-        return Colors.black;
+        return Colors.white;
       case ButtonVariant.danger:
         return Colors.white;
 

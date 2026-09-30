@@ -3,38 +3,38 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // ── Brand: Primary Green ──────────────────────────────────
-  static const Color primaryLight = Color(0xFFCCFF00); // Neon Lime
-  static const Color primaryDark = Color(0xFFCCFF00);
+  // ── Brand: Primary ──────────────────────────────────
+  static const Color primaryLight = Color(0xFF0052CC);
+  static const Color primaryDark = Color(0xFF0052CC);
 
-  // ── Brand: Secondary Green ────────────────────────────────
-  static const Color secondaryLight = Color(0xFF000000);
-  static const Color secondaryDark = Color(0xFFFFFFFF);
+  // ── Brand: Secondary ────────────────────────────────
+  static const Color secondaryLight = Color(0xFFFFA6C9);
+  static const Color secondaryDark = Color(0xFFFFA6C9);
 
-  // ── Brand: Accent Green ───────────────────────────────────
-  static const Color accent = Color(0xFFCCFF00);
-  static const Color accentBlue = Color(0xFF3300FF);
+  // ── Brand: Accent ───────────────────────────────────
+  static const Color accent = Color(0xFF0052CC);
+  static const Color accentBlue = Color(0xFF0052CC);
 
   // ── Neutrals ──────────────────────────────────────────────
   static const Color textPrimaryLight = Color(0xFF000000);
   static const Color textPrimaryDark = Color(0xFFFFFFFF);
 
   static const Color backgroundLight = Color(0xFFFFFFFF);
-  static const Color backgroundDark = Color(0xFF000000);
+  static const Color backgroundDark = Color(0xFF121212);
 
   // ── Status ────────────────────────────────────────────────
-  static const Color success = Color(0xFFCCFF00);
-  static const Color warning = Color(0xFFFFCC00);
-  static const Color error = Color(0xFFFF3B30);
-  static const Color info = Color(0xFF00CCFF);
+  static const Color success = Color(0xFF2E7D32);
+  static const Color warning = Color(0xFFF9A825);
+  static const Color error = Color(0xFFD32F2F);
+  static const Color info = Color(0xFF0288D1);
 
   // ── Surface / Elevated ────────────────────────────────────
   static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color surfaceDark = Color(0xFF1A1A1A);
+  static const Color surfaceDark = Color(0xFF1C1C1C);
 
   // ── Divider / Border ──────────────────────────────────────
-  static const Color dividerLight = Color(0xFFE0E0E0);
-  static const Color dividerDark = Color(0xFF2A2A2A);
+  static const Color dividerLight = Color(0xFF000000);
+  static const Color dividerDark = Color(0xFF333333);
 
   // ── Shadows ───────────────────────────────────────────────
   static const Color shadowCard = Color(0x1A000000);

@@ -6,12 +6,40 @@ import 'package:ecopin_app/features/officer/providers/officer_dashboard_provider
 class OfficerAnalyticsScreen extends ConsumerWidget {
   const OfficerAnalyticsScreen({super.key});
 
+  Widget _buildSectionContainer(BuildContext context, Widget child) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade100,
+        ),
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(officerDashboardProvider).stats;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Analytics'), elevation: 0),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('Analytics', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.read(officerDashboardProvider).loadStats(),
         child: statsAsync.when(
@@ -54,9 +82,9 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
     final resolved = stats.resolved;
     final resolutionRate = total > 0 ? (resolved / total * 100).toInt() : 0;
 
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
-      child: Padding(
+    return _buildSectionContainer(
+      context,
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,9 +148,9 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
     DashboardStats stats,
     BuildContext context,
   ) {
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
-      child: Padding(
+    return _buildSectionContainer(
+      context,
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,9 +225,9 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
   }
 
   Widget _buildTrendsCard(DashboardStats stats, BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
-      child: Padding(
+    return _buildSectionContainer(
+      context,
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -316,7 +316,12 @@ class _OfficerCleanupTaskDetailsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Task #${widget.taskId}'), elevation: 0),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: Text('Task #${widget.taskId}', style: const TextStyle(fontWeight: FontWeight.bold)),
+      ),
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -347,10 +352,32 @@ class _OfficerCleanupTaskDetailsScreenState
     );
   }
 
+  Widget _buildSectionContainer(Widget child) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade100,
+        ),
+      ),
+      child: child,
+    );
+  }
+
   Widget _buildTaskSummary() {
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
-      child: Padding(
+    return _buildSectionContainer(
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,9 +486,8 @@ class _OfficerCleanupTaskDetailsScreenState
     final completedCount = _reports.where((r) => r.status == 'resolved').length;
     final totalCount = _reports.length;
 
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
-      child: Padding(
+    return _buildSectionContainer(
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,15 +547,9 @@ class _OfficerCleanupTaskDetailsScreenState
     final isExpanded = _expandedReports.contains(report.id);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppColors.radiusCard),
-      ),
-      child: Card(
-        color: Theme.of(context).colorScheme.surface,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        child: Column(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: _buildSectionContainer(
+        Column(
           children: [
             InkWell(
               onTap: () => _toggleReportExpansion(report.id),
@@ -843,9 +863,8 @@ class _OfficerCleanupTaskDetailsScreenState
       }
     }
 
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
-      child: Padding(
+    return _buildSectionContainer(
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -985,7 +1004,12 @@ class _OfficerCleanupTaskDetailsScreenState
         onPressed: _isMarkingComplete ? null : _markTaskComplete,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         child: _isMarkingComplete
             ? const CircularProgressIndicator(color: Colors.white)

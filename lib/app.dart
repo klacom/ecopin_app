@@ -7,6 +7,7 @@ import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/core/providers/theme_mode_provider.dart';
 import 'package:ecopin_app/core/services/sync_service.dart';
+import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import 'package:ecopin_app/shared/common/presentation/widgets/offline_sync_banner.dart';
 
 class App extends ConsumerWidget {
@@ -34,7 +35,10 @@ class App extends ConsumerWidget {
             // Trigger sync when connection is restored
             if (hasConnection) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
+                // Legacy citizen sync (OfflineReports / OfflineMedia / OfflineTaskUpdates)
                 ref.read(syncServiceProvider).syncAll();
+                // Phase 4 Field Crew sync — delegate to FcSyncTrigger
+                ref.read(fcSyncTriggerProvider).syncNow();
               });
             }
 

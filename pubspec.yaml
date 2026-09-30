@@ -49,6 +49,10 @@ dependencies:
   flutter_markdown: ^0.7.7+1
   
   uuid: any
+  crypto: ^3.0.6
+  shimmer: ^3.0.0
+  infinite_scroll_pagination: ^5.1.1
+  flutter_tts: ^4.2.5
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -44,4 +44,14 @@ class LocationService {
       return null;
     }
   }
+
+  // Returns a stream of the user's location updates.
+  static Stream<LatLng>? getPositionStream() {
+    return Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5, // Update every 5 meters
+      ),
+    ).map((position) => LatLng(position.latitude, position.longitude));
+  }
 }

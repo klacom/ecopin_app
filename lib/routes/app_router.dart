@@ -1,4 +1,4 @@
-import 'package:ecopin_app/core/constants/app_constants.dart';
+﻿import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/landing_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/login_screen.dart';
@@ -35,8 +35,12 @@ import 'package:ecopin_app/features/admin/presentation/screens/admin_audit_logs_
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_main_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_dashboard_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_tasks_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_task_detail_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_report_detail_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_reports_screen.dart';
-import 'package:ecopin_app/features/field_crew/presentation/map/fc_map_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_map_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_sync_center_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_prepare_offline_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
@@ -221,7 +225,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: ProtectedAppRoutes.createReport,
         builder: (_, state) {
-          // extra is always a ReportPrefillData — from the FAB (location only)
+          // extra is always a ReportPrefillData â€” from the FAB (location only)
           // or from a rejected-report resubmission (title + description + location).
           final prefill = state.extra as ReportPrefillData?;
           return CreateReportScreen(prefillData: prefill);
@@ -356,15 +360,47 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: FieldCrewAppRoutes.map,
-            builder: (_, _) => const FcMapScreen(),
+            builder: (_, _) => const FieldCrewMapScreen(),
           ),
           GoRoute(
             path: FieldCrewAppRoutes.tasks,
             builder: (_, _) => const FieldCrewTasksScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return FieldCrewTaskDetailScreen(taskId: id);
+                },
+                routes: [
+                  GoRoute(
+                    path: 'reports/:reportId',
+                    builder: (context, state) {
+                      final taskId = state.pathParameters['id']!;
+                      final reportId = state.pathParameters['reportId']!;
+                      return FieldCrewReportDetailScreen(taskId: taskId, reportId: reportId);
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: FieldCrewAppRoutes.reports,
             builder: (_, _) => const FieldCrewReportsScreen(),
+            routes: [
+              GoRoute(
+                path: ':reportId',
+                builder: (context, state) {
+                  final reportId = state.pathParameters['reportId']!;
+                  final taskId = state.extra as String?;
+                  return FieldCrewReportDetailScreen(
+                    reportId: reportId,
+                    taskId: taskId,
+                  );
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: FieldCrewAppRoutes.profile,
@@ -374,9 +410,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: FieldCrewAppRoutes.notifications,
             builder: (_, _) => const NotificationsScreen(),
           ),
+          GoRoute(
+            path: FieldCrewAppRoutes.syncCenter,
+            builder: (_, _) => const FieldCrewSyncCenterScreen(),
+          ),
         ],
       ),
     ],
   );
 });
+
+
 

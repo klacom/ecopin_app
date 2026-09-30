@@ -1,4 +1,4 @@
-// Accessible by everyone
+﻿// Accessible by everyone
 
 class PublicAppRoutes {
   static const String splash = '/splash';
@@ -68,9 +68,14 @@ class FieldCrewAppRoutes {
   static const String dashboard = '/field-crew/dashboard';
   static const String map = '/field-crew/map';
   static const String tasks = '/field-crew/tasks';
+  static const String taskDetail = '/field-crew/tasks/:id';
+  static const String reportDetail = '/field-crew/tasks/:id/reports/:reportId';
   static const String reports = '/field-crew/reports';
+  static const String rawDataReportDetail = '/field-crew/reports/:reportId';
   static const String profile = '/field-crew/profile';
   static const String notifications = '/field-crew/notifications';
+  static const String syncCenter = '/field-crew/sync-center';
+  static const String prepareOffline = '/field-crew/prepare-offline';
 
   static const fieldCrewRoutes = [dashboard, map, tasks, reports, profile, notifications];
 }

@@ -69,10 +69,49 @@ class _OfficerClusterCreateTaskScreenState
     }
   }
 
+  Widget _buildSectionContainer(Widget child) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade100,
+        ),
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inputDecoration = InputDecoration(
+      filled: true,
+      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    );
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Cleanup Task')),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('Create Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -80,9 +119,8 @@ class _OfficerClusterCreateTaskScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Card(
-                color: Theme.of(context).colorScheme.surface,
-                child: Padding(
+              _buildSectionContainer(
+                Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,9 +142,8 @@ class _OfficerClusterCreateTaskScreenState
                 ),
               ),
               const SizedBox(height: 16),
-              Card(
-                color: Theme.of(context).colorScheme.surface,
-                child: Padding(
+              _buildSectionContainer(
+                Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,9 +158,8 @@ class _OfficerClusterCreateTaskScreenState
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _titleController,
-                        decoration: const InputDecoration(
+                        decoration: inputDecoration.copyWith(
                           labelText: 'Task Title *',
-                          border: OutlineInputBorder(),
                           hintText: 'Enter task title',
                         ),
                         validator: (value) =>
@@ -134,9 +170,8 @@ class _OfficerClusterCreateTaskScreenState
                       TextFormField(
                         controller: _descriptionController,
                         maxLines: 4,
-                        decoration: const InputDecoration(
+                        decoration: inputDecoration.copyWith(
                           labelText: 'Description (Optional)',
-                          border: OutlineInputBorder(),
                           hintText: 'Describe the cleanup task',
                         ),
                       ),
@@ -157,7 +192,15 @@ class _OfficerClusterCreateTaskScreenState
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text('Create Cleanup Task'),
+                              : const Text('Create Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -166,7 +209,12 @@ class _OfficerClusterCreateTaskScreenState
                         height: 50,
                         child: OutlinedButton(
                           onPressed: () => context.pop(),
-                          child: const Text('Cancel'),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],

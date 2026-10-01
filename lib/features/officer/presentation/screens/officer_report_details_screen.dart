@@ -423,7 +423,12 @@ class _OfficerReportDetailsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Report Details'), elevation: 0),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text('Report Details', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _hasError
@@ -461,6 +466,8 @@ class _OfficerReportDetailsScreenState
                 children: [
                   _buildReportDetailsSection(),
                   const SizedBox(height: 24),
+                  _buildActionsSection(),
+                  const SizedBox(height: 24),
                   _buildLifecycleSection(),
                   const SizedBox(height: 24),
                   if (_report?.discloseIdentity == true ||
@@ -478,9 +485,32 @@ class _OfficerReportDetailsScreenState
     );
   }
 
+  Widget _buildSectionContainer(Widget child) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade100,
+        ),
+      ),
+      child: child,
+    );
+  }
+
   Widget _buildReportDetailsSection() {
-    return Card(
-      child: Padding(
+    return _buildSectionContainer(
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,10 +623,117 @@ class _OfficerReportDetailsScreenState
     }
   }
 
+  Widget _buildActionsSection() {
+    // Get valid lifecycle items first
+    final lifecycleItems = _getLifecycleStageItems();
+    final validLifecycleValues = lifecycleItems
+        .map((item) => item.value)
+        .toSet();
+    // Ensure current stage is in the list, fallback to null or first valid value
+    String? currentLifecycleValue = _report?.stage;
+    if (currentLifecycleValue != null &&
+        !validLifecycleValues.contains(currentLifecycleValue)) {
+      currentLifecycleValue = null;
+    }
+
+    // Handle validation status similarly
+    const validValidationValues = {
+      'pending',
+      'automatically_valid',
+      'manual_review',
+      'rejected',
+    };
+    String? currentValidationValue = _report?.validationStatus;
+    if (currentValidationValue != null &&
+        !validValidationValues.contains(currentValidationValue)) {
+      currentValidationValue = null;
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inputDecoration = InputDecoration(
+      filled: true,
+      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+
+    return _buildSectionContainer(
+      Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Actions',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: currentLifecycleValue,
+              decoration: inputDecoration.copyWith(
+                labelText: 'Update Lifecycle Stage',
+              ),
+              items: lifecycleItems,
+              onChanged: _isUpdating || _report?.stage == 'resolved'
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        _updateLifecycleStage(value);
+                      }
+                    },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: currentValidationValue,
+              decoration: inputDecoration.copyWith(
+                labelText: 'Update Validation Status',
+              ),
+              items: [
+                // Add current validation status if it's not in the list
+                if (currentValidationValue != null &&
+                    !validValidationValues.contains(currentValidationValue))
+                  DropdownMenuItem(
+                    value: currentValidationValue,
+                    enabled: false,
+                    child: Text(currentValidationValue.replaceAll('_', ' ')),
+                  ),
+                const DropdownMenuItem(
+                  value: 'pending',
+                  child: Text('Pending'),
+                ),
+                const DropdownMenuItem(
+                  value: 'automatically_valid',
+                  child: Text('Automatically Valid'),
+                ),
+                const DropdownMenuItem(
+                  value: 'manual_review',
+                  child: Text('Manual Review'),
+                ),
+                const DropdownMenuItem(
+                  value: 'rejected',
+                  child: Text('Rejected'),
+                ),
+              ],
+              onChanged: _isUpdating
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        _updateValidationStatus(value);
+                      }
+                    },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildLifecycleSection() {
-    return Card(
-      child: Padding(
+    return _buildSectionContainer(
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -660,8 +797,8 @@ class _OfficerReportDetailsScreenState
   }
 
   Widget _buildReporterSection() {
-    return Card(
-      child: Padding(
+    return _buildSectionContainer(
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -680,8 +817,8 @@ class _OfficerReportDetailsScreenState
   }
 
   Widget _buildEvidencePhotosSection() {
-    return Card(
-      child: Padding(
+    return _buildSectionContainer(
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -798,7 +935,13 @@ class _OfficerReportDetailsScreenState
         icon: const Icon(Icons.upload, size: 18),
         label: Text(label),
         style: ElevatedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 40),
+          minimumSize: const Size(double.infinity, 48),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
@@ -811,8 +954,19 @@ class _OfficerReportDetailsScreenState
             .toList() ??
         [];
 
-    return Card(
-      child: Padding(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inputDecoration = InputDecoration(
+      filled: true,
+      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+
+    return _buildSectionContainer(
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -827,17 +981,25 @@ class _OfficerReportDetailsScreenState
             TextField(
               controller: _notesController,
               maxLines: 5,
-              decoration: const InputDecoration(
+              decoration: inputDecoration.copyWith(
                 hintText: 'Add notes about this report...',
-                border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
+              height: 48,
               child: ElevatedButton(
                 onPressed: _saveNotes,
-                child: const Text('Save Notes'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Save Notes', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -869,8 +1031,8 @@ class _OfficerReportDetailsScreenState
   }
 
   Widget _buildActivityLogSection() {
-    return Card(
-      child: Padding(
+    return _buildSectionContainer(
+      Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

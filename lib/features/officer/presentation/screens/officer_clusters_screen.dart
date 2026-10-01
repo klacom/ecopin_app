@@ -3,7 +3,6 @@ import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/officer/providers/officer_clusters_provider.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_reports_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 
@@ -18,73 +17,64 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
   String _searchQuery = '';
   String _severityFilter = 'all';
   String _statusFilter = 'all';
-  int _currentPage = 1;
-  static const int _pageSize = 10;
 
   @override
   Widget build(BuildContext context) {
     final clustersAsync = ref.watch(officerClustersProvider).clusters;
-    final reportsAsync = ref.watch(officerReportsProvider).reports;
 
     return Scaffold(
       appBar: AppBar(
-        actions: const [NotificationBadgeAction()],
-        title: const Text('Hotzone Intel'), elevation: 0),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Active Clusters',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+        ),
+        centerTitle: false,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8.0),
+            child: NotificationBadgeAction(),
+          )
+        ],
+      ),
       body: Column(
         children: [
           _buildFilters(),
           Expanded(
             child: clustersAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => _buildError(error.toString(), () => ref.read(officerClustersProvider).loadClusters()),
+              error: (error, stack) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Error: $error'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () =>
+                          ref.read(officerClustersProvider).loadClusters(),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
               data: (clusters) {
-                return reportsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (error, stack) => _buildError(error.toString(), () => ref.read(officerReportsProvider).loadReports()),
-                  data: (reports) {
-                    final processedClusters = clusters.map((c) {
-                      final clusterReports = reports.where((r) => r.clusterId == c.id).toList();
-                      final resolvedCount = clusterReports.where((r) => r.status == 'resolved').length;
-                      final totalCount = clusterReports.length;
-
-                      String status = 'unresolved';
-                      if (totalCount == 0) {
-                        status = 'unresolved';
-                      } else if (resolvedCount == totalCount) status = 'resolved';
-                      else if (resolvedCount > 0) status = 'in_progress';
-
-                      return Cluster(
-                        id: c.id,
-                        issueType: c.issueType,
-                        severity: c.severity,
-                        reportCount: c.reportCount,
-                        createdAt: c.createdAt,
-                        status: status,
-                      );
-                    }).toList();
-
-                    final filteredClusters = _filterClusters(processedClusters);
-                    final paginatedClusters = _paginateClusters(filteredClusters);
-
-                    if (filteredClusters.isEmpty) {
-                      return const Center(child: Text('No clusters found'));
-                    }
-                    return ListView.builder(
-                      padding: const EdgeInsets.only(
-                        left: 16,
-                        right: 16,
-                        top: 16,
-                        bottom: 80,
-                      ),
-                      itemCount: paginatedClusters.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == paginatedClusters.length) {
-                          return _buildPaginationControls(filteredClusters.length);
-                        }
-                        final cluster = paginatedClusters[index];
-                        return _buildClusterCard(cluster);
-                      },
-                    );
+                final filteredClusters = _filterClusters(clusters);
+                if (filteredClusters.isEmpty) {
+                  return const Center(child: Text('No clusters found'));
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 80,
+                  ),
+                  itemCount: filteredClusters.length,
+                  itemBuilder: (context, index) {
+                    final cluster = filteredClusters[index];
+                    return _buildClusterCard(cluster);
                   },
                 );
               },
@@ -95,100 +85,170 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
     );
   }
 
-  Widget _buildError(String error, VoidCallback onRetry) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('Error: $error'),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: onRetry,
-            child: const Text('Retry'),
-          ),
-        ],
+  void _showFilterSheet() {
+    String tempSeverity = _severityFilter;
+    String tempStatus = _statusFilter;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final inputDecoration = InputDecoration(
+              filled: true,
+              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              isDense: true,
+            );
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: tempSeverity,
+                        decoration: inputDecoration.copyWith(labelText: 'Severity'),
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('All Severities')),
+                          DropdownMenuItem(value: 'high', child: Text('High')),
+                          DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                          DropdownMenuItem(value: 'low', child: Text('Low')),
+                        ],
+                        onChanged: (value) => setModalState(() => tempSeverity = value ?? 'all'),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: tempStatus,
+                        decoration: inputDecoration.copyWith(labelText: 'Status'),
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('All Status')),
+                          DropdownMenuItem(value: 'unresolved', child: Text('Unresolved')),
+                          DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
+                          DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
+                        ],
+                        onChanged: (value) => setModalState(() => tempStatus = value ?? 'all'),
+                      ),
+                      const SizedBox(height: 32),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () {
+                                setModalState(() {
+                                  tempSeverity = 'all';
+                                  tempStatus = 'all';
+                                });
+                              },
+                              child: const Text('Reset'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _severityFilter = tempSeverity;
+                                  _statusFilter = tempStatus;
+                                });
+                                Navigator.pop(context);
+                              },
+                              child: const Text('Apply Filters'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildFilters() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inputDecoration = InputDecoration(
+      filled: true,
+      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      isDense: true,
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
-      child: Column(
+      child: Row(
         children: [
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Search clusters...',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+          Expanded(
+            child: TextField(
+              decoration: inputDecoration.copyWith(
+                hintText: 'Search clusters...',
+                prefixIcon: const Icon(Icons.search),
               ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
             ),
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-                _currentPage = 1;
-              });
-            },
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: _severityFilter,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Severity',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'all', child: Text('All')),
-                    DropdownMenuItem(value: 'high', child: Text('High')),
-                    DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                    DropdownMenuItem(value: 'low', child: Text('Low')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _severityFilter = value ?? 'all';
-                      _currentPage = 1;
-                    });
-                  },
-                ),
+          const SizedBox(width: 12),
+          InkWell(
+            onTap: _showFilterSheet,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: _statusFilter,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'all', child: Text('All')),
-                    DropdownMenuItem(
-                      value: 'unresolved',
-                      child: Text('Unresolved'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'in_progress',
-                      child: Text('In Progress'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'resolved',
-                      child: Text('Resolved'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _statusFilter = value ?? 'all';
-                      _currentPage = 1;
-                    });
-                  },
-                ),
-              ),
-            ],
+              child: const Icon(Icons.tune, color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -197,8 +257,6 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
 
   List<Cluster> _filterClusters(List<Cluster> clusters) {
     return clusters.where((cluster) {
-      if ((cluster.reportCount ?? 0) < 2) return false;
-
       final matchesSearch =
           _searchQuery.isEmpty ||
           (cluster.issueType?.toLowerCase().contains(
@@ -217,58 +275,33 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
     }).toList();
   }
 
-  List<Cluster> _paginateClusters(List<Cluster> clusters) {
-    final start = (_currentPage - 1) * _pageSize;
-    final end = start + _pageSize;
-    if (start >= clusters.length) return [];
-    return clusters.sublist(start, end > clusters.length ? clusters.length : end);
-  }
-
-  Widget _buildPaginationControls(int totalClusters) {
-    final totalPages = (totalClusters / _pageSize).ceil();
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            onPressed: _currentPage > 1
-                ? () {
-                    setState(() {
-                      _currentPage--;
-                    });
-                  }
-                : null,
-            child: const Text('Previous'),
-          ),
-          const SizedBox(width: 16),
-          Text('Page $_currentPage of $totalPages'),
-          const SizedBox(width: 16),
-          ElevatedButton(
-            onPressed: _currentPage < totalPages
-                ? () {
-                    setState(() {
-                      _currentPage++;
-                    });
-                  }
-                : null,
-            child: const Text('Next'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildClusterCard(Cluster cluster) {
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
-      margin: const EdgeInsets.only(bottom: 12),
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade100,
+        ),
+      ),
       child: InkWell(
+        borderRadius: BorderRadius.circular(16),
         onTap: () {
           context.go(OfficerAppRoutes.clusterDetails.replaceAll(':id', cluster.id));
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -277,36 +310,62 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Cluster ${cluster.id}',
+                      'Cluster ${cluster.id.length > 8 ? '${cluster.id.substring(0, 8)}...' : cluster.id}',
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                   _buildSeverityBadge(cluster.severity),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Row(
                 children: [
-                  Icon(Icons.description, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    cluster.issueType ?? 'Unknown',
-                    style: TextStyle(color: Colors.grey[600]),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.description_outlined, size: 16, color: Colors.blue.shade700),
                   ),
-                  const SizedBox(width: 16),
-                  Icon(Icons.insert_chart, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${cluster.reportCount ?? 0} reports',
-                    style: TextStyle(color: Colors.grey[600]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      cluster.issueType ?? 'Unknown Issue',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              _buildStatusBadge(cluster.status),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.bar_chart, size: 18, color: Colors.grey.shade500),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${cluster.reportCount ?? 0} Reports',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildStatusBadge(cluster.status),
+                ],
+              ),
             ],
           ),
         ),

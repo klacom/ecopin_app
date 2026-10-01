@@ -23,8 +23,21 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
 
     return Scaffold(
       appBar: AppBar(
-        actions: const [NotificationBadgeAction()],
-        title: const Text('Operations'), elevation: 0),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Cleanup Tasks',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+        ),
+        centerTitle: false,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8.0),
+            child: NotificationBadgeAction(),
+          )
+        ],
+      ),
       body: Column(
         children: [
           _buildFilters(),
@@ -71,57 +84,179 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
     );
   }
 
+  void _showFilterSheet() {
+    String tempStatus = _statusFilter;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final inputDecoration = InputDecoration(
+              filled: true,
+              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              isDense: true,
+            );
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: tempStatus,
+                        decoration: inputDecoration.copyWith(labelText: 'Status'),
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('All')),
+                          DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                          DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
+                          DropdownMenuItem(value: 'completed', child: Text('Completed')),
+                        ],
+                        onChanged: (value) => setModalState(() => tempStatus = value ?? 'all'),
+                      ),
+                      const SizedBox(height: 32),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () {
+                                setModalState(() {
+                                  tempStatus = 'all';
+                                });
+                              },
+                              child: const Text('Reset'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _statusFilter = tempStatus;
+                                });
+                                Navigator.pop(context);
+                              },
+                              child: const Text('Apply Filters'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildFilters() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inputDecoration = InputDecoration(
+      filled: true,
+      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      isDense: true,
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           SizedBox(
             width: double.infinity,
+            height: 48,
             child: ElevatedButton.icon(
               onPressed: () {
                 context.go('${OfficerAppRoutes.cleanupTasks}/create');
               },
               icon: const Icon(Icons.add),
-              label: const Text('Create Custom Cleanup Task'),
+              label: const Text('Create Custom Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
             ),
           ),
           const SizedBox(height: 16),
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Search tasks...',
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: inputDecoration.copyWith(
+                    hintText: 'Search tasks...',
+                    prefixIcon: const Icon(Icons.search),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                ),
               ),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
-            },
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _statusFilter,
-            decoration: const InputDecoration(
-              labelText: 'Status',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'all', child: Text('All')),
-              DropdownMenuItem(value: 'pending', child: Text('Pending')),
-              DropdownMenuItem(
-                value: 'in_progress',
-                child: Text('In Progress'),
+              const SizedBox(width: 12),
+              InkWell(
+                onTap: _showFilterSheet,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.tune, color: Colors.white),
+                ),
               ),
-              DropdownMenuItem(value: 'completed', child: Text('Completed')),
             ],
-            onChanged: (value) {
-              setState(() {
-                _statusFilter = value ?? 'all';
-              });
-            },
           ),
         ],
       ),
@@ -147,15 +282,32 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
   }
 
   Widget _buildTaskCard(CleanupTask task) {
-    return Card(
-      color: Theme.of(context).colorScheme.surface,
-      margin: const EdgeInsets.only(bottom: 12),
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade100,
+        ),
+      ),
       child: InkWell(
+        borderRadius: BorderRadius.circular(16),
         onTap: () {
           context.go(OfficerAppRoutes.taskDetails.replaceAll(':id', task.id));
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -171,14 +323,17 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
                           task.title ?? 'Untitled Task',
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         if (task.isCustom)
-                          Chip(
-                            label: const Text('Custom'),
-                            labelStyle: const TextStyle(fontSize: 10),
-                            padding: const EdgeInsets.all(0),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text('CUSTOM', style: TextStyle(fontSize: 10, color: Colors.purple, fontWeight: FontWeight.bold)),
                           ),
                       ],
                     ),
@@ -186,39 +341,43 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
                   _buildStatusBadge(task.status),
                 ],
               ),
-              const SizedBox(height: 8),
-              if (task.description != null && task.description!.isNotEmpty)
-                Text(
-                  task.description!,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Row(
                 children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade500),
                   const SizedBox(width: 4),
                   Text(
                     task.createdAt != null
                         ? _formatDate(task.createdAt!)
                         : 'N/A',
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                   ),
                   if (task.clusterId != null) ...[
                     const SizedBox(width: 16),
-                    Icon(Icons.group_work, size: 16, color: Colors.grey[600]),
+                    Icon(Icons.group_work, size: 16, color: Colors.grey.shade500),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         'Cluster ${_truncateClusterId(task.clusterId!)}',
-                        style: TextStyle(color: Colors.grey[600]),
+                        style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ],
               ),
+              if (task.description != null && task.description!.isNotEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Divider(height: 1),
+                ),
+                Text(
+                  task.description!,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ],
           ),
         ),

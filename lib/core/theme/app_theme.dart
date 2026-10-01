@@ -11,7 +11,7 @@ class AppTheme {
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
       primary: AppColors.primaryLight,
-      onPrimary: Colors.black,
+      onPrimary: Colors.white,
       secondary: AppColors.secondaryLight,
       onSecondary: Colors.white,
       tertiary: AppColors.accent,
@@ -29,7 +29,7 @@ class AppTheme {
     const colorScheme = ColorScheme(
       brightness: Brightness.dark,
       primary: AppColors.primaryDark,
-      onPrimary: Colors.black,
+      onPrimary: Colors.white,
       secondary: AppColors.secondaryDark,
       onSecondary: AppColors.backgroundDark,
       tertiary: AppColors.accent,
@@ -91,8 +91,8 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: colorScheme.primary,
-          foregroundColor: Colors.black,
-          textStyle: AppTypography.button.copyWith(color: Colors.black),
+          foregroundColor: Colors.white,
+          textStyle: AppTypography.button.copyWith(color: Colors.white),
           elevation: 0,
           shape: const RoundedRectangleBorder(
             borderRadius:

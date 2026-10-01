@@ -44,7 +44,7 @@ class ReportMarker extends StatelessWidget {
       ),
       child: const Icon(
         Icons.location_on,
-        color: Colors.black,
+        color: Colors.white,
         size: 18,
       ),
     );

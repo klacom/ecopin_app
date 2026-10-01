@@ -76,7 +76,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             onRefresh: _onRefresh,
             child: ListView.separated(
               itemCount: notifications.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
+              separatorBuilder: (context, index) => Divider(
+                height: 1,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white10
+                    : Colors.grey.shade200,
+              ),
               itemBuilder: (context, index) {
                 final notification = notifications[index];
                 final bool isRead = notification['is_read'] ?? false;

@@ -313,11 +313,13 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text(
                           task.title ?? 'Untitled Task',
@@ -328,7 +330,7 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
                         ),
                         if (task.isCustom)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.purple.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
@@ -338,6 +340,7 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   _buildStatusBadge(task.status),
                 ],
               ),
@@ -367,15 +370,27 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
                 ],
               ),
               if (task.description != null && task.description!.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(height: 1),
-                ),
-                Text(
-                  task.description!,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? Colors.white10 : Colors.grey.shade200,
+                    ),
+                  ),
+                  child: Text(
+                    task.description!,
+                    style: TextStyle(
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ],

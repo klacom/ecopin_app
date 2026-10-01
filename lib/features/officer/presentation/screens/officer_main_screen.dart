@@ -62,56 +62,52 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-                _buildMoreMenuItem(
-                  icon: Icons.map_outlined,
-                  activeIcon: Icons.map,
-                  label: 'Map',
-                  route: OfficerAppRoutes.maps,
-                ),
-                const Divider(height: 1),
-                _buildMoreMenuItem(
-                  icon: Icons.radar_outlined,
-                  activeIcon: Icons.radar,
-                  label: 'Spatial Scan',
-                  route: OfficerAppRoutes.spatialScan,
-                ),
-                const Divider(height: 1),
-                _buildMoreMenuItem(
-                  icon: Icons.analytics_outlined,
-                  activeIcon: Icons.analytics,
-                  label: 'Metrics',
-                  route: OfficerAppRoutes.analytics,
-                ),
-                const Divider(height: 1),
-                _buildMoreMenuItem(
-                  icon: Icons.route_outlined,
-                  activeIcon: Icons.route,
-                  label: 'Optimization',
-                  route: OfficerAppRoutes.optimization,
-                ),
-                const Divider(height: 1),
-              _buildMoreMenuItem(
-                icon: Icons.history_outlined,
-                activeIcon: Icons.history,
-                label: 'Sys Logs',
-                route: OfficerAppRoutes.responseLogs,
-              ),
-              const Divider(height: 1),
-              _buildProfileMoreMenuItem(avatarUrl, fullName),
-            ],
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildMoreMenuItem(
+              icon: Icons.map_outlined,
+              activeIcon: Icons.map,
+              label: 'Map',
+              route: OfficerAppRoutes.maps,
+            ),
+            _buildMoreMenuItem(
+              icon: Icons.radar_outlined,
+              activeIcon: Icons.radar,
+              label: 'Spatial Scan',
+              route: OfficerAppRoutes.spatialScan,
+            ),
+            _buildMoreMenuItem(
+              icon: Icons.analytics_outlined,
+              activeIcon: Icons.analytics,
+              label: 'Metrics',
+              route: OfficerAppRoutes.analytics,
+            ),
+            _buildMoreMenuItem(
+              icon: Icons.route_outlined,
+              activeIcon: Icons.route,
+              label: 'Optimization',
+              route: OfficerAppRoutes.optimization,
+            ),
+            _buildMoreMenuItem(
+              icon: Icons.history_outlined,
+              activeIcon: Icons.history,
+              label: 'Sys Logs',
+              route: OfficerAppRoutes.responseLogs,
+            ),
+            _buildProfileMoreMenuItem(avatarUrl, fullName),
+          ],
         ),
+      ),
       ),
     );
   }
@@ -127,14 +123,23 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
     final color = isSelected
         ? Theme.of(context).colorScheme.primary
         : Colors.grey;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
       onTap: () {
         Navigator.pop(context);
         context.go(route);
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? (isDark ? color.withValues(alpha: 0.1) : color.withValues(alpha: 0.05)) 
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Row(
           children: [
             Icon(isSelected ? activeIcon : icon, color: color, size: 24),
@@ -144,7 +149,7 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
               style: TextStyle(
                 color: color,
                 fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               ),
             ),
           ],
@@ -159,14 +164,23 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
     final color = isSelected
         ? Theme.of(context).colorScheme.primary
         : Colors.grey;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
       onTap: () {
         Navigator.pop(context);
         context.go(OfficerAppRoutes.profile);
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? (isDark ? color.withValues(alpha: 0.1) : color.withValues(alpha: 0.05)) 
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Row(
           children: [
             SizedBox(
@@ -197,7 +211,7 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
               style: TextStyle(
                 color: color,
                 fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               ),
             ),
           ],

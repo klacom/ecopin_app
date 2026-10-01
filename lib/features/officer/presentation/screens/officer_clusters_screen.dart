@@ -307,63 +307,56 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      'Cluster ${cluster.id.length > 8 ? '${cluster.id.substring(0, 8)}...' : cluster.id}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          'Cluster ${cluster.id.length > 8 ? '${cluster.id.substring(0, 8)}...' : cluster.id}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        _buildSeverityBadge(cluster.severity),
+                      ],
                     ),
                   ),
-                  _buildSeverityBadge(cluster.severity),
+                  const SizedBox(width: 8),
+                  _buildStatusBadge(cluster.status),
                 ],
               ),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.description_outlined, size: 16, color: Colors.blue.shade700),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      cluster.issueType ?? 'Unknown Issue',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  Icon(Icons.bar_chart, size: 16, color: Colors.grey.shade500),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${cluster.reportCount ?? 0} Reports',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ],
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Divider(height: 1),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.bar_chart, size: 18, color: Colors.grey.shade500),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${cluster.reportCount ?? 0} Reports',
+                  if (cluster.issueType != null) ...[
+                    const SizedBox(width: 16),
+                    Icon(Icons.category_outlined, size: 16, color: Colors.grey.shade500),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        cluster.issueType!,
                         style: TextStyle(
                           color: Colors.grey.shade600,
                           fontWeight: FontWeight.w500,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
-                  _buildStatusBadge(cluster.status),
+                    ),
+                  ],
                 ],
               ),
             ],

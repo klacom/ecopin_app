@@ -339,43 +339,83 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
   }
 
   Widget _buildLogCard(ResponseLog log) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: _buildSectionContainer(
         Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildActionTypeBadge(log.actionType),
-                if (log.createdAt != null)
-                  Text(
-                    _formatDateTime(log.createdAt!),
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (log.actionDetails != null && log.actionDetails!.isNotEmpty)
-              Text(log.actionDetails!, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 8),
-            if (log.profile != null)
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.person, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    log.profile!['full_name'] ?? 'Unknown User',
-                    style: TextStyle(color: Colors.grey[600]),
+                  const Expanded(
+                    child: Text(
+                      'System Log',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 8),
+                  _buildActionTypeBadge(log.actionType),
                 ],
               ),
-          ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade500),
+                  const SizedBox(width: 4),
+                  Text(
+                    log.createdAt != null ? _formatDateTime(log.createdAt!) : 'N/A',
+                    style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
+                  if (log.profile != null) ...[
+                    const SizedBox(width: 16),
+                    Icon(Icons.person, size: 16, color: Colors.grey.shade500),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        log.profile!['full_name'] ?? 'Unknown User',
+                        style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (log.actionDetails != null && log.actionDetails!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? Colors.white10 : Colors.grey.shade200,
+                    ),
+                  ),
+                  child: Text(
+                    log.actionDetails!,
+                    style: TextStyle(
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

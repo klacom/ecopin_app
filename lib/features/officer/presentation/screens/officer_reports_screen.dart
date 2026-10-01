@@ -531,59 +531,53 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      report.title ?? 'Untitled Report',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          report.title ?? 'Untitled Report',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (report.isOverdue == true)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'OVERDUE',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        _buildValidationBadge(report.validationStatus),
+                        if (report.lifecycleStage != null)
+                          _buildLifecycleBadge(report.lifecycleStage!),
+                      ],
                     ),
                   ),
-                  if (report.isOverdue == true)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
-                      ),
-                      child: const Text(
-                        'OVERDUE',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                  const SizedBox(width: 8),
+                  _buildStatusBadge(report.status),
                 ],
               ),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.category_outlined, size: 16, color: Colors.blue.shade700),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      report.issueType ?? 'Unknown',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
                   Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade500),
                   const SizedBox(width: 4),
                   Text(
@@ -592,31 +586,44 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
                         : 'N/A',
                     style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                   ),
+                  if (report.issueType != null) ...[
+                    const SizedBox(width: 16),
+                    Icon(Icons.category_outlined, size: 16, color: Colors.grey.shade500),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        report.issueType!,
+                        style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ],
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Divider(height: 1),
               ),
               if (report.description != null && report.description!.isNotEmpty) ...[
-                Text(
-                  report.description!,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? Colors.white10 : Colors.grey.shade200,
+                    ),
+                  ),
+                  child: Text(
+                    report.description!,
+                    style: TextStyle(
+                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const SizedBox(height: 12),
               ],
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _buildStatusBadge(report.status),
-                  _buildValidationBadge(report.validationStatus),
-                  if (report.lifecycleStage != null)
-                    _buildLifecycleBadge(report.lifecycleStage!),
-                ],
-              ),
             ],
           ),
         ),

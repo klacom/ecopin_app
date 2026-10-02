@@ -77,7 +77,7 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
             _buildMoreMenuItem(
               icon: Icons.map_outlined,
               activeIcon: Icons.map,
-              label: 'Map',
+              label: 'Map Grid',
               route: OfficerAppRoutes.maps,
             ),
             _buildMoreMenuItem(
@@ -255,7 +255,7 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
                   0,
                   Icons.dashboard_outlined,
                   Icons.dashboard,
-                  'Dashboard',
+                  'Command Center',
                   selectedIndex,
                 ),
                 _buildNavItem(
@@ -276,7 +276,7 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
                   3,
                   Icons.report_outlined,
                   Icons.report,
-                  'Raw Data',
+                  'Reports',
                   selectedIndex,
                 ),
                 _buildNavItem(

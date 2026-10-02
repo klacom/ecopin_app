@@ -28,7 +28,7 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: const Text(
-          'Active Clusters',
+          'Hotzone Intel',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
         ),
         centerTitle: false,

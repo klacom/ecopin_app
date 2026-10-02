@@ -130,7 +130,7 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: const Text(
-          'Citizen Reports',
+          'Reports',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
         ),
         centerTitle: false,

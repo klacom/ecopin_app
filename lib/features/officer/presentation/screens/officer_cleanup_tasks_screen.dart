@@ -27,7 +27,7 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: const Text(
-          'Cleanup Tasks',
+          'Operations',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
         ),
         centerTitle: false,

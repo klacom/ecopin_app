@@ -1,5 +1,4 @@
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_repository.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_service.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';

@@ -67,11 +67,13 @@ class FieldCrewDashboardScreen extends ConsumerWidget {
                     // Sort: in_progress first. Then by route sequence order. Finally fallback to priority.
                     activeTasks.sort((a, b) {
                       if (a.status == 'in_progress' &&
-                          b.status != 'in_progress')
+                          b.status != 'in_progress') {
                         return -1;
+                      }
                       if (a.status != 'in_progress' &&
-                          b.status == 'in_progress')
+                          b.status == 'in_progress') {
                         return 1;
+                      }
 
                       if (taskSequence.isNotEmpty) {
                         final seqA = taskSequence[a.id] ?? 9999;

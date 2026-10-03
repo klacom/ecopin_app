@@ -16,7 +16,6 @@
 //   • Resumable sync (N succeed, M remain pending)
 //   • Duplicate submission (idempotency on the client side)
 
-import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -123,8 +122,11 @@ class _MiniSyncEngine {
           final newCount = item.retryCount + 1;
           await local.markOutboxItemFailed(
               item.operationId, result.errorMessage ?? 'failed');
-          if (newCount >= maxRetries) permanent++;
-          else retryable++;
+          if (newCount >= maxRetries) {
+            permanent++;
+          } else {
+            retryable++;
+          }
         }
       }
 

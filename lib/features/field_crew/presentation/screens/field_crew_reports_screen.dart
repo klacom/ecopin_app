@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/features/field_crew/providers/field_crew_reports_provider.dart';
 import 'package:ecopin_app/features/field_crew/providers/cleanup_tasks_provider.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_reports_filter_bar.dart';

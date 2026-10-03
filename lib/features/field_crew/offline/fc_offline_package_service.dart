@@ -95,7 +95,9 @@ class FcOfflinePackageService {
       for (final t in tasks) {
         reportIds.addAll(t.reportIds);
         if (t.reports != null) {
-          for (final r in t.reports!) reportIds.add(r.id);
+          for (final r in t.reports!) {
+            reportIds.add(r.id);
+          }
         }
       }
 
@@ -155,7 +157,9 @@ class FcOfflinePackageService {
     for (final t in tasks) {
       reportIds.addAll(t.reportIds);
       if (t.reports != null) {
-        for (final r in t.reports!) reportIds.add(r.id);
+        for (final r in t.reports!) {
+          reportIds.add(r.id);
+        }
       }
       if (t.clusterId != null && t.clusterId!.isNotEmpty) {
         // For cluster-based tasks we fetch by cluster below.

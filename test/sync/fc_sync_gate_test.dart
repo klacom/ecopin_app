@@ -1,4 +1,4 @@
-﻿// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print
 //
 // Phase 6 Gate Acceptance Tests
 //
@@ -403,28 +403,28 @@ void main() {
     test('formattedSize shows bytes for tiny files', () {
       const s = FcPendingSummary(
           mutationCount: 1, photoCount: 1,
-          pendingDeleteCount: 0, estimatedBytes: 512);
+          failedPhotoCount: 0, pendingDeleteCount: 0, estimatedBytes: 512);
       expect(s.formattedSize, '512 B');
     });
 
     test('formattedSize shows KB for medium files', () {
       const s = FcPendingSummary(
           mutationCount: 1, photoCount: 1,
-          pendingDeleteCount: 0, estimatedBytes: 2048);
+          failedPhotoCount: 0, pendingDeleteCount: 0, estimatedBytes: 2048);
       expect(s.formattedSize, '2.0 KB');
     });
 
     test('isEmpty is true when all counts are zero', () {
       const s = FcPendingSummary(
           mutationCount: 0, photoCount: 0,
-          pendingDeleteCount: 0, estimatedBytes: 0);
+          failedPhotoCount: 0, pendingDeleteCount: 0, estimatedBytes: 0);
       expect(s.isEmpty, isTrue);
     });
 
     test('isEmpty is false when any count > 0', () {
       const s = FcPendingSummary(
           mutationCount: 1, photoCount: 0,
-          pendingDeleteCount: 0, estimatedBytes: 0);
+          failedPhotoCount: 0, pendingDeleteCount: 0, estimatedBytes: 0);
       expect(s.isEmpty, isFalse);
     });
   });

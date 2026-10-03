@@ -245,7 +245,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
               _currentStepIndex = 0;
               if (_routeSteps.isNotEmpty) {
                 firstInstruction = _parseInstruction(_routeSteps[0]);
-                _speakInstruction(99999, firstInstruction!);
+                _speakInstruction(99999, firstInstruction);
               }
             }
             final tOsrmDone = DateTime.now();
@@ -316,7 +316,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
       }
 
       final tTotal = DateTime.now().difference(tStart).inMilliseconds;
-      debugPrint('[NAV] Start Next Job → route ready: ${tTotal} ms');
+      debugPrint('[NAV] Start Next Job → route ready: $tTotal ms');
 
       if (mounted) {
         setState(() {

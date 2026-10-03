@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:ecopin_app/shared/notifications/services/notification_service.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
-import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';

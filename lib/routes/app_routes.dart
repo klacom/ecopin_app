@@ -1,4 +1,4 @@
-﻿// Accessible by everyone
+// Accessible by everyone
 
 class PublicAppRoutes {
   static const String splash = '/splash';
@@ -31,35 +31,54 @@ class ProtectedAppRoutes {
 
 // Officer routes
 class OfficerAppRoutes {
+  // Command Center
+  static const String commandCenter = '/officer/command-center';
+  
+  // Intel Hub
+  static const String intel = '/officer/intel';
+  static const String intelHotzone = '/officer/intel/hotzone';
+  static const String intelMapGrid = '/officer/intel/map-grid';
+  static const String intelSpatialScan = '/officer/intel/spatial-scan';
+  
+  // Operations
+  static const String operations = '/officer/operations';
+  
+  // Analytics Hub
+  static const String analytics = '/officer/analytics';
+  static const String analyticsReports = '/officer/analytics/reports';
+  static const String analyticsMetrics = '/officer/analytics/metrics';
+  static const String analyticsOptimization = '/officer/analytics/optimization';
+  
+  // Legacy routes for backward compatibility
   static const String dashboard = '/officer/dashboard';
+  static const String reports = '/officer/reports';
+  static const String reportDetails = '/officer/reports/:id';
   static const String maps = '/officer/maps';
+  static const String spatialScan = '/officer/spatial-scan';
+  static const String optimization = '/officer/optimization';
+  static const String responseLogs = '/officer/response-logs';
+  static const String notifications = '/officer/notifications';
   static const String clusters = '/officer/clusters';
   static const String clusterDetails = '/officer/clusters/:id';
   static const String clusterCreateTask = '/officer/clusters/:id/create-task';
   static const String cleanupTasks = '/officer/cleanup-tasks';
   static const String taskDetails = '/officer/cleanup-tasks/:id';
-  static const String createCustomTask = '/officer/cleanup-tasks/create';
-  static const String reports = '/officer/reports';
-  static const String reportDetails = '/officer/reports/:id';
-  static const String responseLogs = '/officer/response-logs';
-  static const String analytics = '/officer/analytics';
+  
+  // Profile (Top-level)
   static const String profile = '/officer/profile';
-  static const String notifications = '/officer/notifications';
-  static const String spatialScan = '/officer/spatial-scan';
-  static const String optimization = '/officer/optimization';
 
   static const officerRoutes = [
-    dashboard,
-    maps,
-    clusters,
-    cleanupTasks,
-    reports,
-    responseLogs,
+    commandCenter,
+    intel,
+    intelHotzone,
+    intelMapGrid,
+    intelSpatialScan,
+    operations,
     analytics,
+    analyticsReports,
+    analyticsMetrics,
+    analyticsOptimization,
     profile,
-    notifications,
-    spatialScan,
-    optimization,
   ];
 }
 

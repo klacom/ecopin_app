@@ -42,7 +42,7 @@ class FcPendingSummary {
 
   String get formattedSize {
     if (estimatedBytes <= 0) return '';
-    if (estimatedBytes < 1024) return '${estimatedBytes} B';
+    if (estimatedBytes < 1024) return '$estimatedBytes B';
     if (estimatedBytes < 1024 * 1024) {
       return '${(estimatedBytes / 1024).toStringAsFixed(1)} KB';
     }

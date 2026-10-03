@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/field_crew/providers/cleanup_tasks_provider.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_list_tile.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_shimmer_list.dart';

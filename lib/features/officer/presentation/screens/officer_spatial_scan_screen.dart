@@ -79,7 +79,7 @@ class _OfficerSpatialScanScreenState extends ConsumerState<OfficerSpatialScanScr
         children: [
           Expanded(
             child: DropdownButtonFormField<String>(
-              value: _timeHorizon,
+              initialValue: _timeHorizon,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Time Horizon',

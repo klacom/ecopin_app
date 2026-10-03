@@ -4,22 +4,12 @@ import 'package:ecopin_app/shared/auth/presentation/screens/landing_screen.dart'
 import 'package:ecopin_app/shared/auth/presentation/screens/login_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/register_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/email_verification_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_cleanup_tasks_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_clusters_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_dashboard_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_main_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_map_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/navigation/officer_scaffold.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_command_center_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_intel_hub_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_operations_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_analytics_hub_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_profile_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_reports_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_response_logs_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_cluster_details_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_cleanup_task_details_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_create_custom_cleanup_task_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_report_details_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_analytics_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_spatial_scan_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_optimization_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_cluster_create_task.dart';
 import 'package:ecopin_app/features/citizen/presentation/screens/citizen_main_screen.dart';
 import 'package:ecopin_app/shared/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/shared/notifications/presentation/screens/notifications_screen.dart';
@@ -77,8 +67,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         // If logged in, redirect based on role
         if (loggedIn) {
           if (role == UserRole.officer) {
-            log.info('Redirecting from splash to Officer Dashboard');
-            return OfficerAppRoutes.dashboard;
+            log.info('Redirecting from splash to Officer Command Center');
+            return OfficerAppRoutes.commandCenter;
           } else if (role == UserRole.fieldCrew) {
             log.info('Redirecting from splash to Field Crew Dashboard');
             return FieldCrewAppRoutes.dashboard;
@@ -114,8 +104,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         // Route based on role
         log.info('Redirecting based on role: $role');
         if (role == UserRole.officer) {
-          log.info('Redirecting to Officer Dashboard');
-          return OfficerAppRoutes.dashboard;
+          log.info('Redirecting to Officer Command Center');
+          return OfficerAppRoutes.commandCenter;
         } else if (role == UserRole.fieldCrew) {
           log.info('Redirecting to Field Crew Dashboard');
           return FieldCrewAppRoutes.dashboard;
@@ -159,7 +149,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           log.info(
             'Redirecting to appropriate screen - non-Admin on Admin route',
           );
-          if (role == UserRole.officer) return OfficerAppRoutes.dashboard;
+          if (role == UserRole.officer) return OfficerAppRoutes.commandCenter;
           if (role == UserRole.fieldCrew) return FieldCrewAppRoutes.dashboard;
           return ProtectedAppRoutes.maps;
         }
@@ -245,93 +235,48 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       // Officer Shell Route
-      ShellRoute(
-        builder: (context, state, child) => OfficerMainScreen(child: child),
-        routes: [
-          GoRoute(
-            path: OfficerAppRoutes.dashboard,
-            builder: (_, _) => const OfficerDashboardScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.maps,
-            builder: (_, _) => const OfficerMapScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.clusters,
-            builder: (_, _) => const OfficerClustersScreen(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return OfficerScaffold(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: ':id',
-                builder: (context, state) {
-                  final id = state.pathParameters['id']!;
-                  return OfficerClusterDetailsScreen(clusterId: id);
-                },
-                routes: [
-                  GoRoute(
-                    path: 'create-task',
-                    builder: (context, state) {
-                      return const OfficerClusterCreateTaskScreen();
-                    },
-                  ),
-                ],
+                path: OfficerAppRoutes.commandCenter,
+                builder: (_, _) => const OfficerCommandCenterScreen(),
               ),
             ],
           ),
-          GoRoute(
-            path: OfficerAppRoutes.cleanupTasks,
-            builder: (_, _) => const OfficerCleanupTasksScreen(),
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: 'create',
-                builder: (_, _) => const OfficerCreateCustomCleanupTaskScreen(),
-              ),
-              GoRoute(
-                path: ':id',
-                builder: (context, state) {
-                  final id = state.pathParameters['id']!;
-                  return OfficerCleanupTaskDetailsScreen(taskId: id);
-                },
+                path: OfficerAppRoutes.intel,
+                builder: (_, _) => const OfficerIntelHubScreen(),
               ),
             ],
           ),
-          GoRoute(
-            path: OfficerAppRoutes.reports,
-            builder: (_, _) => const OfficerReportsScreen(),
+          StatefulShellBranch(
             routes: [
               GoRoute(
-                path: ':id',
-                builder: (context, state) {
-                  final id = state.pathParameters['id']!;
-                  return OfficerReportDetailsScreen(reportId: id);
-                },
+                path: OfficerAppRoutes.operations,
+                builder: (_, _) => const OfficerOperationsScreen(),
               ),
             ],
           ),
-          GoRoute(
-            path: OfficerAppRoutes.responseLogs,
-            builder: (_, _) => const OfficerResponseLogsScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.analytics,
-            builder: (_, _) => const OfficerAnalyticsScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.spatialScan,
-            builder: (_, _) => const OfficerSpatialScanScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.optimization,
-            builder: (_, _) => const OfficerOptimizationScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.profile,
-            builder: (_, _) => const OfficerProfileScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.notifications,
-            builder: (_, _) => const NotificationsScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: OfficerAppRoutes.analytics,
+                builder: (_, _) => const OfficerAnalyticsHubScreen(),
+              ),
+            ],
           ),
         ],
+      ),
+      GoRoute(
+        path: OfficerAppRoutes.profile,
+        builder: (_, _) => const OfficerProfileScreen(),
       ),
       // Admin Shell Route
       ShellRoute(
@@ -441,7 +386,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final role = ref.read(authNotifierProvider).state.role;
       String homePath = PublicAppRoutes.landing;
       if (role == UserRole.officer) {
-        homePath = OfficerAppRoutes.dashboard;
+        homePath = OfficerAppRoutes.commandCenter;
       } else if (role == UserRole.fieldCrew) {
         homePath = FieldCrewAppRoutes.dashboard;
       } else if (role == UserRole.admin) {

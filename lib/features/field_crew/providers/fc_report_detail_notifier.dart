@@ -66,7 +66,7 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
       state = FcReportDetailState(
         report: report,
         notes: results[0] as List<AgencyResponse>,
-        evidence: results[1] as List<dynamic>,
+        evidence: results[1],
         isLoading: false,
       );
     } catch (e) {

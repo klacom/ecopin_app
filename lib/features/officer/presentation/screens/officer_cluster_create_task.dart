@@ -184,6 +184,14 @@ class _OfficerClusterCreateTaskScreenState
                               (_titleController.text.isEmpty || _isSubmitting)
                               ? null
                               : _submitTask,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                           child: _isSubmitting
                               ? const SizedBox(
                                   width: 24,
@@ -193,14 +201,6 @@ class _OfficerClusterCreateTaskScreenState
                                   ),
                                 )
                               : const Text('Create Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
                         ),
                       ),
                       const SizedBox(height: 8),

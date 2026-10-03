@@ -369,13 +369,6 @@ class _OfficerCreateCustomCleanupTaskScreenState
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitTask,
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Create Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
@@ -384,6 +377,13 @@ class _OfficerCreateCustomCleanupTaskScreenState
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Create Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -394,12 +394,12 @@ class _OfficerCreateCustomCleanupTaskScreenState
                   onPressed: () {
                     context.pop();
                   },
-                  child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

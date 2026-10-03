@@ -123,7 +123,7 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF4169E1).withOpacity(0.4),
+                              color: const Color(0xFF4169E1).withValues(alpha: 0.4),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -139,13 +139,13 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
                                   'Total Reports',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.withValues(alpha: 0.8),
                                   ),
                                 ),
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
+                                    color: Colors.white.withValues(alpha: 0.2),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(Icons.analytics, color: Colors.white, size: 20),
@@ -169,7 +169,7 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
                                 Text(
                                   '+12% from last week',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 12,
                                   ),
                                 ),
@@ -339,7 +339,7 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
                 title: 'Unresolved',
                 value: stats.unresolved.toString(),
                 icon: Icons.error_outline,
-                iconBgColor: Colors.red.withOpacity(0.1),
+                iconBgColor: Colors.red.withValues(alpha: 0.1),
                 iconColor: Colors.red,
               ),
             ),
@@ -349,7 +349,7 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
                 title: 'In Progress',
                 value: stats.inProgress.toString(),
                 icon: Icons.sync,
-                iconBgColor: Colors.orange.withOpacity(0.1),
+                iconBgColor: Colors.orange.withValues(alpha: 0.1),
                 iconColor: Colors.orange,
               ),
             ),
@@ -363,7 +363,7 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
                 title: 'Resolved',
                 value: stats.resolved.toString(),
                 icon: Icons.check_circle_outline,
-                iconBgColor: Colors.green.withOpacity(0.1),
+                iconBgColor: Colors.green.withValues(alpha: 0.1),
                 iconColor: Colors.green,
               ),
             ),
@@ -373,7 +373,7 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
                 title: 'Feedback',
                 value: stats.waitingForFeedback.toString(),
                 icon: Icons.feedback_outlined,
-                iconBgColor: Colors.purple.withOpacity(0.1),
+                iconBgColor: Colors.purple.withValues(alpha: 0.1),
                 iconColor: Colors.purple,
               ),
             ),
@@ -399,7 +399,7 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -463,7 +463,7 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -474,7 +474,7 @@ class _OfficerDashboardScreenState extends ConsumerState<OfficerDashboardScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: iconColor, size: 20),

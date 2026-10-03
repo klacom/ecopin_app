@@ -1,16 +1,12 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:ecopin_app/core/database/app_database.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_photo_repository.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_repository.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_photo_sync_manager.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_gate.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_manager.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_result.dart';
-import 'package:ecopin_app/features/field_crew/sync/fc_sync_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 

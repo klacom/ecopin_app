@@ -1,4 +1,4 @@
-﻿// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print
 //
 // Phase 7 End-to-End and Reliability Tests
 //
@@ -13,9 +13,7 @@
 // The tests cover all 12 reliability scenarios from the Phase 7 spec.
 
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
@@ -569,9 +567,9 @@ void main() {
       expect(done.isDownloading, isFalse);
     });
 
-    test('buildInitialSteps produces 5 steps all pending', () {
+    test('buildInitialSteps produces 6 steps all pending', () {
       final steps = buildInitialSteps();
-      expect(steps.length, 5);
+      expect(steps.length, 6);
       expect(steps.every((s) => !s.completed && !s.inProgress), isTrue);
     });
   });

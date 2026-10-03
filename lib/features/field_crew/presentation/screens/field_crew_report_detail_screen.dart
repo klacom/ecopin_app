@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_photo_repository.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_report_detail_notifier.dart';
 import 'package:ecopin_app/features/field_crew/providers/cleanup_task_detail_provider.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_report_metadata_card.dart';

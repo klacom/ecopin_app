@@ -288,7 +288,7 @@ class FcSyncManager {
         );
         _log.fine(
           'Retryable failure for ${item.operationId} '
-          '(attempt ${newCount}/${_kMaxRetries})',
+          '(attempt $newCount/$_kMaxRetries)',
         );
       }
     }

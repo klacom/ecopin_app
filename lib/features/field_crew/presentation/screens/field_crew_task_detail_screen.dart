@@ -14,7 +14,6 @@ import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_mark_comp
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_shimmer_card.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
 import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_photo_repository.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_conflict_summary.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import 'package:ecopin_app/core/database/app_database.dart';

@@ -777,7 +777,7 @@ class _OfficerReportDetailsScreenState
             height: 24,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isCompleted ? Colors.green : Colors.grey[300],
+              color: isCompleted ? Colors.blue : Colors.grey[300],
             ),
             child: isCompleted
                 ? const Icon(Icons.check, color: Colors.white, size: 16)
@@ -788,7 +788,7 @@ class _OfficerReportDetailsScreenState
             label,
             style: TextStyle(
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              color: isActive ? Colors.green : Colors.grey[600],
+              color: isActive ? Colors.blue : Colors.grey[600],
             ),
           ),
         ],

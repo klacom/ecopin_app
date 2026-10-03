@@ -8,8 +8,8 @@ class AppColors {
   static const Color primaryDark = Color(0xFF0052CC);
 
   // ── Brand: Secondary ────────────────────────────────
-  static const Color secondaryLight = Color(0xFFFFA6C9);
-  static const Color secondaryDark = Color(0xFFFFA6C9);
+  static const Color secondaryLight = Color(0xFF60A5FA);
+  static const Color secondaryDark = Color(0xFF60A5FA);
 
   // ── Brand: Accent ───────────────────────────────────
   static const Color accent = Color(0xFF0052CC);

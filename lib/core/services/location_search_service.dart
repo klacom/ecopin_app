@@ -112,4 +112,34 @@ class LocationSearchService {
       return [];
     }
   }
+
+  Future<String?> getAddressFromCoordinates(double lat, double lon) async {
+    try {
+      final queryParams = {
+        'format': 'json',
+        'lat': lat,
+        'lon': lon,
+        'zoom': 18,
+        'addressdetails': 1,
+      };
+
+      final response = await _dio.get(
+        'https://nominatim.openstreetmap.org/reverse',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data is Map
+            ? response.data
+            : json.decode(response.data as String) as Map<String, dynamic>;
+        
+        if (data.containsKey('display_name')) {
+          return data['display_name'] as String;
+        }
+      }
+    } catch (e) {
+      locSearchLog.severe('Error reverse geocoding: $e');
+    }
+    return null;
+  }
 }

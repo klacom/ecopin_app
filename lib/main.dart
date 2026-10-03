@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:ecopin_app/shared/notifications/services/notification_service.dart';
+import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
+import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
@@ -57,5 +59,23 @@ Future<void> main() async {
   final container = ProviderContainer();
   await container.read(notificationServiceProvider).init();
 
+  // â”€â”€ Phase 4: Sync engine crash recovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Reset any outbox items or photos that were in-flight when the app was last
+  // killed, so they are retried rather than stuck permanently.
+  final syncManager = container.read(fcSyncManagerProvider);
+  final photoSyncManager = container.read(fcPhotoSyncManagerProvider);
+  await Future.wait([
+    syncManager.recoverInFlight(),
+    photoSyncManager.recoverInFlight(),
+  ]);
+
+  // ── Phase 7: Offline package crash recovery ────────────────────────────────
+  // Note: Crash recovery is now handled gracefully inside FcOfflinePackageNotifier._initFromPrefs().
+  // Only completed packages are persisted, so mid-flight interruptions naturally revert to idle.
+
+  // Start the connectivity-driven sync trigger (periodic + on-reconnect).
+  container.read(fcSyncTriggerProvider).start();
+
   runApp(UncontrolledProviderScope(container: container, child: const App()));
 }
+

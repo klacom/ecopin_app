@@ -32,6 +32,8 @@ class ApiClient {
 
   final AppDatabase? _db;
 
+  dio.Dio get dioClient => _dio;
+
   ApiClient([this._db]) {
     _dio.interceptors.add(
       dio.InterceptorsWrapper(
@@ -526,7 +528,7 @@ class ApiClient {
 
   Future<dio.Response> logAgencyResponse(String reportId, String action) async {
     return _dio.post(
-      '/api/reports/$reportId/agency-response',
+      ApiConstants.agencyResponses(reportId),
       data: {'action': action},
     );
   }
@@ -639,5 +641,10 @@ class ApiClient {
 
   Future<dio.Response> discardOptimization(String id) async {
     return _dio.post(ApiConstants.discardOptimizationRun(id));
+  }
+
+  // Active Routes for Field Crew
+  Future<dio.Response> getActiveRoutes() async {
+    return _dio.get(ApiConstants.activeRoutes);
   }
 }

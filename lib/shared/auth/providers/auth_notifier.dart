@@ -12,6 +12,8 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Provider for AuthNotifier
 final authNotifierProvider = ChangeNotifierProvider((ref) => AuthNotifier(ref));
@@ -22,6 +24,7 @@ class AuthNotifier extends ChangeNotifier {
   final Logger _log = Logger('Auth Notifier');
   AppAuthState _state = AppAuthState.initial();
   StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   AuthNotifier(this._ref) {
     _initialize();
@@ -64,11 +67,28 @@ class AuthNotifier extends ChangeNotifier {
     if (session != null) {
       _ref.read(notificationServiceProvider).subscribeToNotifications();
     }
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+      final hasConnection = !results.contains(ConnectivityResult.none);
+      if (hasConnection) {
+        final currentSession = _supabase.auth.currentSession;
+        if (currentSession != null && !_state.isAuthenticated) {
+          _log.info('Network restored, attempting to re-validate session...');
+          _updateState(currentSession);
+        }
+      }
+    });
   }
 
-  void manualOverrideAuthenticatedState(UserRole role) {
+  Future<void> manualOverrideAuthenticatedState(UserRole role) async {
     _state = AppAuthState.authenticated(role);
     notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cached_user_role', role.name);
+    } catch (e) {
+      _log.warning('Failed to cache user role: $e');
+    }
   }
 
   Future<void> _updateState(Session? session) async {
@@ -111,13 +131,37 @@ class AuthNotifier extends ChangeNotifier {
           role = UserRole.citizen;
         }
 
+        // Cache the role for offline boots
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('cached_user_role', role.name);
+        } catch (prefsErr) {
+          _log.warning('Failed to cache user role: $prefsErr');
+        }
+
         _log.info('Resolved UserRole: ${role.name}');
         _state = AppAuthState.authenticated(role);
       } catch (e, stackTrace) {
-        // If backend fails, we might still have a Supabase session but
-        // we can't verify the role/user in our DB.
-        // For safety, we can either treat as unauthenticated or use a default.
         _log.severe('Error fetching user role: $e', stackTrace);
+        
+        // Offline fallback
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final cachedRoleStr = prefs.getString('cached_user_role');
+          if (cachedRoleStr != null) {
+            final cachedRole = UserRole.values.firstWhere(
+              (r) => r.name == cachedRoleStr, 
+              orElse: () => UserRole.citizen,
+            );
+            _log.info('Offline fallback to cached role: ${cachedRole.name}');
+            _state = AppAuthState.authenticated(cachedRole);
+            notifyListeners();
+            return; // Skip setting unauthenticated
+          }
+        } catch (prefsErr) {
+          _log.severe('Failed to read cached role: $prefsErr');
+        }
+
         _state = AppAuthState.unauthenticated();
       }
       notifyListeners();
@@ -138,6 +182,13 @@ class AuthNotifier extends ChangeNotifier {
     } finally {
       // 3. Clear Supabase session locally
       await _supabase.auth.signOut();
+      
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('cached_user_role');
+      } catch (e) {
+        _log.warning('Failed to remove cached role: $e');
+      }
       // _updateState will be triggered by onAuthStateChange listener
     }
   }
@@ -145,6 +196,7 @@ class AuthNotifier extends ChangeNotifier {
   @override
   void dispose() {
     _authSubscription?.cancel();
+    _connectivitySubscription?.cancel();
     super.dispose();
   }
 }

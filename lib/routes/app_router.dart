@@ -35,8 +35,12 @@ import 'package:ecopin_app/features/admin/presentation/screens/admin_audit_logs_
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_main_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_dashboard_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_tasks_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_task_detail_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_report_detail_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_reports_screen.dart';
-import 'package:ecopin_app/features/field_crew/presentation/map/fc_map_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_map_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_sync_center_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_prepare_offline_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
@@ -44,6 +48,7 @@ import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/reports/presentation/screens/report_details_screen.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
 import 'package:logging/logging.dart';
+import 'package:flutter/material.dart';
 
 // Guides user to Public and Protected Routes
 
@@ -130,14 +135,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Role-based route protection
       if (loggedIn) {
         log.info('Role-based check - Role: $role');
-        
-        if (isOfficerRoute && role != UserRole.officer && role != UserRole.admin) {
-          log.info('Redirecting to citizen maps - non-Officer/Admin on Officer route');
+
+        if (isOfficerRoute &&
+            role != UserRole.officer &&
+            role != UserRole.admin) {
+          log.info(
+            'Redirecting to citizen maps - non-Officer/Admin on Officer route',
+          );
           return ProtectedAppRoutes.maps;
         }
-        
-        if (isFieldCrewRoute && role != UserRole.fieldCrew && role != UserRole.admin && role != UserRole.officer) {
-          log.info('Redirecting to citizen maps - unauthorized on Field Crew route');
+
+        if (isFieldCrewRoute &&
+            role != UserRole.fieldCrew &&
+            role != UserRole.admin &&
+            role != UserRole.officer) {
+          log.info(
+            'Redirecting to citizen maps - unauthorized on Field Crew route',
+          );
           return ProtectedAppRoutes.maps;
         }
 
@@ -151,7 +165,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
 
         // Check if path is a protected route (including nested routes)
-        if (!isOfficerRoute && !isAdminRoute && !isFieldCrewRoute && !isProtectedRoute) {
+        if (!isOfficerRoute &&
+            !isAdminRoute &&
+            !isFieldCrewRoute &&
+            !isProtectedRoute) {
           log.info('Redirecting to citizen maps - not in any route category');
           return ProtectedAppRoutes.maps;
         }
@@ -221,7 +238,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: ProtectedAppRoutes.createReport,
         builder: (_, state) {
-          // extra is always a ReportPrefillData — from the FAB (location only)
+          // extra is always a ReportPrefillData â€” from the FAB (location only)
           // or from a rejected-report resubmission (title + description + location).
           final prefill = state.extra as ReportPrefillData?;
           return CreateReportScreen(prefillData: prefill);
@@ -356,15 +373,50 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: FieldCrewAppRoutes.map,
-            builder: (_, _) => const FcMapScreen(),
+            builder: (_, _) => const FieldCrewMapScreen(),
           ),
           GoRoute(
             path: FieldCrewAppRoutes.tasks,
             builder: (_, _) => const FieldCrewTasksScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return FieldCrewTaskDetailScreen(taskId: id);
+                },
+                routes: [
+                  GoRoute(
+                    path: 'reports/:reportId',
+                    builder: (context, state) {
+                      final taskId = state.pathParameters['id']!;
+                      final reportId = state.pathParameters['reportId']!;
+                      return FieldCrewReportDetailScreen(
+                        taskId: taskId,
+                        reportId: reportId,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: FieldCrewAppRoutes.reports,
             builder: (_, _) => const FieldCrewReportsScreen(),
+            routes: [
+              GoRoute(
+                path: ':reportId',
+                builder: (context, state) {
+                  final reportId = state.pathParameters['reportId']!;
+                  final taskId = state.extra as String?;
+                  return FieldCrewReportDetailScreen(
+                    reportId: reportId,
+                    taskId: taskId,
+                  );
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: FieldCrewAppRoutes.profile,
@@ -374,9 +426,76 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: FieldCrewAppRoutes.notifications,
             builder: (_, _) => const NotificationsScreen(),
           ),
+          GoRoute(
+            path: FieldCrewAppRoutes.syncCenter,
+            builder: (_, _) => const FieldCrewSyncCenterScreen(),
+          ),
+          GoRoute(
+            path: FieldCrewAppRoutes.prepareOffline,
+            builder: (_, _) => const FieldCrewPrepareOfflineScreen(),
+          ),
         ],
       ),
     ],
+    errorBuilder: (context, state) {
+      final role = ref.read(authNotifierProvider).state.role;
+      String homePath = PublicAppRoutes.landing;
+      if (role == UserRole.officer) {
+        homePath = OfficerAppRoutes.dashboard;
+      } else if (role == UserRole.fieldCrew) {
+        homePath = FieldCrewAppRoutes.dashboard;
+      } else if (role == UserRole.admin) {
+        homePath = AdminAppRoutes.dashboard;
+      } else if (role == UserRole.citizen) {
+        homePath = ProtectedAppRoutes.maps;
+      }
+
+      return Scaffold(
+        backgroundColor: const Color(0xFF1E1E1E),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.redAccent,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Page Not Found',
+                style: TextStyle(
+                  fontSize: 24,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'No route for ${state.uri.path}',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => context.go(homePath),
+                icon: const Icon(Icons.home),
+                label: const Text('Go to Home'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFCCFF00),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
   );
 });
-

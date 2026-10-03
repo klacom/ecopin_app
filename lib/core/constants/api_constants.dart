@@ -1,4 +1,4 @@
-class ApiConstants {
+﻿class ApiConstants {
   static const String register = '/api/auth/register';
   static const String resendVerification = '/api/auth/resend-verification';
   static const String passwordRequirements = '/api/auth/password-requirements';
@@ -56,6 +56,7 @@ class ApiConstants {
   static const String responseLogs = '/api/response-logs';
   static const String reports = '/api/reports';
   static const String satisfactionAnalytics = '/api/reports/analytics/satisfaction';
+  static const String activeRoutes = '/api/optimization/routes/active';
 
   static String clusterById(String clusterId) {
     return '/api/clusters/$clusterId';
@@ -82,7 +83,7 @@ class ApiConstants {
   }
 
   static String updateReportLifecycleStage(String reportId) {
-    return '/api/reports/$reportId/lifecycle-stage';
+    return '/api/reports/$reportId/lifecycle';
   }
 
   static String acknowledgeComplaint(String reportId) {
@@ -118,4 +119,8 @@ class ApiConstants {
   static String optimizationRunById(String id) => '/api/optimization/runs/$id';
   static String approveOptimizationRun(String id) => '/api/optimization/runs/$id/approve';
   static String discardOptimizationRun(String id) => '/api/optimization/runs/$id/discard';
+
+  // Phase 4 â€” Field Crew Sync Engine
+  /// POST /api/fc/sync/batch  â€” batch outbox drain endpoint.
+  static const String fcSyncBatch = '/api/fc/sync/batch';
 }

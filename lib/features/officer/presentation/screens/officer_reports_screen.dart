@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
+import 'package:ecopin_app/features/officer/presentation/widgets/officer_reports_filter_bar.dart';
 
 class LguReport {
   final String id;
@@ -143,7 +144,65 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
       ),
       body: Column(
         children: [
-          _buildFilters(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+            child: OfficerReportsFilterBar(
+              searchQuery: _searchQuery,
+              selectedStatus: _statusFilter,
+              selectedType: _issueTypeFilter,
+              selectedValidation: _validationStatusFilter,
+              selectedLifecycle: _lifecycleStageFilter,
+              selectedSort: _sortBy,
+              availableTypes: const ['Waste', 'Flooding', 'Pollution', 'Illegal Logging', 'Others'],
+              onSearchChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                  _currentPage = 1;
+                });
+              },
+              onStatusChanged: (val) {
+                setState(() {
+                  _statusFilter = val;
+                  _currentPage = 1;
+                });
+              },
+              onTypeChanged: (val) {
+                setState(() {
+                  _issueTypeFilter = val;
+                  _currentPage = 1;
+                });
+              },
+              onValidationChanged: (val) {
+                setState(() {
+                  _validationStatusFilter = val;
+                  _currentPage = 1;
+                });
+              },
+              onLifecycleChanged: (val) {
+                setState(() {
+                  _lifecycleStageFilter = val;
+                  _currentPage = 1;
+                });
+              },
+              onSortChanged: (val) {
+                setState(() {
+                  _sortBy = val;
+                  _currentPage = 1;
+                });
+              },
+              onReset: () {
+                setState(() {
+                  _searchQuery = '';
+                  _statusFilter = 'all';
+                  _issueTypeFilter = 'all';
+                  _validationStatusFilter = 'all';
+                  _lifecycleStageFilter = 'all';
+                  _sortBy = 'newest';
+                  _currentPage = 1;
+                });
+              },
+            ),
+          ),
           Expanded(
             child: reportsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -193,226 +252,7 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
     );
   }
 
-  void _showFilterSheet() {
-    String tempStatus = _statusFilter;
-    String tempIssueType = _issueTypeFilter;
-    String tempValidation = _validationStatusFilter;
-    String tempLifecycle = _lifecycleStageFilter;
-    String tempSortBy = _sortBy;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final inputDecoration = InputDecoration(
-              filled: true,
-              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              isDense: true,
-            );
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempStatus,
-                        decoration: inputDecoration.copyWith(labelText: 'Status'),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('All Status')),
-                          DropdownMenuItem(value: 'unresolved', child: Text('Unresolved')),
-                          DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
-                          DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
-                          DropdownMenuItem(value: 'closed', child: Text('Closed')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempStatus = value ?? 'all'),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempIssueType,
-                        decoration: inputDecoration.copyWith(labelText: 'Issue Type'),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('All Types')),
-                          DropdownMenuItem(value: 'Waste', child: Text('Waste')),
-                          DropdownMenuItem(value: 'Flooding', child: Text('Flooding')),
-                          DropdownMenuItem(value: 'Pollution', child: Text('Pollution')),
-                          DropdownMenuItem(value: 'Illegal Logging', child: Text('Illegal Log.')),
-                          DropdownMenuItem(value: 'Others', child: Text('Others')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempIssueType = value ?? 'all'),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempValidation,
-                        decoration: inputDecoration.copyWith(labelText: 'Validation'),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('All Validation')),
-                          DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                          DropdownMenuItem(value: 'automatically_valid', child: Text('Auto Valid')),
-                          DropdownMenuItem(value: 'manual_review', child: Text('Manual Review')),
-                          DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempValidation = value ?? 'all'),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempLifecycle,
-                        decoration: inputDecoration.copyWith(labelText: 'Lifecycle'),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('All Stages')),
-                          DropdownMenuItem(value: 'reported', child: Text('Reported')),
-                          DropdownMenuItem(value: 'acknowledged', child: Text('Acknowledged')),
-                          DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
-                          DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
-                          DropdownMenuItem(value: 'closed', child: Text('Closed')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempLifecycle = value ?? 'all'),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempSortBy,
-                        decoration: inputDecoration.copyWith(labelText: 'Sort By'),
-                        items: const [
-                          DropdownMenuItem(value: 'newest', child: Text('Newest First')),
-                          DropdownMenuItem(value: 'oldest', child: Text('Oldest First')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempSortBy = value ?? 'newest'),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () {
-                                setModalState(() {
-                                  tempStatus = 'all';
-                                  tempIssueType = 'all';
-                                  tempValidation = 'all';
-                                  tempLifecycle = 'all';
-                                  tempSortBy = 'newest';
-                                });
-                              },
-                              child: const Text('Reset'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _statusFilter = tempStatus;
-                                  _issueTypeFilter = tempIssueType;
-                                  _validationStatusFilter = tempValidation;
-                                  _lifecycleStageFilter = tempLifecycle;
-                                  _sortBy = tempSortBy;
-                                  _currentPage = 1;
-                                });
-                                Navigator.pop(context);
-                              },
-                              child: const Text('Apply Filters'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildFilters() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final inputDecoration = InputDecoration(
-      filled: true,
-      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      isDense: true,
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              decoration: inputDecoration.copyWith(
-                hintText: 'Search reports...',
-                prefixIcon: const Icon(Icons.search),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                  _currentPage = 1;
-                });
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          InkWell(
-            onTap: _showFilterSheet,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.tune, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   List<LguReport> _filterReports(List<LguReport> reports) {
     var filtered = reports.where((report) {

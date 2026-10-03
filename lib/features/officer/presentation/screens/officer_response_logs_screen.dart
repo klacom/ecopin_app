@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -85,6 +87,7 @@ class OfficerResponseLogsScreen extends ConsumerStatefulWidget {
 }
 
 class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsScreen> {
+  String _searchQuery = '';
   String _actionTypeFilter = 'all';
   String _sortBy = 'newest';
 
@@ -173,116 +176,123 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
     String tempAction = _actionTypeFilter;
     String tempSort = _sortBy;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
+    final actionOptions = [
+      {'value': 'all', 'label': 'All Actions'},
+      {'value': 'status_update', 'label': 'Status Update'},
+      {'value': 'lifecycle_stage_update', 'label': 'Lifecycle'},
+      {'value': 'acknowledge_complaint', 'label': 'Acknowledge'},
+      {'value': 'manual_note', 'label': 'Manual Note'}
+    ];
+    
+    final sortOptions = ['newest', 'oldest'];
+
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusDialog)),
       ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final inputDecoration = InputDecoration(
-              filled: true,
-              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              isDense: true,
-            );
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.4,
+          maxChildSize: 0.8,
+          expand: false,
+          builder: (context, scrollController) {
+            return StatefulBuilder(
+              builder: (ctx, setModalState) {
+                return Padding(
+                  padding: const EdgeInsets.all(AppColors.spaceLG),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Filters & Sort', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempAction,
-                        decoration: inputDecoration.copyWith(labelText: 'Action Type'),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('All Actions')),
-                          DropdownMenuItem(value: 'status_update', child: Text('Status Update')),
-                          DropdownMenuItem(value: 'lifecycle_stage_update', child: Text('Lifecycle')),
-                          DropdownMenuItem(value: 'acknowledge_complaint', child: Text('Acknowledge')),
-                          DropdownMenuItem(value: 'manual_note', child: Text('Manual Note')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempAction = value ?? 'all'),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempSort,
-                        decoration: inputDecoration.copyWith(labelText: 'Sort By'),
-                        items: const [
-                          DropdownMenuItem(value: 'newest', child: Text('Newest First')),
-                          DropdownMenuItem(value: 'oldest', child: Text('Oldest First')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempSort = value ?? 'newest'),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () {
-                                setModalState(() {
-                                  tempAction = 'all';
-                                  tempSort = 'newest';
-                                });
-                              },
-                              child: const Text('Reset'),
+                      Text('Filters & Sort', style: AppTypography.h4.copyWith(color: textColor)),
+                      const SizedBox(height: AppColors.spaceLG),
+                      Expanded(
+                        child: ListView(
+                          controller: scrollController,
+                          children: [
+                            Text('Action Type', style: AppTypography.label.copyWith(color: Colors.grey)),
+                            const SizedBox(height: AppColors.spaceSM),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: actionOptions.map((opt) {
+                                final val = opt['value']!;
+                                final isSelected = tempAction == val;
+                                return ChoiceChip(
+                                  label: Text(opt['label']!,
+                                      style: TextStyle(
+                                          color: isSelected ? Colors.white : textColor)),
+                                  selected: isSelected,
+                                  selectedColor: officerColor,
+                                  backgroundColor: fillColor,
+                                  onSelected: (selected) {
+                                    if (selected) setModalState(() => tempAction = val);
+                                  },
+                                );
+                              }).toList(),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _actionTypeFilter = tempAction;
-                                  _sortBy = tempSort;
-                                });
-                                Navigator.pop(context);
-                              },
-                              child: const Text('Apply Filters'),
+                            const SizedBox(height: AppColors.spaceLG),
+                            Text('Sort By', style: AppTypography.label.copyWith(color: Colors.grey)),
+                            const SizedBox(height: AppColors.spaceSM),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: sortOptions.map((sortOpt) {
+                                final isSelected = tempSort == sortOpt;
+                                return ChoiceChip(
+                                  label: Text(_formatSort(sortOpt),
+                                      style: TextStyle(
+                                          color: isSelected ? Colors.white : textColor)),
+                                  selected: isSelected,
+                                  selectedColor: officerColor,
+                                  backgroundColor: fillColor,
+                                  onSelected: (val) {
+                                    if (val) setModalState(() => tempSort = sortOpt);
+                                  },
+                                );
+                              }).toList(),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 32),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: AppColors.spaceLG),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _actionTypeFilter = tempAction;
+                              _sortBy = tempSort;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: officerColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppColors.radiusButton)),
+                          ),
+                          child: Text('Apply Filters',
+                              style: AppTypography.button.copyWith(color: Colors.white)),
+                        ),
+                      )
                     ],
                   ),
-                ),
-              ),
+                );
+              },
             );
           },
         );
@@ -290,28 +300,110 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
     );
   }
 
+  String _formatSort(String val) {
+    if (val == 'newest') return 'Newest First';
+    if (val == 'oldest') return 'Oldest First';
+    return val;
+  }
+
+  String _formatAction(String val) {
+    if (val == 'all') return 'All Actions';
+    if (val == 'status_update') return 'Status Update';
+    if (val == 'lifecycle_stage_update') return 'Lifecycle';
+    if (val == 'acknowledge_complaint') return 'Acknowledge';
+    if (val == 'manual_note') return 'Manual Note';
+    return val;
+  }
+
   Widget _buildFilters() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            onTap: _showFilterSheet,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  onChanged: (val) {
+                    setState(() { _searchQuery = val; });
+                  },
+                  style: AppTypography.body.copyWith(color: textColor),
+                  decoration: InputDecoration(
+                    hintText: 'Search logs...',
+                    hintStyle: AppTypography.body.copyWith(color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    filled: true,
+                    fillColor: fillColor,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusInput),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.tune, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text('Filter & Sort', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ],
-              ),
+              const SizedBox(width: AppColors.spaceSM),
+              IconButton(
+                onPressed: _showFilterSheet,
+                icon: const Icon(Icons.filter_list, color: Colors.white),
+                style: IconButton.styleFrom(
+                  backgroundColor: officerColor,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusInput)),
+                  padding: const EdgeInsets.all(12),
+                ),
+              )
+            ],
+          ),
+          const SizedBox(height: AppColors.spaceSM),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (_searchQuery.isNotEmpty || _actionTypeFilter != 'all' || _sortBy != 'newest')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ActionChip(
+                      label: const Text('Reset', style: TextStyle(color: Colors.white)),
+                      backgroundColor: officerColor,
+                      onPressed: () {
+                        setState(() {
+                          _searchQuery = '';
+                          _actionTypeFilter = 'all';
+                          _sortBy = 'newest';
+                        });
+                      },
+                    ),
+                  ),
+                if (_actionTypeFilter != 'all')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Chip(
+                      label: Text(_formatAction(_actionTypeFilter), style: TextStyle(color: textColor)),
+                      backgroundColor: fillColor,
+                      side: BorderSide(color: officerColor),
+                      onDeleted: () { setState(() { _actionTypeFilter = 'all'; }); },
+                      deleteIconColor: officerColor,
+                    ),
+                  ),
+                if (_sortBy != 'newest')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Chip(
+                      label: Text(_formatSort(_sortBy), style: TextStyle(color: textColor)),
+                      backgroundColor: fillColor,
+                      side: BorderSide(color: officerColor),
+                      onDeleted: () { setState(() { _sortBy = 'newest'; }); },
+                      deleteIconColor: officerColor,
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -321,6 +413,16 @@ class _OfficerResponseLogsScreenState extends ConsumerState<OfficerResponseLogsS
 
   List<ResponseLog> _filterAndSortLogs(List<ResponseLog> logs) {
     var filtered = logs;
+    
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((log) {
+        final query = _searchQuery.toLowerCase();
+        final matchesDetails = log.actionDetails?.toLowerCase().contains(query) ?? false;
+        final matchesName = log.profile?['full_name']?.toLowerCase().contains(query) ?? false;
+        return matchesDetails || matchesName;
+      }).toList();
+    }
+    
     if (_actionTypeFilter != 'all') {
       filtered = logs
           .where((log) => log.actionType == _actionTypeFilter)

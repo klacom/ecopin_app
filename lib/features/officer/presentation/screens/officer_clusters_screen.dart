@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/officer/providers/officer_clusters_provider.dart';
@@ -88,118 +89,116 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
   void _showFilterSheet() {
     String tempSeverity = _severityFilter;
     String tempStatus = _statusFilter;
+    
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
+    final severityOptions = ['all', 'high', 'medium', 'low'];
+    final statusOptions = ['all', 'unresolved', 'in_progress', 'resolved'];
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusDialog)),
       ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final inputDecoration = InputDecoration(
-              filled: true,
-              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              isDense: true,
-            );
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.4,
+          maxChildSize: 0.8,
+          expand: false,
+          builder: (context, scrollController) {
+            return StatefulBuilder(
+              builder: (ctx, setModalState) {
+                return Padding(
+                  padding: const EdgeInsets.all(AppColors.spaceLG),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempSeverity,
-                        decoration: inputDecoration.copyWith(labelText: 'Severity'),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('All Severities')),
-                          DropdownMenuItem(value: 'high', child: Text('High')),
-                          DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                          DropdownMenuItem(value: 'low', child: Text('Low')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempSeverity = value ?? 'all'),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempStatus,
-                        decoration: inputDecoration.copyWith(labelText: 'Status'),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('All Status')),
-                          DropdownMenuItem(value: 'unresolved', child: Text('Unresolved')),
-                          DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
-                          DropdownMenuItem(value: 'resolved', child: Text('Resolved')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempStatus = value ?? 'all'),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () {
-                                setModalState(() {
-                                  tempSeverity = 'all';
-                                  tempStatus = 'all';
-                                });
-                              },
-                              child: const Text('Reset'),
+                      Text('Filters', style: AppTypography.h4.copyWith(color: textColor)),
+                      const SizedBox(height: AppColors.spaceLG),
+                      Expanded(
+                        child: ListView(
+                          controller: scrollController,
+                          children: [
+                            Text('Severity', style: AppTypography.label.copyWith(color: Colors.grey)),
+                            const SizedBox(height: AppColors.spaceSM),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: severityOptions.map((severity) {
+                                final isSelected = tempSeverity == severity;
+                                return ChoiceChip(
+                                  label: Text(_formatSeverity(severity),
+                                      style: TextStyle(
+                                          color: isSelected ? Colors.white : textColor)),
+                                  selected: isSelected,
+                                  selectedColor: officerColor,
+                                  backgroundColor: fillColor,
+                                  onSelected: (val) {
+                                    if (val) setModalState(() => tempSeverity = severity);
+                                  },
+                                );
+                              }).toList(),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _severityFilter = tempSeverity;
-                                  _statusFilter = tempStatus;
-                                });
-                                Navigator.pop(context);
-                              },
-                              child: const Text('Apply Filters'),
+                            const SizedBox(height: AppColors.spaceLG),
+                            Text('Status', style: AppTypography.label.copyWith(color: Colors.grey)),
+                            const SizedBox(height: AppColors.spaceSM),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: statusOptions.map((status) {
+                                final isSelected = tempStatus == status;
+                                return ChoiceChip(
+                                  label: Text(_formatStatus(status),
+                                      style: TextStyle(
+                                          color: isSelected ? Colors.white : textColor)),
+                                  selected: isSelected,
+                                  selectedColor: officerColor,
+                                  backgroundColor: fillColor,
+                                  onSelected: (val) {
+                                    if (val) setModalState(() => tempStatus = status);
+                                  },
+                                );
+                              }).toList(),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 32),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: AppColors.spaceLG),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _severityFilter = tempSeverity;
+                              _statusFilter = tempStatus;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: officerColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppColors.radiusButton)),
+                          ),
+                          child: Text('Apply Filters',
+                              style: AppTypography.button.copyWith(color: Colors.white)),
+                        ),
+                      )
                     ],
                   ),
-                ),
-              ),
+                );
+              },
             );
           },
         );
@@ -207,47 +206,108 @@ class _OfficerClustersScreenState extends ConsumerState<OfficerClustersScreen> {
     );
   }
 
+  String _formatSeverity(String val) {
+    if (val == 'all') return 'All';
+    return val[0].toUpperCase() + val.substring(1);
+  }
+
+  String _formatStatus(String val) {
+    if (val == 'all') return 'All';
+    if (val == 'in_progress') return 'In Progress';
+    if (val == 'unresolved') return 'Unresolved';
+    if (val == 'resolved') return 'Resolved';
+    return val;
+  }
+
   Widget _buildFilters() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final inputDecoration = InputDecoration(
-      filled: true,
-      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      isDense: true,
-    );
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: TextField(
-              decoration: inputDecoration.copyWith(
-                hintText: 'Search clusters...',
-                prefixIcon: const Icon(Icons.search),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  onChanged: (val) {
+                    setState(() { _searchQuery = val; });
+                  },
+                  style: AppTypography.body.copyWith(color: textColor),
+                  decoration: InputDecoration(
+                    hintText: 'Search clusters...',
+                    hintStyle: AppTypography.body.copyWith(color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    filled: true,
+                    fillColor: fillColor,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusInput),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-            ),
+              const SizedBox(width: AppColors.spaceSM),
+              IconButton(
+                onPressed: _showFilterSheet,
+                icon: const Icon(Icons.filter_list, color: Colors.white),
+                style: IconButton.styleFrom(
+                  backgroundColor: officerColor,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusInput)),
+                  padding: const EdgeInsets.all(12),
+                ),
+              )
+            ],
           ),
-          const SizedBox(width: 12),
-          InkWell(
-            onTap: _showFilterSheet,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.tune, color: Colors.white),
+          const SizedBox(height: AppColors.spaceSM),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (_searchQuery.isNotEmpty || _severityFilter != 'all' || _statusFilter != 'all')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ActionChip(
+                      label: const Text('Reset', style: TextStyle(color: Colors.white)),
+                      backgroundColor: officerColor,
+                      onPressed: () {
+                        setState(() {
+                          _searchQuery = '';
+                          _severityFilter = 'all';
+                          _statusFilter = 'all';
+                        });
+                      },
+                    ),
+                  ),
+                if (_severityFilter != 'all')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Chip(
+                      label: Text(_formatSeverity(_severityFilter), style: TextStyle(color: textColor)),
+                      backgroundColor: fillColor,
+                      side: BorderSide(color: officerColor),
+                      onDeleted: () { setState(() { _severityFilter = 'all'; }); },
+                      deleteIconColor: officerColor,
+                    ),
+                  ),
+                if (_statusFilter != 'all')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Chip(
+                      label: Text(_formatStatus(_statusFilter), style: TextStyle(color: textColor)),
+                      backgroundColor: fillColor,
+                      side: BorderSide(color: officerColor),
+                      onDeleted: () { setState(() { _statusFilter = 'all'; }); },
+                      deleteIconColor: officerColor,
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

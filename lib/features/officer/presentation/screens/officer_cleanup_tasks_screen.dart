@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/officer/providers/officer_cleanup_tasks_provider.dart';
@@ -86,104 +88,93 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
 
   void _showFilterSheet() {
     String tempStatus = _statusFilter;
+    
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
+    final statusOptions = ['all', 'pending', 'in_progress', 'completed'];
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusDialog)),
       ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final inputDecoration = InputDecoration(
-              filled: true,
-              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              isDense: true,
-            );
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.4,
+          minChildSize: 0.3,
+          maxChildSize: 0.6,
+          expand: false,
+          builder: (context, scrollController) {
+            return StatefulBuilder(
+              builder: (ctx, setModalState) {
+                return Padding(
+                  padding: const EdgeInsets.all(AppColors.spaceLG),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: tempStatus,
-                        decoration: inputDecoration.copyWith(labelText: 'Status'),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('All')),
-                          DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                          DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
-                          DropdownMenuItem(value: 'completed', child: Text('Completed')),
-                        ],
-                        onChanged: (value) => setModalState(() => tempStatus = value ?? 'all'),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () {
-                                setModalState(() {
-                                  tempStatus = 'all';
-                                });
-                              },
-                              child: const Text('Reset'),
+                      Text('Filters', style: AppTypography.h4.copyWith(color: textColor)),
+                      const SizedBox(height: AppColors.spaceLG),
+                      Expanded(
+                        child: ListView(
+                          controller: scrollController,
+                          children: [
+                            Text('Status', style: AppTypography.label.copyWith(color: Colors.grey)),
+                            const SizedBox(height: AppColors.spaceSM),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: statusOptions.map((status) {
+                                final isSelected = tempStatus == status;
+                                return ChoiceChip(
+                                  label: Text(_formatStatus(status),
+                                      style: TextStyle(
+                                          color: isSelected ? Colors.white : textColor)),
+                                  selected: isSelected,
+                                  selectedColor: officerColor,
+                                  backgroundColor: fillColor,
+                                  onSelected: (val) {
+                                    if (val) setModalState(() => tempStatus = status);
+                                  },
+                                );
+                              }).toList(),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _statusFilter = tempStatus;
-                                });
-                                Navigator.pop(context);
-                              },
-                              child: const Text('Apply Filters'),
-                            ),
-                          ),
-                        ],
+                            const SizedBox(height: 32),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: AppColors.spaceLG),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _statusFilter = tempStatus;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: officerColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppColors.radiusButton)),
+                          ),
+                          child: Text('Apply Filters',
+                              style: AppTypography.button.copyWith(color: Colors.white)),
+                        ),
+                      )
                     ],
                   ),
-                ),
-              ),
+                );
+              },
             );
           },
         );
@@ -191,22 +182,24 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
     );
   }
 
+  String _formatStatus(String val) {
+    if (val == 'all') return 'All';
+    if (val == 'in_progress') return 'In Progress';
+    if (val == 'completed') return 'Completed';
+    if (val == 'pending') return 'Pending';
+    return val;
+  }
+
   Widget _buildFilters() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final inputDecoration = InputDecoration(
-      filled: true,
-      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      isDense: true,
-    );
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: double.infinity,
@@ -218,10 +211,10 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
               icon: const Icon(Icons.add),
               label: const Text('Create Custom Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
+                backgroundColor: officerColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppColors.radiusButton),
                 ),
                 elevation: 0,
               ),
@@ -232,31 +225,69 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
             children: [
               Expanded(
                 child: TextField(
-                  decoration: inputDecoration.copyWith(
-                    hintText: 'Search tasks...',
-                    prefixIcon: const Icon(Icons.search),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
+                  onChanged: (val) {
+                    setState(() { _searchQuery = val; });
                   },
-                ),
-              ),
-              const SizedBox(width: 12),
-              InkWell(
-                onTap: _showFilterSheet,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor,
-                    borderRadius: BorderRadius.circular(12),
+                  style: AppTypography.body.copyWith(color: textColor),
+                  decoration: InputDecoration(
+                    hintText: 'Search tasks...',
+                    hintStyle: AppTypography.body.copyWith(color: Colors.grey),
+                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                    filled: true,
+                    fillColor: fillColor,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusInput),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
-                  child: const Icon(Icons.tune, color: Colors.white),
                 ),
               ),
+              const SizedBox(width: AppColors.spaceSM),
+              IconButton(
+                onPressed: _showFilterSheet,
+                icon: const Icon(Icons.filter_list, color: Colors.white),
+                style: IconButton.styleFrom(
+                  backgroundColor: officerColor,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusInput)),
+                  padding: const EdgeInsets.all(12),
+                ),
+              )
             ],
+          ),
+          const SizedBox(height: AppColors.spaceSM),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (_searchQuery.isNotEmpty || _statusFilter != 'all')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ActionChip(
+                      label: const Text('Reset', style: TextStyle(color: Colors.white)),
+                      backgroundColor: officerColor,
+                      onPressed: () {
+                        setState(() {
+                          _searchQuery = '';
+                          _statusFilter = 'all';
+                        });
+                      },
+                    ),
+                  ),
+                if (_statusFilter != 'all')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Chip(
+                      label: Text(_formatStatus(_statusFilter), style: TextStyle(color: textColor)),
+                      backgroundColor: fillColor,
+                      side: BorderSide(color: officerColor),
+                      onDeleted: () { setState(() { _statusFilter = 'all'; }); },
+                      deleteIconColor: officerColor,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

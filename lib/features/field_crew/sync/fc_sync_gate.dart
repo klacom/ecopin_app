@@ -1,4 +1,4 @@
-﻿import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_photo_repository.dart';
 import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_repository.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
@@ -26,12 +26,14 @@ extension FcNetworkTypeLabel on FcNetworkType {
 class FcPendingSummary {
   final int mutationCount;
   final int photoCount;
+  final int failedPhotoCount;
   final int pendingDeleteCount;
   final int estimatedBytes;
 
   const FcPendingSummary({
     required this.mutationCount,
     required this.photoCount,
+    required this.failedPhotoCount,
     required this.pendingDeleteCount,
     required this.estimatedBytes,
   });
@@ -52,8 +54,12 @@ class FcPendingSummary {
     if (mutationCount > 0) {
       parts.add('$mutationCount ${mutationCount == 1 ? "change" : "changes"}');
     }
-    if (photoCount > 0) {
-      parts.add('$photoCount ${photoCount == 1 ? "photo" : "photos"}');
+    final activePhotos = photoCount - failedPhotoCount;
+    if (activePhotos > 0) {
+      parts.add('$activePhotos ${activePhotos == 1 ? "photo" : "photos"}');
+    }
+    if (failedPhotoCount > 0) {
+      parts.add('$failedPhotoCount failed');
     }
     final size = formattedSize;
     if (size.isNotEmpty) parts.add(size);
@@ -179,14 +185,17 @@ class FcSyncGate {
     final pendingUploads = await _photoRepo.getPendingUploads();
     final pendingDeletes = await _photoRepo.getPendingDeletes();
 
-    final estimatedBytes = pendingUploads.fold<int>(
-      0,
-      (sum, p) => sum + p.fileSize,
-    );
+    int estimatedBytes = 0;
+    int failedPhotos = 0;
+    for (final p in pendingUploads) {
+      estimatedBytes += p.fileSize;
+      if (p.retryCount >= 5) failedPhotos++;
+    }
 
     return FcPendingSummary(
       mutationCount:    mutations.length,
       photoCount:       pendingUploads.length,
+      failedPhotoCount: failedPhotos,
       pendingDeleteCount: pendingDeletes.length,
       estimatedBytes:   estimatedBytes,
     );

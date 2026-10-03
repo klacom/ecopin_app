@@ -110,6 +110,8 @@ class FcTaskFilterBar extends StatelessWidget {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
       backgroundColor: AppColors.backgroundDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusDialog)),

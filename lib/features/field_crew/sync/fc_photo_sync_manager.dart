@@ -80,6 +80,12 @@ class FcPhotoSyncManager {
   /// Must be called once at app startup.
   Future<void> recoverInFlight() => _photoRepo.recoverInFlightPhotos();
 
+  /// Resets the retry count for all failed photos so they can be attempted again.
+  Future<void> resetFailedPhotos() async {
+    await _photoRepo.resetFailedPhotoRetries();
+    _log.info('Reset retry counts for all failed photos.');
+  }
+
   /// Runs both upload and delete passes.
   Future<FcPhotoSyncRunResult> sync() async {
     int uploadAttempted = 0, uploadSucceeded = 0, uploadFailed = 0;
@@ -144,7 +150,7 @@ class FcPhotoSyncManager {
       final fileName = photo.localPath.split('/').last;
       final formData = FormData.fromMap({
         'photo_type': photo.photoType,
-        'file': await MultipartFile.fromFile(
+        'image': await MultipartFile.fromFile(
           photo.localPath,
           filename: fileName,
         ),
@@ -186,27 +192,27 @@ class FcPhotoSyncManager {
         '→ $remoteUrl',
       );
       return true;
-    } on DioException catch (e) {
+    } on DioException catch (e, st) {
       final isPermanent = _isPermanentError(e);
-      final msg = 'HTTP ${e.response?.statusCode}: ${e.message}';
+      final msg = 'HTTP ${e.response?.statusCode}: ${e.message} | Data: ${e.response?.data}';
 
       if (isPermanent) {
         // Exhaust retry count so this photo is never retried.
         for (int i = photo.retryCount; i < _kMaxRetries; i++) {
           await _photoRepo.markFailed(photo.localPhotoId, 'permanent: $msg');
         }
-        _log.warning('Permanent upload failure for ${photo.localPhotoId}: $msg');
+        _log.warning('Permanent upload failure for ${photo.localPhotoId}: $msg\n$st');
       } else {
         await _photoRepo.markFailed(photo.localPhotoId, msg);
         _log.warning(
           'Transient upload failure for ${photo.localPhotoId} '
-          '(retry ${photo.retryCount + 1}/$_kMaxRetries): $msg',
+          '(retry ${photo.retryCount + 1}/$_kMaxRetries): $msg\n$st',
         );
       }
       return false;
-    } catch (e) {
+    } catch (e, st) {
       await _photoRepo.markFailed(photo.localPhotoId, e.toString());
-      _log.severe('Unexpected upload error for ${photo.localPhotoId}', e);
+      _log.severe('Unexpected upload error for ${photo.localPhotoId}', e, st);
       return false;
     }
   }

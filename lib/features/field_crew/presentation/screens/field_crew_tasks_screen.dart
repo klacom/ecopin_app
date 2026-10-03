@@ -28,22 +28,23 @@ class _FieldCrewTasksScreenState extends ConsumerState<FieldCrewTasksScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(AppColors.spaceLG),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Cleanup Tasks',
-                    style: AppTypography.display
-                        .copyWith(color: AppColors.textPrimaryDark),
-                  ),
-                  const SizedBox(height: AppColors.spaceMD),
-                  FcTaskFilterBar(
-                    searchQuery: _searchQuery,
+      appBar: AppBar(
+        backgroundColor: AppColors.backgroundDark,
+        elevation: 0,
+        title: Text(
+          'Cleanup Tasks',
+          style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark),
+        ),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppColors.spaceLG,
+              vertical: AppColors.spaceMD,
+            ),
+            child: FcTaskFilterBar(
+              searchQuery: _searchQuery,
                     onSearchChanged: (val) {
                       setState(() => _searchQuery = val);
                     },
@@ -63,10 +64,8 @@ class _FieldCrewTasksScreenState extends ConsumerState<FieldCrewTasksScreen> {
                       });
                     },
                   ),
-                ],
-              ),
-            ),
-            Expanded(
+          ),
+          Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
                   ref.invalidate(allCleanupTasksProvider);
@@ -135,7 +134,6 @@ class _FieldCrewTasksScreenState extends ConsumerState<FieldCrewTasksScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 

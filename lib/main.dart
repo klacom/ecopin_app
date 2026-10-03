@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:ecopin_app/shared/notifications/services/notification_service.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_notifier.dart';
@@ -70,9 +70,8 @@ Future<void> main() async {
   ]);
 
   // ── Phase 7: Offline package crash recovery ────────────────────────────────
-  // If a download was interrupted mid-flight, reset to idle so the user
-  // can retry from the Prepare Offline screen rather than seeing a stuck state.
-  container.read(fcOfflinePackageNotifierProvider.notifier).reset();
+  // Note: Crash recovery is now handled gracefully inside FcOfflinePackageNotifier._initFromPrefs().
+  // Only completed packages are persisted, so mid-flight interruptions naturally revert to idle.
 
   // Start the connectivity-driven sync trigger (periodic + on-reconnect).
   container.read(fcSyncTriggerProvider).start();

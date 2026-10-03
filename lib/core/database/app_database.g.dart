@@ -2149,6 +2149,17 @@ class $FcCachedTasksTable extends FcCachedTasks
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _addressMeta = const VerificationMeta(
+    'address',
+  );
+  @override
+  late final GeneratedColumn<String> address = GeneratedColumn<String>(
+    'address',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _localSyncStateMeta = const VerificationMeta(
     'localSyncState',
   );
@@ -2189,6 +2200,7 @@ class $FcCachedTasksTable extends FcCachedTasks
   List<GeneratedColumn> get $columns => [
     id,
     jsonData,
+    address,
     localSyncState,
     serverUpdatedAt,
     cachedAt,
@@ -2217,6 +2229,12 @@ class $FcCachedTasksTable extends FcCachedTasks
       );
     } else if (isInserting) {
       context.missing(_jsonDataMeta);
+    }
+    if (data.containsKey('address')) {
+      context.handle(
+        _addressMeta,
+        address.isAcceptableOrUnknown(data['address']!, _addressMeta),
+      );
     }
     if (data.containsKey('local_sync_state')) {
       context.handle(
@@ -2261,6 +2279,10 @@ class $FcCachedTasksTable extends FcCachedTasks
         DriftSqlType.string,
         data['${effectivePrefix}json_data'],
       )!,
+      address: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address'],
+      ),
       localSyncState: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}local_sync_state'],
@@ -2285,12 +2307,14 @@ class $FcCachedTasksTable extends FcCachedTasks
 class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
   final String id;
   final String jsonData;
+  final String? address;
   final int localSyncState;
   final DateTime serverUpdatedAt;
   final DateTime cachedAt;
   const FcCachedTask({
     required this.id,
     required this.jsonData,
+    this.address,
     required this.localSyncState,
     required this.serverUpdatedAt,
     required this.cachedAt,
@@ -2300,6 +2324,9 @@ class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['json_data'] = Variable<String>(jsonData);
+    if (!nullToAbsent || address != null) {
+      map['address'] = Variable<String>(address);
+    }
     map['local_sync_state'] = Variable<int>(localSyncState);
     map['server_updated_at'] = Variable<DateTime>(serverUpdatedAt);
     map['cached_at'] = Variable<DateTime>(cachedAt);
@@ -2310,6 +2337,9 @@ class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
     return FcCachedTasksCompanion(
       id: Value(id),
       jsonData: Value(jsonData),
+      address: address == null && nullToAbsent
+          ? const Value.absent()
+          : Value(address),
       localSyncState: Value(localSyncState),
       serverUpdatedAt: Value(serverUpdatedAt),
       cachedAt: Value(cachedAt),
@@ -2324,6 +2354,7 @@ class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
     return FcCachedTask(
       id: serializer.fromJson<String>(json['id']),
       jsonData: serializer.fromJson<String>(json['jsonData']),
+      address: serializer.fromJson<String?>(json['address']),
       localSyncState: serializer.fromJson<int>(json['localSyncState']),
       serverUpdatedAt: serializer.fromJson<DateTime>(json['serverUpdatedAt']),
       cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
@@ -2335,6 +2366,7 @@ class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'jsonData': serializer.toJson<String>(jsonData),
+      'address': serializer.toJson<String?>(address),
       'localSyncState': serializer.toJson<int>(localSyncState),
       'serverUpdatedAt': serializer.toJson<DateTime>(serverUpdatedAt),
       'cachedAt': serializer.toJson<DateTime>(cachedAt),
@@ -2344,12 +2376,14 @@ class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
   FcCachedTask copyWith({
     String? id,
     String? jsonData,
+    Value<String?> address = const Value.absent(),
     int? localSyncState,
     DateTime? serverUpdatedAt,
     DateTime? cachedAt,
   }) => FcCachedTask(
     id: id ?? this.id,
     jsonData: jsonData ?? this.jsonData,
+    address: address.present ? address.value : this.address,
     localSyncState: localSyncState ?? this.localSyncState,
     serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
     cachedAt: cachedAt ?? this.cachedAt,
@@ -2358,6 +2392,7 @@ class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
     return FcCachedTask(
       id: data.id.present ? data.id.value : this.id,
       jsonData: data.jsonData.present ? data.jsonData.value : this.jsonData,
+      address: data.address.present ? data.address.value : this.address,
       localSyncState: data.localSyncState.present
           ? data.localSyncState.value
           : this.localSyncState,
@@ -2373,6 +2408,7 @@ class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
     return (StringBuffer('FcCachedTask(')
           ..write('id: $id, ')
           ..write('jsonData: $jsonData, ')
+          ..write('address: $address, ')
           ..write('localSyncState: $localSyncState, ')
           ..write('serverUpdatedAt: $serverUpdatedAt, ')
           ..write('cachedAt: $cachedAt')
@@ -2381,14 +2417,21 @@ class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, jsonData, localSyncState, serverUpdatedAt, cachedAt);
+  int get hashCode => Object.hash(
+    id,
+    jsonData,
+    address,
+    localSyncState,
+    serverUpdatedAt,
+    cachedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is FcCachedTask &&
           other.id == this.id &&
           other.jsonData == this.jsonData &&
+          other.address == this.address &&
           other.localSyncState == this.localSyncState &&
           other.serverUpdatedAt == this.serverUpdatedAt &&
           other.cachedAt == this.cachedAt);
@@ -2397,6 +2440,7 @@ class FcCachedTask extends DataClass implements Insertable<FcCachedTask> {
 class FcCachedTasksCompanion extends UpdateCompanion<FcCachedTask> {
   final Value<String> id;
   final Value<String> jsonData;
+  final Value<String?> address;
   final Value<int> localSyncState;
   final Value<DateTime> serverUpdatedAt;
   final Value<DateTime> cachedAt;
@@ -2404,6 +2448,7 @@ class FcCachedTasksCompanion extends UpdateCompanion<FcCachedTask> {
   const FcCachedTasksCompanion({
     this.id = const Value.absent(),
     this.jsonData = const Value.absent(),
+    this.address = const Value.absent(),
     this.localSyncState = const Value.absent(),
     this.serverUpdatedAt = const Value.absent(),
     this.cachedAt = const Value.absent(),
@@ -2412,6 +2457,7 @@ class FcCachedTasksCompanion extends UpdateCompanion<FcCachedTask> {
   FcCachedTasksCompanion.insert({
     required String id,
     required String jsonData,
+    this.address = const Value.absent(),
     this.localSyncState = const Value.absent(),
     required DateTime serverUpdatedAt,
     this.cachedAt = const Value.absent(),
@@ -2422,6 +2468,7 @@ class FcCachedTasksCompanion extends UpdateCompanion<FcCachedTask> {
   static Insertable<FcCachedTask> custom({
     Expression<String>? id,
     Expression<String>? jsonData,
+    Expression<String>? address,
     Expression<int>? localSyncState,
     Expression<DateTime>? serverUpdatedAt,
     Expression<DateTime>? cachedAt,
@@ -2430,6 +2477,7 @@ class FcCachedTasksCompanion extends UpdateCompanion<FcCachedTask> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (jsonData != null) 'json_data': jsonData,
+      if (address != null) 'address': address,
       if (localSyncState != null) 'local_sync_state': localSyncState,
       if (serverUpdatedAt != null) 'server_updated_at': serverUpdatedAt,
       if (cachedAt != null) 'cached_at': cachedAt,
@@ -2440,6 +2488,7 @@ class FcCachedTasksCompanion extends UpdateCompanion<FcCachedTask> {
   FcCachedTasksCompanion copyWith({
     Value<String>? id,
     Value<String>? jsonData,
+    Value<String?>? address,
     Value<int>? localSyncState,
     Value<DateTime>? serverUpdatedAt,
     Value<DateTime>? cachedAt,
@@ -2448,6 +2497,7 @@ class FcCachedTasksCompanion extends UpdateCompanion<FcCachedTask> {
     return FcCachedTasksCompanion(
       id: id ?? this.id,
       jsonData: jsonData ?? this.jsonData,
+      address: address ?? this.address,
       localSyncState: localSyncState ?? this.localSyncState,
       serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
       cachedAt: cachedAt ?? this.cachedAt,
@@ -2463,6 +2513,9 @@ class FcCachedTasksCompanion extends UpdateCompanion<FcCachedTask> {
     }
     if (jsonData.present) {
       map['json_data'] = Variable<String>(jsonData.value);
+    }
+    if (address.present) {
+      map['address'] = Variable<String>(address.value);
     }
     if (localSyncState.present) {
       map['local_sync_state'] = Variable<int>(localSyncState.value);
@@ -2484,6 +2537,7 @@ class FcCachedTasksCompanion extends UpdateCompanion<FcCachedTask> {
     return (StringBuffer('FcCachedTasksCompanion(')
           ..write('id: $id, ')
           ..write('jsonData: $jsonData, ')
+          ..write('address: $address, ')
           ..write('localSyncState: $localSyncState, ')
           ..write('serverUpdatedAt: $serverUpdatedAt, ')
           ..write('cachedAt: $cachedAt, ')
@@ -5355,6 +5409,636 @@ class FcLocalPhotosCompanion extends UpdateCompanion<FcLocalPhoto> {
   }
 }
 
+class $FcCachedRoutesTable extends FcCachedRoutes
+    with TableInfo<$FcCachedRoutesTable, FcCachedRoute> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FcCachedRoutesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _jsonDataMeta = const VerificationMeta(
+    'jsonData',
+  );
+  @override
+  late final GeneratedColumn<String> jsonData = GeneratedColumn<String>(
+    'json_data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, jsonData, cachedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'fc_cached_routes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FcCachedRoute> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('json_data')) {
+      context.handle(
+        _jsonDataMeta,
+        jsonData.isAcceptableOrUnknown(data['json_data']!, _jsonDataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_jsonDataMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FcCachedRoute map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FcCachedRoute(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      jsonData: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}json_data'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FcCachedRoutesTable createAlias(String alias) {
+    return $FcCachedRoutesTable(attachedDatabase, alias);
+  }
+}
+
+class FcCachedRoute extends DataClass implements Insertable<FcCachedRoute> {
+  final String id;
+  final String jsonData;
+  final DateTime cachedAt;
+  const FcCachedRoute({
+    required this.id,
+    required this.jsonData,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['json_data'] = Variable<String>(jsonData);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  FcCachedRoutesCompanion toCompanion(bool nullToAbsent) {
+    return FcCachedRoutesCompanion(
+      id: Value(id),
+      jsonData: Value(jsonData),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory FcCachedRoute.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FcCachedRoute(
+      id: serializer.fromJson<String>(json['id']),
+      jsonData: serializer.fromJson<String>(json['jsonData']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'jsonData': serializer.toJson<String>(jsonData),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  FcCachedRoute copyWith({String? id, String? jsonData, DateTime? cachedAt}) =>
+      FcCachedRoute(
+        id: id ?? this.id,
+        jsonData: jsonData ?? this.jsonData,
+        cachedAt: cachedAt ?? this.cachedAt,
+      );
+  FcCachedRoute copyWithCompanion(FcCachedRoutesCompanion data) {
+    return FcCachedRoute(
+      id: data.id.present ? data.id.value : this.id,
+      jsonData: data.jsonData.present ? data.jsonData.value : this.jsonData,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FcCachedRoute(')
+          ..write('id: $id, ')
+          ..write('jsonData: $jsonData, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, jsonData, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FcCachedRoute &&
+          other.id == this.id &&
+          other.jsonData == this.jsonData &&
+          other.cachedAt == this.cachedAt);
+}
+
+class FcCachedRoutesCompanion extends UpdateCompanion<FcCachedRoute> {
+  final Value<String> id;
+  final Value<String> jsonData;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const FcCachedRoutesCompanion({
+    this.id = const Value.absent(),
+    this.jsonData = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FcCachedRoutesCompanion.insert({
+    required String id,
+    required String jsonData,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       jsonData = Value(jsonData);
+  static Insertable<FcCachedRoute> custom({
+    Expression<String>? id,
+    Expression<String>? jsonData,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (jsonData != null) 'json_data': jsonData,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FcCachedRoutesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? jsonData,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return FcCachedRoutesCompanion(
+      id: id ?? this.id,
+      jsonData: jsonData ?? this.jsonData,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (jsonData.present) {
+      map['json_data'] = Variable<String>(jsonData.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FcCachedRoutesCompanion(')
+          ..write('id: $id, ')
+          ..write('jsonData: $jsonData, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FcCachedAddressesTable extends FcCachedAddresses
+    with TableInfo<$FcCachedAddressesTable, FcCachedAddress> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FcCachedAddressesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _placeIdMeta = const VerificationMeta(
+    'placeId',
+  );
+  @override
+  late final GeneratedColumn<String> placeId = GeneratedColumn<String>(
+    'place_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    placeId,
+    displayName,
+    latitude,
+    longitude,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'fc_cached_addresses';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FcCachedAddress> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('place_id')) {
+      context.handle(
+        _placeIdMeta,
+        placeId.isAcceptableOrUnknown(data['place_id']!, _placeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_placeIdMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_latitudeMeta);
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_longitudeMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {placeId};
+  @override
+  FcCachedAddress map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FcCachedAddress(
+      placeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}place_id'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      )!,
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FcCachedAddressesTable createAlias(String alias) {
+    return $FcCachedAddressesTable(attachedDatabase, alias);
+  }
+}
+
+class FcCachedAddress extends DataClass implements Insertable<FcCachedAddress> {
+  final String placeId;
+  final String displayName;
+  final double latitude;
+  final double longitude;
+  final DateTime cachedAt;
+  const FcCachedAddress({
+    required this.placeId,
+    required this.displayName,
+    required this.latitude,
+    required this.longitude,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['place_id'] = Variable<String>(placeId);
+    map['display_name'] = Variable<String>(displayName);
+    map['latitude'] = Variable<double>(latitude);
+    map['longitude'] = Variable<double>(longitude);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  FcCachedAddressesCompanion toCompanion(bool nullToAbsent) {
+    return FcCachedAddressesCompanion(
+      placeId: Value(placeId),
+      displayName: Value(displayName),
+      latitude: Value(latitude),
+      longitude: Value(longitude),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory FcCachedAddress.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FcCachedAddress(
+      placeId: serializer.fromJson<String>(json['placeId']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      latitude: serializer.fromJson<double>(json['latitude']),
+      longitude: serializer.fromJson<double>(json['longitude']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'placeId': serializer.toJson<String>(placeId),
+      'displayName': serializer.toJson<String>(displayName),
+      'latitude': serializer.toJson<double>(latitude),
+      'longitude': serializer.toJson<double>(longitude),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  FcCachedAddress copyWith({
+    String? placeId,
+    String? displayName,
+    double? latitude,
+    double? longitude,
+    DateTime? cachedAt,
+  }) => FcCachedAddress(
+    placeId: placeId ?? this.placeId,
+    displayName: displayName ?? this.displayName,
+    latitude: latitude ?? this.latitude,
+    longitude: longitude ?? this.longitude,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  FcCachedAddress copyWithCompanion(FcCachedAddressesCompanion data) {
+    return FcCachedAddress(
+      placeId: data.placeId.present ? data.placeId.value : this.placeId,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FcCachedAddress(')
+          ..write('placeId: $placeId, ')
+          ..write('displayName: $displayName, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(placeId, displayName, latitude, longitude, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FcCachedAddress &&
+          other.placeId == this.placeId &&
+          other.displayName == this.displayName &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
+          other.cachedAt == this.cachedAt);
+}
+
+class FcCachedAddressesCompanion extends UpdateCompanion<FcCachedAddress> {
+  final Value<String> placeId;
+  final Value<String> displayName;
+  final Value<double> latitude;
+  final Value<double> longitude;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const FcCachedAddressesCompanion({
+    this.placeId = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FcCachedAddressesCompanion.insert({
+    required String placeId,
+    required String displayName,
+    required double latitude,
+    required double longitude,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : placeId = Value(placeId),
+       displayName = Value(displayName),
+       latitude = Value(latitude),
+       longitude = Value(longitude);
+  static Insertable<FcCachedAddress> custom({
+    Expression<String>? placeId,
+    Expression<String>? displayName,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (placeId != null) 'place_id': placeId,
+      if (displayName != null) 'display_name': displayName,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FcCachedAddressesCompanion copyWith({
+    Value<String>? placeId,
+    Value<String>? displayName,
+    Value<double>? latitude,
+    Value<double>? longitude,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return FcCachedAddressesCompanion(
+      placeId: placeId ?? this.placeId,
+      displayName: displayName ?? this.displayName,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (placeId.present) {
+      map['place_id'] = Variable<String>(placeId.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FcCachedAddressesCompanion(')
+          ..write('placeId: $placeId, ')
+          ..write('displayName: $displayName, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5374,6 +6058,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FcSyncCursorsTable fcSyncCursors = $FcSyncCursorsTable(this);
   late final $FcOutboxItemsTable fcOutboxItems = $FcOutboxItemsTable(this);
   late final $FcLocalPhotosTable fcLocalPhotos = $FcLocalPhotosTable(this);
+  late final $FcCachedRoutesTable fcCachedRoutes = $FcCachedRoutesTable(this);
+  late final $FcCachedAddressesTable fcCachedAddresses =
+      $FcCachedAddressesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5390,6 +6077,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     fcSyncCursors,
     fcOutboxItems,
     fcLocalPhotos,
+    fcCachedRoutes,
+    fcCachedAddresses,
   ];
 }
 
@@ -6515,6 +7204,7 @@ typedef $$FcCachedTasksTableCreateCompanionBuilder =
     FcCachedTasksCompanion Function({
       required String id,
       required String jsonData,
+      Value<String?> address,
       Value<int> localSyncState,
       required DateTime serverUpdatedAt,
       Value<DateTime> cachedAt,
@@ -6524,6 +7214,7 @@ typedef $$FcCachedTasksTableUpdateCompanionBuilder =
     FcCachedTasksCompanion Function({
       Value<String> id,
       Value<String> jsonData,
+      Value<String?> address,
       Value<int> localSyncState,
       Value<DateTime> serverUpdatedAt,
       Value<DateTime> cachedAt,
@@ -6546,6 +7237,11 @@ class $$FcCachedTasksTableFilterComposer
 
   ColumnFilters<String> get jsonData => $composableBuilder(
     column: $table.jsonData,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get address => $composableBuilder(
+    column: $table.address,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6584,6 +7280,11 @@ class $$FcCachedTasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get localSyncState => $composableBuilder(
     column: $table.localSyncState,
     builder: (column) => ColumnOrderings(column),
@@ -6614,6 +7315,9 @@ class $$FcCachedTasksTableAnnotationComposer
 
   GeneratedColumn<String> get jsonData =>
       $composableBuilder(column: $table.jsonData, builder: (column) => column);
+
+  GeneratedColumn<String> get address =>
+      $composableBuilder(column: $table.address, builder: (column) => column);
 
   GeneratedColumn<int> get localSyncState => $composableBuilder(
     column: $table.localSyncState,
@@ -6662,6 +7366,7 @@ class $$FcCachedTasksTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> jsonData = const Value.absent(),
+                Value<String?> address = const Value.absent(),
                 Value<int> localSyncState = const Value.absent(),
                 Value<DateTime> serverUpdatedAt = const Value.absent(),
                 Value<DateTime> cachedAt = const Value.absent(),
@@ -6669,6 +7374,7 @@ class $$FcCachedTasksTableTableManager
               }) => FcCachedTasksCompanion(
                 id: id,
                 jsonData: jsonData,
+                address: address,
                 localSyncState: localSyncState,
                 serverUpdatedAt: serverUpdatedAt,
                 cachedAt: cachedAt,
@@ -6678,6 +7384,7 @@ class $$FcCachedTasksTableTableManager
               ({
                 required String id,
                 required String jsonData,
+                Value<String?> address = const Value.absent(),
                 Value<int> localSyncState = const Value.absent(),
                 required DateTime serverUpdatedAt,
                 Value<DateTime> cachedAt = const Value.absent(),
@@ -6685,6 +7392,7 @@ class $$FcCachedTasksTableTableManager
               }) => FcCachedTasksCompanion.insert(
                 id: id,
                 jsonData: jsonData,
+                address: address,
                 localSyncState: localSyncState,
                 serverUpdatedAt: serverUpdatedAt,
                 cachedAt: cachedAt,
@@ -8288,6 +8996,399 @@ typedef $$FcLocalPhotosTableProcessedTableManager =
       FcLocalPhoto,
       PrefetchHooks Function()
     >;
+typedef $$FcCachedRoutesTableCreateCompanionBuilder =
+    FcCachedRoutesCompanion Function({
+      required String id,
+      required String jsonData,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$FcCachedRoutesTableUpdateCompanionBuilder =
+    FcCachedRoutesCompanion Function({
+      Value<String> id,
+      Value<String> jsonData,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$FcCachedRoutesTableFilterComposer
+    extends Composer<_$AppDatabase, $FcCachedRoutesTable> {
+  $$FcCachedRoutesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get jsonData => $composableBuilder(
+    column: $table.jsonData,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FcCachedRoutesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FcCachedRoutesTable> {
+  $$FcCachedRoutesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get jsonData => $composableBuilder(
+    column: $table.jsonData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FcCachedRoutesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FcCachedRoutesTable> {
+  $$FcCachedRoutesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get jsonData =>
+      $composableBuilder(column: $table.jsonData, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$FcCachedRoutesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FcCachedRoutesTable,
+          FcCachedRoute,
+          $$FcCachedRoutesTableFilterComposer,
+          $$FcCachedRoutesTableOrderingComposer,
+          $$FcCachedRoutesTableAnnotationComposer,
+          $$FcCachedRoutesTableCreateCompanionBuilder,
+          $$FcCachedRoutesTableUpdateCompanionBuilder,
+          (
+            FcCachedRoute,
+            BaseReferences<_$AppDatabase, $FcCachedRoutesTable, FcCachedRoute>,
+          ),
+          FcCachedRoute,
+          PrefetchHooks Function()
+        > {
+  $$FcCachedRoutesTableTableManager(
+    _$AppDatabase db,
+    $FcCachedRoutesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FcCachedRoutesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FcCachedRoutesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FcCachedRoutesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> jsonData = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FcCachedRoutesCompanion(
+                id: id,
+                jsonData: jsonData,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String jsonData,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FcCachedRoutesCompanion.insert(
+                id: id,
+                jsonData: jsonData,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FcCachedRoutesTable, FcCachedRoute>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $FcCachedRoutesTable,
+                    FcCachedRoute
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FcCachedRoutesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FcCachedRoutesTable,
+      FcCachedRoute,
+      $$FcCachedRoutesTableFilterComposer,
+      $$FcCachedRoutesTableOrderingComposer,
+      $$FcCachedRoutesTableAnnotationComposer,
+      $$FcCachedRoutesTableCreateCompanionBuilder,
+      $$FcCachedRoutesTableUpdateCompanionBuilder,
+      (
+        FcCachedRoute,
+        BaseReferences<_$AppDatabase, $FcCachedRoutesTable, FcCachedRoute>,
+      ),
+      FcCachedRoute,
+      PrefetchHooks Function()
+    >;
+typedef $$FcCachedAddressesTableCreateCompanionBuilder =
+    FcCachedAddressesCompanion Function({
+      required String placeId,
+      required String displayName,
+      required double latitude,
+      required double longitude,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$FcCachedAddressesTableUpdateCompanionBuilder =
+    FcCachedAddressesCompanion Function({
+      Value<String> placeId,
+      Value<String> displayName,
+      Value<double> latitude,
+      Value<double> longitude,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$FcCachedAddressesTableFilterComposer
+    extends Composer<_$AppDatabase, $FcCachedAddressesTable> {
+  $$FcCachedAddressesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get placeId => $composableBuilder(
+    column: $table.placeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FcCachedAddressesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FcCachedAddressesTable> {
+  $$FcCachedAddressesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get placeId => $composableBuilder(
+    column: $table.placeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FcCachedAddressesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FcCachedAddressesTable> {
+  $$FcCachedAddressesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get placeId =>
+      $composableBuilder(column: $table.placeId, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$FcCachedAddressesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FcCachedAddressesTable,
+          FcCachedAddress,
+          $$FcCachedAddressesTableFilterComposer,
+          $$FcCachedAddressesTableOrderingComposer,
+          $$FcCachedAddressesTableAnnotationComposer,
+          $$FcCachedAddressesTableCreateCompanionBuilder,
+          $$FcCachedAddressesTableUpdateCompanionBuilder,
+          (
+            FcCachedAddress,
+            BaseReferences<
+              _$AppDatabase,
+              $FcCachedAddressesTable,
+              FcCachedAddress
+            >,
+          ),
+          FcCachedAddress,
+          PrefetchHooks Function()
+        > {
+  $$FcCachedAddressesTableTableManager(
+    _$AppDatabase db,
+    $FcCachedAddressesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FcCachedAddressesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FcCachedAddressesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FcCachedAddressesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> placeId = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<double> latitude = const Value.absent(),
+                Value<double> longitude = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FcCachedAddressesCompanion(
+                placeId: placeId,
+                displayName: displayName,
+                latitude: latitude,
+                longitude: longitude,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String placeId,
+                required String displayName,
+                required double latitude,
+                required double longitude,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FcCachedAddressesCompanion.insert(
+                placeId: placeId,
+                displayName: displayName,
+                latitude: latitude,
+                longitude: longitude,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FcCachedAddressesTable, FcCachedAddress>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $FcCachedAddressesTable,
+                    FcCachedAddress
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FcCachedAddressesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FcCachedAddressesTable,
+      FcCachedAddress,
+      $$FcCachedAddressesTableFilterComposer,
+      $$FcCachedAddressesTableOrderingComposer,
+      $$FcCachedAddressesTableAnnotationComposer,
+      $$FcCachedAddressesTableCreateCompanionBuilder,
+      $$FcCachedAddressesTableUpdateCompanionBuilder,
+      (
+        FcCachedAddress,
+        BaseReferences<_$AppDatabase, $FcCachedAddressesTable, FcCachedAddress>,
+      ),
+      FcCachedAddress,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8314,4 +9415,8 @@ class $AppDatabaseManager {
       $$FcOutboxItemsTableTableManager(_db, _db.fcOutboxItems);
   $$FcLocalPhotosTableTableManager get fcLocalPhotos =>
       $$FcLocalPhotosTableTableManager(_db, _db.fcLocalPhotos);
+  $$FcCachedRoutesTableTableManager get fcCachedRoutes =>
+      $$FcCachedRoutesTableTableManager(_db, _db.fcCachedRoutes);
+  $$FcCachedAddressesTableTableManager get fcCachedAddresses =>
+      $$FcCachedAddressesTableTableManager(_db, _db.fcCachedAddresses);
 }

@@ -1,4 +1,4 @@
-﻿// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // fc_offline_package.dart
 //
 // Data model for the Field Crew Offline Work Package.
@@ -143,6 +143,7 @@ abstract class FcOfflineStepLabel {
   static const String evidence   = 'Citizen evidence metadata';
   static const String notes      = 'Field notes';
   static const String issueTypes = 'Reference data';
+  static const String routes     = 'Active routes';
 }
 
 /// Constructs the initial (all pending) steps list.
@@ -152,4 +153,5 @@ List<FcDownloadStep> buildInitialSteps() => [
       const FcDownloadStep(label: FcOfflineStepLabel.evidence),
       const FcDownloadStep(label: FcOfflineStepLabel.notes),
       const FcDownloadStep(label: FcOfflineStepLabel.issueTypes),
+      const FcDownloadStep(label: FcOfflineStepLabel.routes),
     ];

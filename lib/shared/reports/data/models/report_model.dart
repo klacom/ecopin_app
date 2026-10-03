@@ -30,6 +30,7 @@ class ReportModel {
   final int? severityScore;
   final String? severityLevel;
   final Map<String, dynamic>? severityFactors;
+  final String? lifecycleStage;
 
   ReportModel({
     required this.id,
@@ -59,6 +60,7 @@ class ReportModel {
     this.severityScore,
     this.severityLevel,
     this.severityFactors,
+    this.lifecycleStage,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -147,6 +149,7 @@ class ReportModel {
       severityScore: json['severity_score'] as int?,
       severityLevel: json['severity_level']?.toString(),
       severityFactors: json['severity_factors'] as Map<String, dynamic>?,
+      lifecycleStage: json['lifecycle_stage']?.toString(),
     );
   }
 
@@ -172,6 +175,7 @@ class ReportModel {
       'severity_score': severityScore,
       'severity_level': severityLevel,
       'severity_factors': severityFactors,
+      'lifecycle_stage': lifecycleStage,
     };
   }
 }

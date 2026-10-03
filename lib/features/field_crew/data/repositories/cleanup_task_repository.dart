@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:dio/dio.dart';
+import 'package:dio/dio.dart' as dio;
 import 'package:ecopin_app/core/constants/api_constants.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -8,6 +8,7 @@ import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.da
 import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_photo_repository.dart';
 import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_repository.dart';
 import 'package:logging/logging.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CleanupTaskRepository {
   final ApiClient _apiClient;
@@ -24,12 +25,12 @@ class CleanupTaskRepository {
   );
 
   bool _isNetworkError(Object e) {
-    if (e is DioException) {
-      return e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.sendTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.unknown;
+    if (e is dio.DioException) {
+      return e.type == dio.DioExceptionType.connectionTimeout ||
+          e.type == dio.DioExceptionType.sendTimeout ||
+          e.type == dio.DioExceptionType.receiveTimeout ||
+          e.type == dio.DioExceptionType.connectionError ||
+          e.type == dio.DioExceptionType.unknown;
     }
     return e is SocketException;
   }
@@ -57,20 +58,37 @@ class CleanupTaskRepository {
   }
 
   Future<List<CleanupTask>> fetchMyTasks() async {
+    log.info('fetchMyTasks() called. Attempting network fetch...');
     try {
       final response = await _apiClient.dioClient
-          .get('${ApiConstants.cleanupTasks}?assignedToMe=true');
+          .get('${ApiConstants.cleanupTasks}?assigned_to_me=true');
       final List<dynamic> data = response.data;
       final tasks = data.map((json) => CleanupTask.fromJson(json)).toList();
       await _cacheService.cacheTasks(tasks);
       await _local.saveTasks(tasks);
+      log.info('Successfully fetched ${tasks.length} tasks from API (Online Mode). Cached locally.');
       return tasks;
     } catch (e) {
       log.severe('Failed to fetch my tasks, loading from cache', e);
       final cached = await _local.getCachedTasks();
-      if (cached.isNotEmpty) return cached;
+      if (cached.isNotEmpty) {
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        if (currentUserId != null) {
+          final userTasks = cached.where((task) => task.assignedCrewIds.contains(currentUserId)).toList();
+          log.info('Loaded ${userTasks.length} tasks for current user from Drift Local DB (Offline Mode).');
+          return userTasks;
+        }
+        log.info('Loaded ${cached.length} tasks from Drift Local DB (Offline Mode - No User ID).');
+        return cached;
+      }
       final legacy = await _cacheService.getCachedTasks();
-      if (legacy.isNotEmpty) return legacy;
+      if (legacy.isNotEmpty) {
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        if (currentUserId != null) {
+          return legacy.where((task) => task.assignedCrewIds.contains(currentUserId)).toList();
+        }
+        return legacy;
+      }
       rethrow;
     }
   }
@@ -199,9 +217,9 @@ class CleanupTaskRepository {
     await _localPhoto.markInFlight(localPhotoId);
     try {
       final fileName = file.path.split('/').last;
-      final formData = FormData.fromMap({
+      final formData = dio.FormData.fromMap({
         'photo_type': photoType,
-        'file': await MultipartFile.fromFile(file.path, filename: fileName),
+        'file': await dio.MultipartFile.fromFile(file.path, filename: fileName),
       });
       final response = await _apiClient.dioClient.post(
         ApiConstants.cleanupTaskUploadPhoto(id),

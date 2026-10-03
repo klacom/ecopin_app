@@ -89,7 +89,7 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
           ? null
           : SafeArea(
         child: Container(
-          height: 72,
+          height: 84, // Increased height for labels
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           decoration: BoxDecoration(
             color: navBgColor,
@@ -127,32 +127,49 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
         behavior: HitTestBehavior.opaque,
         onTap: () => _onItemTapped(index, context),
         child: Container(
-          width: 48,
-          height: 72,
+          width: 56,
+          height: 84,
           alignment: Alignment.center,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            padding: EdgeInsets.all(isSelected ? 2 : 0),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelected ? activeColor : Colors.transparent,
-                width: 2,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                padding: EdgeInsets.all(isSelected ? 2 : 0),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? activeColor : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: CircleAvatar(
+                  key: ValueKey(avatarUrl),
+                  radius: 12,
+                  backgroundColor: inactiveColor,
+                  foregroundImage: avatarUrl != null && avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                  child: avatarUrl == null || avatarUrl.isEmpty
+                      ? Text(
+                          _getInitials(fullName),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                        )
+                      : null,
+                ),
               ),
-            ),
-            child: CircleAvatar(
-              key: ValueKey(avatarUrl),
-              radius: 12,
-              backgroundColor: inactiveColor,
-              foregroundImage: avatarUrl != null && avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-              child: avatarUrl == null || avatarUrl.isEmpty
-                  ? Text(
-                      _getInitials(fullName),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
-                    )
-                  : null,
-            ),
+              const SizedBox(height: 4),
+              Text(
+                'Profile',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? activeColor : inactiveColor,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ),
@@ -169,20 +186,38 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
         behavior: HitTestBehavior.opaque,
         onTap: () => _onItemTapped(index, context),
         child: Container(
-          width: 48,
-          height: 72,
+          width: 64,
+          height: 84,
           alignment: Alignment.center,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            switchInCurve: Curves.easeOutBack,
-            switchOutCurve: Curves.easeIn,
-            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-            child: Icon(
-              isSelected ? filledIcon : outlineIcon,
-              key: ValueKey<bool>(isSelected),
-              color: color,
-              size: 26,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                switchInCurve: Curves.easeOutBack,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                child: Icon(
+                  isSelected ? filledIcon : outlineIcon,
+                  key: ValueKey<bool>(isSelected),
+                  color: color,
+                  size: 24, // Slightly smaller to fit label
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: color,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),

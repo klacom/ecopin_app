@@ -1,16 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:logging/logging.dart';
 
-class FcCurrentObjectiveCard extends StatelessWidget {
+final _log = Logger('FcCurrentObjectiveCard');
+
+class FcCurrentObjectiveCard extends ConsumerWidget {
   final CleanupTask task;
 
   const FcCurrentObjectiveCard({super.key, required this.task});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    String locationText = task.location.isNotEmpty ? task.location : 'Location not specified';
+    LatLng? coordToGeocode;
+
+    if (task.reports != null && task.reports!.isNotEmpty) {
+      final loc = task.reports!.first.location;
+      if (loc.latitude != 0 || loc.longitude != 0) {
+        coordToGeocode = loc;
+      }
+    } else if (task.location.startsWith('POINT(')) {
+      try {
+        final parts = task.location.replaceAll('POINT(', '').replaceAll(')', '').split(' ');
+        coordToGeocode = LatLng(double.parse(parts[1]), double.parse(parts[0]));
+      } catch (_) {}
+    }
+
+    if (task.streetAddress != null && task.streetAddress!.isNotEmpty) {
+      _log.info('Task ${task.id} has streetAddress: ${task.streetAddress}');
+      locationText = task.streetAddress!;
+    } else if (coordToGeocode != null) {
+      _log.warning('Task ${task.id} streetAddress is missing. Falling back to coordinates.');
+      locationText = '${coordToGeocode.latitude.toStringAsFixed(4)}, ${coordToGeocode.longitude.toStringAsFixed(4)}';
+    } else {
+      _log.warning('Task ${task.id} streetAddress AND coordinates are missing. Falling back to location: ${task.location}');
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -45,7 +75,7 @@ class FcCurrentObjectiveCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            task.location.isNotEmpty ? task.location : 'Location not specified',
+            locationText,
             style: AppTypography.caption.copyWith(color: Colors.grey),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

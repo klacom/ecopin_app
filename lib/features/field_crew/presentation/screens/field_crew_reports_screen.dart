@@ -43,7 +43,10 @@ class _FieldCrewReportsScreenState
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(AppColors.spaceLG),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppColors.spaceLG,
+              vertical: AppColors.spaceMD,
+            ),
             child: FcReportsFilterBar(
               searchQuery: _searchQuery,
               selectedStatus: _selectedStatus,

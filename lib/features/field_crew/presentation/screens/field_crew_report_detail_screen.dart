@@ -18,6 +18,7 @@ import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_pro
 import 'package:ecopin_app/features/field_crew/providers/field_crew_reports_provider.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 
 class FieldCrewReportDetailScreen extends ConsumerWidget {
   final String reportId;
@@ -172,13 +173,9 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
 
                   // Photo Verification — offline-first with local photo slots
                   _ReportPhotoSection(
-                    reportId: reportId,
+                    report: report,
                     isAssigned: isAssigned,
                     evidencePhotos: detailState.evidence,
-                    // Preferred remote URL from the cached report model,
-                    // used as fallback when no local FcLocalPhoto row exists.
-                    remoteBeforeUrl: report.beforePhotoUrl,
-                    remoteAfterUrl: report.afterPhotoUrl,
                     onUpload: (file, type) async {
                       try {
                         final repo =
@@ -236,20 +233,16 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
 /// (which rebuilds this widget because the parent passes new [remoteBeforeUrl]/
 /// [remoteAfterUrl] values).
 class _ReportPhotoSection extends ConsumerStatefulWidget {
-  final String reportId;
+  final ReportModel report;
   final bool isAssigned;
   final List<dynamic> evidencePhotos;
-  final String? remoteBeforeUrl;
-  final String? remoteAfterUrl;
   final Future<void> Function(dynamic file, String type) onUpload;
   final Future<void> Function(FcPhotoSlot slot, String type) onDelete;
 
   const _ReportPhotoSection({
-    required this.reportId,
+    required this.report,
     required this.isAssigned,
     required this.evidencePhotos,
-    this.remoteBeforeUrl,
-    this.remoteAfterUrl,
     required this.onUpload,
     required this.onDelete,
   });
@@ -274,9 +267,9 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
     super.didUpdateWidget(oldWidget);
     // Re-resolve when parent refreshes (remote URL may have changed or new
     // local row may have been inserted).
-    if (oldWidget.remoteBeforeUrl != widget.remoteBeforeUrl ||
-        oldWidget.remoteAfterUrl != widget.remoteAfterUrl ||
-        oldWidget.reportId != widget.reportId) {
+    if (oldWidget.report.beforePhotoUrl != widget.report.beforePhotoUrl ||
+        oldWidget.report.afterPhotoUrl != widget.report.afterPhotoUrl ||
+        oldWidget.report.id != widget.report.id) {
       _resolveSlots();
     }
   }
@@ -284,20 +277,20 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
   Future<void> _resolveSlots() async {
     final photoRepo = ref.read(fcLocalPhotoRepositoryProvider);
     final before = await photoRepo.getActivePhoto(
-      widget.reportId,
+      widget.report.id,
       'report',
       'before',
     );
     final after = await photoRepo.getActivePhoto(
-      widget.reportId,
+      widget.report.id,
       'report',
       'after',
     );
 
     if (!mounted) return;
     setState(() {
-      _beforeSlot = _buildSlot(before, widget.remoteBeforeUrl);
-      _afterSlot = _buildSlot(after, widget.remoteAfterUrl);
+      _beforeSlot = _buildSlot(before, widget.report.beforePhotoUrl);
+      _afterSlot = _buildSlot(after, widget.report.afterPhotoUrl);
     });
   }
 
@@ -329,11 +322,24 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
 
   @override
   Widget build(BuildContext context) {
+    final currentStatus = widget.report.status.toLowerCase();
+    final bool isAcknowledged = !['unresolved', 'submitted', 'pending'].contains(currentStatus);
+    
+    final currentLifecycle = widget.report.lifecycleStage?.toLowerCase();
+    final bool isLifecycleAcknowledged = currentLifecycle != null && !['new', 'pending', 'under_review'].contains(currentLifecycle);
+    
+    final bool effectivelyAcknowledged = isAcknowledged || isLifecycleAcknowledged;
+    
+    final bool isBeforeEnabled = effectivelyAcknowledged;
+    final bool isAfterEnabled = effectivelyAcknowledged && (_beforeSlot?.hasPhoto == true);
+
     return FcPhotoUploadSection(
       evidencePhotos: widget.evidencePhotos,
       beforeSlot: _beforeSlot,
       afterSlot: _afterSlot,
       isAssigned: widget.isAssigned,
+      isBeforeEnabled: isBeforeEnabled,
+      isAfterEnabled: isAfterEnabled,
       onUpload: (file, type) async {
         await widget.onUpload(file, type);
         // Re-resolve slots after upload so new local row is visible immediately.

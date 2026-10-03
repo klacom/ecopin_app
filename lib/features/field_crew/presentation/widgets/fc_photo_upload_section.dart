@@ -82,6 +82,8 @@ class FcPhotoUploadSection extends StatefulWidget {
   final FcPhotoSlot? afterSlot;
 
   final bool isAssigned;
+  final bool isBeforeEnabled;
+  final bool isAfterEnabled;
 
   /// Called when the user picks a new image.  Receives the picked [File] and
   /// the slot type string ('before' | 'after').
@@ -96,6 +98,8 @@ class FcPhotoUploadSection extends StatefulWidget {
     this.beforeSlot,
     this.afterSlot,
     required this.isAssigned,
+    this.isBeforeEnabled = true,
+    this.isAfterEnabled = true,
     required this.onUpload,
     required this.onDelete,
   });
@@ -401,6 +405,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   ) {
     final title = type == 'before' ? 'Before Photos' : 'After Photos';
     final int count = (slot != null && slot.hasPhoto) ? 1 : 0;
+    final bool isEnabled = type == 'before' ? widget.isBeforeEnabled : widget.isAfterEnabled;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -412,11 +417,16 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
               '$title ($count/$_maxPerSlot)',
               style: AppTypography.label.copyWith(color: Colors.grey),
             ),
-            if (widget.isAssigned && count < _maxPerSlot)
+            if (widget.isAssigned && count < _maxPerSlot && isEnabled)
               Text(
                 '${_maxPerSlot - count} slot remaining',
                 style: AppTypography.caption
                     .copyWith(color: AppColors.primaryDark),
+              ),
+            if (widget.isAssigned && count < _maxPerSlot && !isEnabled)
+              Text(
+                type == 'before' ? 'Acknowledge report first' : 'Requires acknowledged report & before photo',
+                style: AppTypography.caption.copyWith(color: Colors.grey),
               ),
           ],
         ),
@@ -428,9 +438,9 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
             children: [
               // Show existing photo thumbnail if slot is occupied.
               if (slot != null && slot.hasPhoto)
-                _buildPhotoThumbnail(context, slot, type),
+                _buildPhotoThumbnail(context, slot, type, isEnabled),
               // Show add button if slot is empty and user is assigned.
-              if (count < _maxPerSlot && widget.isAssigned)
+              if (count < _maxPerSlot && widget.isAssigned && isEnabled)
                 isUploading
                     ? _buildUploadingIndicator()
                     : _buildAddButton(context, type),
@@ -447,6 +457,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
     BuildContext context,
     FcPhotoSlot slot,
     String type,
+    bool isEnabled,
   ) {
     final displayPath = slot.displayPath;
 
@@ -481,8 +492,8 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
               child: _SyncBadge(syncStatus: slot.syncStatus!),
             ),
 
-          // Delete button (top-right) — only shown when assigned.
-          if (widget.isAssigned)
+          // Delete button (top-right) — only shown when assigned and enabled.
+          if (widget.isAssigned && isEnabled)
             Positioned(
               top: 4,
               right: 4,

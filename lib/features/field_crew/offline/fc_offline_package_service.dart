@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:ecopin_app/core/constants/api_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_repository.dart';
@@ -127,6 +127,7 @@ class FcOfflinePackageService {
     int reportCount  = 0;
     int evidenceCount = 0;
     int noteCount    = 0;
+    int routeCount   = 0;
 
     // ── Step 1: Assigned cleanup tasks ──────────────────────────────────────
     List<CleanupTask> tasks = [];
@@ -290,8 +291,33 @@ class FcOfflinePackageService {
       _log.fine('Issue-type fetch failed (fallback used): $e');
     }
 
-    await _local.recordSyncAt('fc_offline_package');
+    // ── Step 6: Active Routes ──────────────────────────────────────────────
+    onStepProgress(FcOfflineStepLabel.routes, inProgress: true);
+    try {
+      final res = await _api.dioClient.get(
+        ApiConstants.activeRoutes,
+        options: _listOptions,
+      );
+      if (res.data['routes'] != null) {
+        final routesData = res.data['routes'] as List<dynamic>;
+        for (final routeData in routesData) {
+          final map = routeData as Map<String, dynamic>;
+          final id = map['id']?.toString();
+          if (id != null) {
+            await _local.cacheRoute(id, map);
+            routeCount++;
+          }
+        }
+      }
+      onStepProgress(FcOfflineStepLabel.routes, completed: true);
+      _log.info('Offline package: cached $routeCount routes');
+    } catch (e) {
+      onStepProgress(FcOfflineStepLabel.routes,
+          completed: true, error: _friendlyError(e));
+      _log.warning('Offline package: routes fetch failed: $e');
+    }
 
+    await _local.recordSyncAt('fc_offline_package');
     return FcOfflinePackageState(
       phase:         FcOfflinePackagePhase.ready,
       taskCount:     taskCount,

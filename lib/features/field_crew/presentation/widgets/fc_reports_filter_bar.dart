@@ -136,6 +136,8 @@ class FcReportsFilterBar extends StatelessWidget {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
       backgroundColor: AppColors.backgroundDark,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(

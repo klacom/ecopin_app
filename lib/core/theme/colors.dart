@@ -4,15 +4,15 @@ class AppColors {
   AppColors._();
 
   // ── Brand: Primary Green ──────────────────────────────────
-  static const Color primaryLight = Color(0xFFCCFF00); // Neon Lime
-  static const Color primaryDark = Color(0xFFCCFF00);
+  static const Color primaryLight = Color(0xFF10B981); // Civic Emerald Green
+  static const Color primaryDark = Color(0xFF10B981);
 
   // ── Brand: Secondary Green ────────────────────────────────
   static const Color secondaryLight = Color(0xFF000000);
   static const Color secondaryDark = Color(0xFFFFFFFF);
 
   // ── Brand: Accent Green ───────────────────────────────────
-  static const Color accent = Color(0xFFCCFF00);
+  static const Color accent = Color(0xFF10B981);
   static const Color accentBlue = Color(0xFF3300FF);
 
   // ── Neutrals ──────────────────────────────────────────────
@@ -23,7 +23,7 @@ class AppColors {
   static const Color backgroundDark = Color(0xFF000000);
 
   // ── Status ────────────────────────────────────────────────
-  static const Color success = Color(0xFFCCFF00);
+  static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFFFCC00);
   static const Color error = Color(0xFFFF3B30);
   static const Color info = Color(0xFF00CCFF);

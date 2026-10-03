@@ -1,4 +1,4 @@
-﻿import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
@@ -7,11 +7,15 @@ import 'package:ecopin_app/features/field_crew/sync/fc_sync_gate.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_settings.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_result.dart';
+import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:logging/logging.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal provider for current network type
 // ─────────────────────────────────────────────────────────────────────────────
+
+final _log = Logger('FieldCrewSyncCenterScreen');
 
 final _currentNetworkTypeProvider =
     FutureProvider.autoDispose<FcNetworkType>((ref) async {
@@ -44,9 +48,13 @@ class _FieldCrewSyncCenterScreenState
   }
 
   Future<void> _refreshSummary() async {
+    _log.info('Refreshing pending summary...');
     final gate    = ref.read(fcSyncGateProvider);
     final summary = await gate.getPendingSummary();
-    if (mounted) setState(() => _summary = summary);
+    if (mounted) {
+      _log.info('Pending summary refreshed: ${summary.mutationCount} mutations, ${summary.photoCount} photos.');
+      setState(() => _summary = summary);
+    }
   }
 
   @override
@@ -60,6 +68,26 @@ class _FieldCrewSyncCenterScreenState
     ref.listen<FcSyncState>(fcSyncStateProvider, (prev, next) {
       if (prev?.phase == FcSyncPhase.syncing &&
           next.phase != FcSyncPhase.syncing) {
+        _log.info('Sync completed with phase: ${next.phase.name}');
+        
+        if (mounted) {
+          if (next.phase == FcSyncPhase.success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Sync completed successfully!'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+          } else if (next.phase == FcSyncPhase.error || next.phase == FcSyncPhase.partialFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Sync finished with errors or partial failure.'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+        }
+        
         _refreshSummary();
       }
     });
@@ -104,6 +132,29 @@ class _FieldCrewSyncCenterScreenState
                 const SizedBox(height: AppColors.spaceLG),
               ],
 
+              if (_summary != null && _summary!.failedPhotoCount > 0) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.refresh, color: AppColors.error),
+                    label: Text('Retry Failed Items', style: AppTypography.button.copyWith(color: AppColors.error)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.error),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppColors.radiusButton),
+                      ),
+                    ),
+                    onPressed: () async {
+                      final photoRepo = ref.read(fcLocalPhotoRepositoryProvider);
+                      await photoRepo.resetFailedPhotoRetries();
+                      _refreshSummary();
+                    },
+                  ),
+                ),
+                const SizedBox(height: AppColors.spaceLG),
+              ],
+
               if (syncState.lastMutationResult != null) ...[
                 _LastRunCard(result: syncState.lastMutationResult!),
                 const SizedBox(height: AppColors.spaceLG),
@@ -126,11 +177,13 @@ class _FieldCrewSyncCenterScreenState
   }
 
   Future<void> _handleCommit(BuildContext context) async {
+    _log.info('Manual commit triggered by user.');
     final gate    = ref.read(fcSyncGateProvider);
     final trigger = ref.read(fcSyncTriggerProvider);
     final decision = await gate.checkManualCommit();
 
     if (!decision.allowed) {
+      _log.warning('Manual commit denied: ${decision.reason}');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(decision.reason ?? 'Cannot sync right now'),
@@ -141,10 +194,16 @@ class _FieldCrewSyncCenterScreenState
     }
 
     if (decision.requiresConfirmation && context.mounted) {
+      _log.info('Manual commit requires mobile data confirmation.');
       final confirmed = await _showMobileDataDialog(context);
-      if (!confirmed) return;
+      if (!confirmed) {
+        _log.info('User cancelled manual commit on mobile data warning.');
+        return;
+      }
+      _log.info('User confirmed manual commit over mobile data.');
     }
 
+    _log.info('Calling manualCommit() on trigger.');
     await trigger.manualCommit();
     if (mounted) _refreshSummary();
   }
@@ -232,6 +291,14 @@ class _StatusCard extends StatelessWidget {
               style: AppTypography.h5
                   .copyWith(color: AppColors.textPrimaryDark),
             ),
+            if (summary!.failedPhotoCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  '${summary!.failedPhotoCount} items failed and require attention.',
+                  style: AppTypography.caption.copyWith(color: AppColors.error),
+                ),
+              ),
             if (summary!.photoCount > 0 ||
                 summary!.formattedSize.isNotEmpty)
               Text(
@@ -472,8 +539,10 @@ class _SyncModeSelector extends ConsumerWidget {
           return Padding(
             padding: const EdgeInsets.only(bottom: AppColors.spaceSM),
             child: InkWell(
-              onTap: () =>
-                  ref.read(fcSyncSettingsProvider.notifier).setMode(mode),
+              onTap: () {
+                _log.info('User changing sync mode to: ${mode.name}');
+                ref.read(fcSyncSettingsProvider.notifier).setMode(mode);
+              },
               borderRadius: BorderRadius.circular(AppColors.radiusCard),
               child: Container(
                 padding: const EdgeInsets.all(AppColors.spaceMD),
@@ -535,13 +604,19 @@ class _DataSettingsCard extends ConsumerWidget {
         _ToggleRow(
           title:    'Sync over Wi-Fi',
           value:    settings.syncOverWifi,
-          onChanged: notifier.setSyncOverWifi,
+          onChanged: (val) {
+            _log.info('User toggled Sync over Wi-Fi to: $val');
+            return notifier.setSyncOverWifi(val);
+          },
         ),
         const Divider(color: AppColors.dividerDark, height: AppColors.spaceLG),
         _ToggleRow(
           title:    'Sync over Mobile Data',
           value:    settings.syncOverMobileData,
-          onChanged: notifier.setSyncOverMobileData,
+          onChanged: (val) {
+            _log.info('User toggled Sync over Mobile Data to: $val');
+            return notifier.setSyncOverMobileData(val);
+          },
           subtitle: settings.syncOverMobileData
               ? 'Large photo uploads may use significant data.'
               : null,

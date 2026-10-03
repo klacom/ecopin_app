@@ -198,6 +198,10 @@ class FcLocalPhotoRepository {
   Future<void> recoverInFlightPhotos() =>
       _db.resetInFlightFcLocalPhotos();
 
+  /// Resets failed photos so they can be retried.
+  Future<void> resetFailedPhotoRetries() =>
+      _db.resetFailedFcLocalPhotos();
+
   // ─────────────────────────────────────────────────────────────────────────
   // Private helpers
   // ─────────────────────────────────────────────────────────────────────────

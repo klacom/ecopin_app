@@ -7,6 +7,7 @@ class CleanupTask {
   final String status;
   final String priority;
   final String location;
+  final String? streetAddress;
   final String taskType;
   final bool isCustom;
   final String? clusterId;
@@ -27,6 +28,7 @@ class CleanupTask {
     required this.status,
     required this.priority,
     required this.location,
+    this.streetAddress,
     required this.taskType,
     required this.isCustom,
     this.clusterId,
@@ -55,6 +57,7 @@ class CleanupTask {
       status: json['status']?.toString() ?? 'pending',
       priority: json['priority']?.toString() ?? 'normal',
       location: json['location']?.toString() ?? 'Unknown Location',
+      streetAddress: json['street_address']?.toString() ?? json['address']?.toString(),
       taskType: json['task_type']?.toString() ?? 'cleanup',
       isCustom: json['is_custom'] == true || json['is_custom'] == 'true',
       clusterId: json['cluster_id']?.toString(),
@@ -85,6 +88,7 @@ class CleanupTask {
       'status': status,
       'priority': priority,
       'location': location,
+      'street_address': streetAddress,
       'task_type': taskType,
       'is_custom': isCustom,
       'cluster_id': clusterId,

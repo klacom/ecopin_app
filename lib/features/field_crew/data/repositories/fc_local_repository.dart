@@ -156,9 +156,11 @@ class FcLocalRepository {
   Future<void> saveTasks(List<CleanupTask> tasks) async {
     try {
       final rows = tasks.map((t) {
+        _log.info('saveTasks: Saving task ${t.id}. streetAddress=${t.streetAddress}');
         return FcCachedTasksCompanion.insert(
           id: t.id,
           jsonData: jsonEncode(t.toJson()),
+          address: Value(t.streetAddress),
           localSyncState: const Value(0),
           serverUpdatedAt: t.updatedAt,
           cachedAt: Value(DateTime.now()),
@@ -174,12 +176,18 @@ class FcLocalRepository {
   Future<List<CleanupTask>> getCachedTasks() async {
     try {
       final rows = await _db.getAllFcTasks();
+      _log.info('getCachedTasks: Fetched ${rows.length} rows from Drift.');
       return rows
           .map((r) {
             try {
-              return CleanupTask.fromJson(
-                jsonDecode(r.jsonData) as Map<String, dynamic>,
-              );
+              final jsonMap = jsonDecode(r.jsonData) as Map<String, dynamic>;
+              if (r.address != null && r.address!.isNotEmpty) {
+                _log.info('Task ${r.id} has explicit Drift address column: ${r.address}');
+                jsonMap['street_address'] = r.address;
+              } else {
+                _log.warning('Task ${r.id} Drift address column is null/empty. jsonData street_address is: ${jsonMap['street_address']}');
+              }
+              return CleanupTask.fromJson(jsonMap);
             } catch (e) {
               _log.warning('Failed to deserialise cached task ${r.id}: $e');
               return null;
@@ -459,6 +467,11 @@ class FcLocalRepository {
   /// Called on app startup to recover items that were in-flight when the app
   /// was killed.
   Future<void> recoverInFlightItems() => _db.resetInFlightOutboxItems();
+
+  // ── Routes ────────────────────────────────────────────────────────────────
+
+  Future<void> cacheRoute(String id, Map<String, dynamic> routeJson) =>
+      _db.cacheFcRoute(id, jsonEncode(routeJson));
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 

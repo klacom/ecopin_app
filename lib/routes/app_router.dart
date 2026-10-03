@@ -1,4 +1,4 @@
-﻿import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/landing_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/login_screen.dart';
@@ -48,6 +48,7 @@ import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/reports/presentation/screens/report_details_screen.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
 import 'package:logging/logging.dart';
+import 'package:flutter/material.dart';
 
 // Guides user to Public and Protected Routes
 
@@ -134,14 +135,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Role-based route protection
       if (loggedIn) {
         log.info('Role-based check - Role: $role');
-        
-        if (isOfficerRoute && role != UserRole.officer && role != UserRole.admin) {
-          log.info('Redirecting to citizen maps - non-Officer/Admin on Officer route');
+
+        if (isOfficerRoute &&
+            role != UserRole.officer &&
+            role != UserRole.admin) {
+          log.info(
+            'Redirecting to citizen maps - non-Officer/Admin on Officer route',
+          );
           return ProtectedAppRoutes.maps;
         }
-        
-        if (isFieldCrewRoute && role != UserRole.fieldCrew && role != UserRole.admin && role != UserRole.officer) {
-          log.info('Redirecting to citizen maps - unauthorized on Field Crew route');
+
+        if (isFieldCrewRoute &&
+            role != UserRole.fieldCrew &&
+            role != UserRole.admin &&
+            role != UserRole.officer) {
+          log.info(
+            'Redirecting to citizen maps - unauthorized on Field Crew route',
+          );
           return ProtectedAppRoutes.maps;
         }
 
@@ -155,7 +165,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
 
         // Check if path is a protected route (including nested routes)
-        if (!isOfficerRoute && !isAdminRoute && !isFieldCrewRoute && !isProtectedRoute) {
+        if (!isOfficerRoute &&
+            !isAdminRoute &&
+            !isFieldCrewRoute &&
+            !isProtectedRoute) {
           log.info('Redirecting to citizen maps - not in any route category');
           return ProtectedAppRoutes.maps;
         }
@@ -378,7 +391,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) {
                       final taskId = state.pathParameters['id']!;
                       final reportId = state.pathParameters['reportId']!;
-                      return FieldCrewReportDetailScreen(taskId: taskId, reportId: reportId);
+                      return FieldCrewReportDetailScreen(
+                        taskId: taskId,
+                        reportId: reportId,
+                      );
                     },
                   ),
                 ],
@@ -414,11 +430,72 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: FieldCrewAppRoutes.syncCenter,
             builder: (_, _) => const FieldCrewSyncCenterScreen(),
           ),
+          GoRoute(
+            path: FieldCrewAppRoutes.prepareOffline,
+            builder: (_, _) => const FieldCrewPrepareOfflineScreen(),
+          ),
         ],
       ),
     ],
+    errorBuilder: (context, state) {
+      final role = ref.read(authNotifierProvider).state.role;
+      String homePath = PublicAppRoutes.landing;
+      if (role == UserRole.officer) {
+        homePath = OfficerAppRoutes.dashboard;
+      } else if (role == UserRole.fieldCrew) {
+        homePath = FieldCrewAppRoutes.dashboard;
+      } else if (role == UserRole.admin) {
+        homePath = AdminAppRoutes.dashboard;
+      } else if (role == UserRole.citizen) {
+        homePath = ProtectedAppRoutes.maps;
+      }
+
+      return Scaffold(
+        backgroundColor: const Color(0xFF1E1E1E),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.redAccent,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Page Not Found',
+                style: TextStyle(
+                  fontSize: 24,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'No route for ${state.uri.path}',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => context.go(homePath),
+                icon: const Icon(Icons.home),
+                label: const Text('Go to Home'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFCCFF00),
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
   );
 });
-
-
-

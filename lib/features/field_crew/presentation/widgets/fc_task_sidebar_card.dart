@@ -26,7 +26,28 @@ class FcTaskSidebarCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(task.title, style: AppTypography.h4.copyWith(color: AppColors.textPrimaryDark)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(task.title, style: AppTypography.h4.copyWith(color: AppColors.textPrimaryDark)),
+                    if (task.isOutlier)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Outlier Collection Route',
+                          style: AppTypography.caption.copyWith(
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
               const SizedBox(width: AppColors.spaceSM),
               FcTaskStatusBadge(status: task.status),

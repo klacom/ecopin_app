@@ -29,8 +29,9 @@ class ReportModel {
   final String obstructionLevel;
   final int? severityScore;
   final String? severityLevel;
-  final Map<String, dynamic>? severityFactors;
   final String? lifecycleStage;
+  final bool isOutlier;
+  final String? slaBreachDuration;
 
   ReportModel({
     required this.id,
@@ -61,6 +62,8 @@ class ReportModel {
     this.severityLevel,
     this.severityFactors,
     this.lifecycleStage,
+    this.isOutlier = false,
+    this.slaBreachDuration,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -150,6 +153,8 @@ class ReportModel {
       severityLevel: json['severity_level']?.toString(),
       severityFactors: json['severity_factors'] as Map<String, dynamic>?,
       lifecycleStage: json['lifecycle_stage']?.toString(),
+      isOutlier: json['is_outlier'] == true || json['is_outlier'] == 'true',
+      slaBreachDuration: json['sla_breach_duration']?.toString(),
     );
   }
 
@@ -176,6 +181,8 @@ class ReportModel {
       'severity_level': severityLevel,
       'severity_factors': severityFactors,
       'lifecycle_stage': lifecycleStage,
+      'is_outlier': isOutlier,
+      'sla_breach_duration': slaBreachDuration,
     };
   }
 }

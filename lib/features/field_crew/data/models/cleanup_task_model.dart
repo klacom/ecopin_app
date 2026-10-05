@@ -20,6 +20,7 @@ class CleanupTask {
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<ReportModel>? reports;
+  final bool isOutlier;
 
   CleanupTask({
     required this.id,
@@ -41,6 +42,7 @@ class CleanupTask {
     required this.createdAt,
     required this.updatedAt,
     this.reports,
+    this.isOutlier = false,
   });
 
   static List<String> _parseStringList(dynamic value) {
@@ -77,6 +79,7 @@ class CleanupTask {
           return null;
         }
       }).whereType<ReportModel>().toList(),
+      isOutlier: json['is_outlier'] == true || json['is_outlier'] == 'true',
     );
   }
 
@@ -101,6 +104,7 @@ class CleanupTask {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       if (reports != null) 'reports': reports?.map((e) => e.toJson()).toList(),
+      'is_outlier': isOutlier,
     };
   }
 }

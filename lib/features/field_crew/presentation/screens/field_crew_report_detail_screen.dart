@@ -167,6 +167,27 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                     onViewOnMap: () => context.push('/field-crew/map'),
                     onStatusChange: (newStatus) async {
                       await notifier.updateStatus(newStatus);
+                      if (report.isOutlier && (newStatus.toLowerCase() == 'resolved' || newStatus.toLowerCase() == 'closed')) {
+                        if (context.mounted && taskAsync != null && taskAsync.value != null) {
+                          final task = taskAsync.value!;
+                          final currentIndex = task.reports?.indexWhere((r) => r.id == report.id) ?? -1;
+                          
+                          if (currentIndex != -1 && task.reports != null) {
+                            // Find next unresolved report
+                            try {
+                              final nextReport = task.reports!.skip(currentIndex + 1).firstWhere(
+                                (r) => r.status.toLowerCase() != 'resolved' && r.status.toLowerCase() != 'closed'
+                              );
+                              context.pushReplacement('/field-crew/tasks/${task.id}/reports/${nextReport.id}');
+                            } catch (_) {
+                              // No next report found (all done or at end of list)
+                              context.pop();
+                            }
+                          } else {
+                            context.pop();
+                          }
+                        }
+                      }
                     },
                   ),
                   const SizedBox(height: AppColors.spaceXL),

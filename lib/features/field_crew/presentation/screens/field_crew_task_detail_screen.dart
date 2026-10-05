@@ -195,7 +195,7 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                   FcPhotoGalleryCard(reports: reports),
                   const SizedBox(height: AppColors.spaceXL),
 
-                  Text('Reports in this Task',
+                  Text(task.isOutlier ? 'Optimized Route Waypoints' : 'Reports in this Task',
                       style: AppTypography.h4
                           .copyWith(color: AppColors.textPrimaryDark)),
                   const SizedBox(height: AppColors.spaceMD),

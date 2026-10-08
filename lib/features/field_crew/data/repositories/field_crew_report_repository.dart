@@ -10,7 +10,6 @@ import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_reposi
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide MultipartFile;
-import 'package:uuid/uuid.dart';
 
 class FieldCrewReportRepository {
   final ApiClient _apiClient;
@@ -18,7 +17,6 @@ class FieldCrewReportRepository {
   final FcLocalRepository _local;
   final FcLocalPhotoRepository _localPhoto;
   final Logger log = Logger('FieldCrewReportRepository');
-  final _uuid = const Uuid();
 
   FieldCrewReportRepository(
     this._apiClient,
@@ -162,6 +160,7 @@ class FieldCrewReportRepository {
   /// Acknowledges or otherwise updates the status of a report.
   Future<void> updateReportStatus(String id, String status) async {
     // Step 1 — local
+    final baseVersion = (await _local.getCachedReportById(id))?.fcVersion ?? 0;
     await _local.applyLocalReportPatch(id, {'status': status});
     // Step 2 — queue (idempotent; double-taps update payload, not create new)
     await _local.enqueueOutboxItem(
@@ -169,17 +168,21 @@ class FieldCrewReportRepository {
       entityId: id,
       entityType: 'report',
       payload: {'status': status},
+      baseVersion: baseVersion.toString(),
     );
     // Step 3 — background network attempt
-    _tryPushReportStatus(id, status);
+    _tryPushReportStatus(id, status, baseVersion);
   }
 
-  Future<void> _tryPushReportStatus(String id, String status) async {
+  Future<void> _tryPushReportStatus(String id, String status, int baseVersion) async {
     try {
-      await _apiClient.dioClient.patch(
+      final response = await _apiClient.dioClient.patch(
         ApiConstants.updateReportStatus(id),
-        data: {'status': status},
+        data: {'status': status, 'base_version': baseVersion},
       );
+      if (response.data is Map && response.data['report'] is Map) {
+        await _local.applyLocalReportPatch(id, Map<String, dynamic>.from(response.data['report'] as Map));
+      }
       await _local.markFcReportSynced(id);
       // Remove the outbox entry on success so it is not replayed.
       await _removeOutboxForEntity(
@@ -194,22 +197,27 @@ class FieldCrewReportRepository {
 
   /// Updates the lifecycle stage of a report.
   Future<void> updateLifecycleStage(String id, String stage) async {
-    await _local.applyLocalReportPatch(id, {'lifecycle_stage': stage});
+    final baseVersion = (await _local.getCachedReportById(id))?.fcVersion ?? 0;
+    await _local.applyLocalReportPatch(id, {'stage': stage});
     await _local.enqueueOutboxItem(
       operationType: FcOutboxOperationType.updateLifecycleStage,
       entityId: id,
       entityType: 'report',
-      payload: {'lifecycle_stage': stage},
+      payload: {'stage': stage},
+      baseVersion: baseVersion.toString(),
     );
-    _tryPushLifecycleStage(id, stage);
+    _tryPushLifecycleStage(id, stage, baseVersion);
   }
 
-  Future<void> _tryPushLifecycleStage(String id, String stage) async {
+  Future<void> _tryPushLifecycleStage(String id, String stage, int baseVersion) async {
     try {
-      await _apiClient.dioClient.patch(
+      final response = await _apiClient.dioClient.patch(
         ApiConstants.updateReportLifecycleStage(id),
-        data: {'lifecycle_stage': stage},
+        data: {'stage': stage, 'base_version': baseVersion},
       );
+      if (response.data is Map && response.data['report'] is Map) {
+        await _local.applyLocalReportPatch(id, Map<String, dynamic>.from(response.data['report'] as Map));
+      }
       await _local.markFcReportSynced(id);
       await _removeOutboxForEntity(
           FcOutboxOperationType.updateLifecycleStage, id);
@@ -222,22 +230,27 @@ class FieldCrewReportRepository {
 
   /// Updates validation status.
   Future<void> updateReportValidation(String id, String status) async {
+    final baseVersion = (await _local.getCachedReportById(id))?.fcVersion ?? 0;
     await _local.applyLocalReportPatch(id, {'validation_status': status});
     await _local.enqueueOutboxItem(
       operationType: FcOutboxOperationType.updateReportValidation,
       entityId: id,
       entityType: 'report',
       payload: {'validation_status': status},
+      baseVersion: baseVersion.toString(),
     );
-    _tryPushReportValidation(id, status);
+    _tryPushReportValidation(id, status, baseVersion);
   }
 
-  Future<void> _tryPushReportValidation(String id, String status) async {
+  Future<void> _tryPushReportValidation(String id, String status, int baseVersion) async {
     try {
-      await _apiClient.dioClient.patch(
+      final response = await _apiClient.dioClient.patch(
         ApiConstants.updateReportValidation(id),
-        data: {'validation_status': status},
+        data: {'validation_status': status, 'base_version': baseVersion},
       );
+      if (response.data is Map && response.data['report'] is Map) {
+        await _local.applyLocalReportPatch(id, Map<String, dynamic>.from(response.data['report'] as Map));
+      }
       await _local.markFcReportSynced(id);
       await _removeOutboxForEntity(
           FcOutboxOperationType.updateReportValidation, id);
@@ -250,23 +263,28 @@ class FieldCrewReportRepository {
 
   /// Updates editable report details (notes field etc.).
   Future<void> updateReportDetails(String id, Map<String, dynamic> body) async {
+    final baseVersion = (await _local.getCachedReportById(id))?.fcVersion ?? 0;
     await _local.applyLocalReportPatch(id, body);
     await _local.enqueueOutboxItem(
       operationType: FcOutboxOperationType.updateReportDetails,
       entityId: id,
       entityType: 'report',
       payload: body,
+      baseVersion: baseVersion.toString(),
     );
-    _tryPushReportDetails(id, body);
+    _tryPushReportDetails(id, body, baseVersion);
   }
 
   Future<void> _tryPushReportDetails(
-      String id, Map<String, dynamic> body) async {
+      String id, Map<String, dynamic> body, int baseVersion) async {
     try {
-      await _apiClient.dioClient.patch(
-        ApiConstants.updateReportNotes(id),
-        data: body,
+      final response = await _apiClient.dioClient.patch(
+        ApiConstants.updateReportDetails(id),
+        data: {'payload': body, 'base_version': baseVersion},
       );
+      if (response.data is Map && response.data['report'] is Map) {
+        await _local.applyLocalReportPatch(id, Map<String, dynamic>.from(response.data['report'] as Map));
+      }
       await _local.markFcReportSynced(id);
       await _removeOutboxForEntity(
           FcOutboxOperationType.updateReportDetails, id);
@@ -393,6 +411,7 @@ class FieldCrewReportRepository {
     File file,
     String photoType,
   ) async {
+    final baseVersion = (await _local.getCachedReportById(reportId))?.fcVersion ?? 0;
     // Step 1 — Copy file to permanent storage, check dedup/slot, insert DB row.
     final localPhotoId = await _localPhoto.addPhoto(
       entityId: reportId,
@@ -431,7 +450,7 @@ class FieldCrewReportRepository {
     );
 
     // Step 4 — Background push; do NOT await.
-    _tryPushUploadReportPhoto(reportId, file, photoType, opType, localPhotoId);
+    _tryPushUploadReportPhoto(reportId, file, photoType, opType, localPhotoId, baseVersion);
 
     return localPhotoId;
   }
@@ -442,13 +461,15 @@ class FieldCrewReportRepository {
     String photoType,
     String opType,
     String localPhotoId,
+    int baseVersion,
   ) async {
     await _localPhoto.markInFlight(localPhotoId);
     try {
       final fileName = file.path.split('/').last;
       final formData = FormData.fromMap({
         'photo_type': photoType,
-        'file': await MultipartFile.fromFile(file.path, filename: fileName),
+        'base_version': baseVersion.toString(),
+        'image': await MultipartFile.fromFile(file.path, filename: fileName),
       });
       final response = await _apiClient.dioClient.post(
         ApiConstants.uploadReportPhoto(reportId),
@@ -461,8 +482,10 @@ class FieldCrewReportRepository {
 
       // Parse remote URL/id from response if the server returns them.
       final remoteId = _extractString(response.data, 'id');
+      final reportData = response.data is Map ? response.data['report'] : null;
       final remoteUrl = _extractString(response.data, 'url') ??
-          _extractString(response.data, '${photoType}_photo_url');
+          _extractString(response.data, '${photoType}_photo_url') ??
+          _extractString(reportData, '${photoType}_photo_url');
 
       // Mark local photo row as synced with remote identifiers.
       await _localPhoto.markSynced(
@@ -478,6 +501,9 @@ class FieldCrewReportRepository {
         });
       }
 
+      if (response.data is Map && response.data['report'] is Map) {
+        await _local.applyLocalReportPatch(reportId, Map<String, dynamic>.from(response.data['report'] as Map));
+      }
       await _local.markFcReportSynced(reportId);
       await _removeOutboxForEntity(opType, reportId);
     } catch (e) {
@@ -495,6 +521,7 @@ class FieldCrewReportRepository {
   /// flagged as `pendingDelete` and the server DELETE is attempted in the
   /// background.
   Future<void> deleteReportPhoto(String reportId, String photoType) async {
+    final baseVersion = (await _local.getCachedReportById(reportId))?.fcVersion ?? 0;
     // Find the active local photo row for this slot.
     final photoRow = await _localPhoto.getActivePhoto(
       reportId,
@@ -531,6 +558,7 @@ class FieldCrewReportRepository {
         reportId,
         photoType,
         photoRow!.localPhotoId,
+        baseVersion,
       );
     } else {
       // Never reached the server — nothing to delete remotely; clean outbox.
@@ -542,11 +570,12 @@ class FieldCrewReportRepository {
     String reportId,
     String photoType,
     String localPhotoId,
+    int baseVersion,
   ) async {
     try {
-      await _apiClient.dioClient.delete(
+      final response = await _apiClient.dioClient.delete(
         ApiConstants.uploadReportPhoto(reportId),
-        data: {'photo_type': photoType},
+        data: {'photo_type': photoType, 'base_version': baseVersion},
         options: Options(
           sendTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
@@ -554,6 +583,9 @@ class FieldCrewReportRepository {
       );
       // Confirmed deleted on server — purge local file and row.
       await _localPhoto.purgePhoto(localPhotoId);
+      if (response.data is Map && response.data['report'] is Map) {
+        await _local.applyLocalReportPatch(reportId, Map<String, dynamic>.from(response.data['report'] as Map));
+      }
       await _local.markFcReportSynced(reportId);
       await _removeOutboxForEntity(FcOutboxOperationType.deletePhoto, reportId);
     } catch (e) {

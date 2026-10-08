@@ -148,8 +148,12 @@ class FcPhotoSyncManager {
 
     try {
       final fileName = photo.localPath.split('/').last;
+      final reportVersion = photo.entityType == 'report'
+          ? (await _local.getCachedReportById(photo.entityId))?.fcVersion
+          : null;
       final formData = FormData.fromMap({
         'photo_type': photo.photoType,
+        if (reportVersion != null) 'base_version': reportVersion.toString(),
         'image': await MultipartFile.fromFile(
           photo.localPath,
           filename: fileName,
@@ -179,8 +183,15 @@ class FcPhotoSyncManager {
         remoteId: remoteId,
       );
 
-      // Patch the entity cache so the UI can show the CDN URL immediately.
-      if (remoteUrl != null) {
+      // Retain the server version for the next offline write.
+      final record = response.data is Map ? response.data[photo.entityType] : null;
+      if (record is Map) {
+        if (photo.entityType == 'report') {
+          await _local.applyLocalReportPatch(photo.entityId, Map<String, dynamic>.from(record));
+        } else {
+          await _local.applyLocalTaskPatch(photo.entityId, Map<String, dynamic>.from(record));
+        }
+      } else if (remoteUrl != null) {
         await _patchEntityCache(photo, remoteUrl);
       }
 
@@ -225,15 +236,22 @@ class FcPhotoSyncManager {
           ? ApiConstants.uploadReportPhoto(photo.entityId)
           : ApiConstants.cleanupTaskUploadPhoto(photo.entityId);
 
-      await _api.dioClient.delete(
+      final reportVersion = photo.entityType == 'report'
+          ? (await _local.getCachedReportById(photo.entityId))?.fcVersion
+          : null;
+      final response = await _api.dioClient.delete(
         endpoint,
-        data: {'photo_type': photo.photoType},
+        data: {'photo_type': photo.photoType, 'base_version': ?reportVersion},
         options: Options(
           sendTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
         ),
       );
 
+      final record = response.data is Map ? response.data[photo.entityType] : null;
+      if (record is Map && photo.entityType == 'report') {
+        await _local.applyLocalReportPatch(photo.entityId, Map<String, dynamic>.from(record));
+      }
       await _photoRepo.purgePhoto(photo.localPhotoId);
       await _removePhotoOutboxEntry(photo);
 

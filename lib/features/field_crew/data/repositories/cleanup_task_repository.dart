@@ -138,6 +138,7 @@ class CleanupTaskRepository {
   /// The local state is updated immediately so the UI reflects the change
   /// even when offline. The backend call is attempted in the background.
   Future<void> markTaskComplete(String id) async {
+    final baseVersion = (await _local.getCachedTaskById(id))?.fcVersion ?? 0;
     // Step 1 — local
     await _local.applyLocalTaskPatch(id, {'status': 'completed'});
     // Step 2 — queue (idempotent)
@@ -145,15 +146,24 @@ class CleanupTaskRepository {
       operationType: FcOutboxOperationType.markTaskComplete,
       entityId: id,
       entityType: 'task',
-      payload: {'status': 'completed'},
+      payload: {'outcome': 'completed', 'notes': ''},
+      baseVersion: baseVersion.toString(),
     );
     // Step 3 — background push
-    _tryPushMarkTaskComplete(id);
+    _tryPushMarkTaskComplete(id, baseVersion);
   }
 
-  Future<void> _tryPushMarkTaskComplete(String id) async {
+  Future<void> _tryPushMarkTaskComplete(String id, int baseVersion) async {
     try {
-      await _apiClient.dioClient.post(ApiConstants.markCleanupTaskComplete(id));
+      final response = await _apiClient.dioClient.post(
+        ApiConstants.markCleanupTaskComplete(id),
+        data: {'outcome': 'completed', 'base_version': baseVersion},
+      );
+      if (response.data is Map && response.data['task'] is Map) {
+        await _local.applyLocalTaskPatch(
+          id, Map<String, dynamic>.from(response.data['task'] as Map),
+        );
+      }
       await _local.markFcTaskSynced(id);
       final item = await _local.findPendingOutboxItem(
           FcOutboxOperationType.markTaskComplete, id);

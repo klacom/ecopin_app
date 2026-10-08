@@ -94,6 +94,10 @@
     return '/api/reports/$reportId/agency-responses';
   }
 
+  static String updateReportDetails(String reportId) {
+    return '/api/reports/$reportId/details';
+  }
+
   static String updateReportNotes(String reportId) {
     return '/api/reports/$reportId/notes';
   }

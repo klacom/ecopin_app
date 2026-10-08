@@ -81,7 +81,7 @@ class FcSyncManager {
       // forever re-processing a permanently-failed item that is still returned
       // by getPendingOutboxItems (which selects status='pending' | 'failed').
       final page = batch
-          .where((i) => i.retryCount < _kMaxRetries)
+          .where((i) => i.retryCount < _kMaxRetries && !i.operationType.startsWith('fc.photo.'))
           .take(_kBatchSize)
           .toList();
       if (page.isEmpty) break;
@@ -234,7 +234,7 @@ class FcSyncManager {
       'entity_id': item.entityId,
       'entity_type': item.entityType,
       'payload': jsonDecode(item.payloadJson),
-      if (item.baseVersion != null) 'base_version': item.baseVersion,
+      if (item.baseVersion != null) 'base_version': int.tryParse(item.baseVersion!),
     };
   }
 
@@ -253,7 +253,7 @@ class FcSyncManager {
       if (result.serverRecord != null) {
         await _patchLocalCache(item, result.serverRecord!);
       }
-      _log.fine('Applied ${item.operationType} for ${item.entityId}: ${result.status}');
+      _log.fine('Applied ${item.operationType} for ${item.entityId}: $result.status');
     } else if (result.isTerminalFailure) {
       // Conflict or invalid — permanently fail; do not retry.
       await _local.markOutboxItemFailed(
@@ -266,7 +266,7 @@ class FcSyncManager {
       }
       _log.warning(
         'Terminal failure for ${item.operationId} '
-        '(${item.operationType}): ${result.status} — ${result.errorMessage}',
+        '(${item.operationType}): $result.status — $result.errorMessage',
       );
     } else {
       // Transient failure — increment retry counter.
@@ -275,7 +275,7 @@ class FcSyncManager {
         // Exceeded max retries — permanently fail.
         await _local.markOutboxItemFailed(
           item.operationId,
-          'max_retries_exceeded: ${result.errorMessage}',
+          'max_retries_exceeded: $result.errorMessage',
         );
         _log.warning(
           'Max retries exceeded for ${item.operationId} '
@@ -288,7 +288,7 @@ class FcSyncManager {
         );
         _log.fine(
           'Retryable failure for ${item.operationId} '
-          '(attempt ${newCount}/${_kMaxRetries})',
+          '(attempt $newCount/$_kMaxRetries)',
         );
       }
     }

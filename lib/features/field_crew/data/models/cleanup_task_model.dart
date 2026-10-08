@@ -21,6 +21,7 @@ class CleanupTask {
   final DateTime updatedAt;
   final List<ReportModel>? reports;
   final bool isOutlier;
+  final int fcVersion;
 
   CleanupTask({
     required this.id,
@@ -43,6 +44,7 @@ class CleanupTask {
     required this.updatedAt,
     this.reports,
     this.isOutlier = false,
+    this.fcVersion = 0,
   });
 
   static List<String> _parseStringList(dynamic value) {
@@ -80,6 +82,7 @@ class CleanupTask {
         }
       }).whereType<ReportModel>().toList(),
       isOutlier: json['is_outlier'] == true || json['is_outlier'] == 'true',
+      fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
     );
   }
 
@@ -105,6 +108,7 @@ class CleanupTask {
       'updated_at': updatedAt.toIso8601String(),
       if (reports != null) 'reports': reports?.map((e) => e.toJson()).toList(),
       'is_outlier': isOutlier,
+      'fc_version': fcVersion,
     };
   }
 }

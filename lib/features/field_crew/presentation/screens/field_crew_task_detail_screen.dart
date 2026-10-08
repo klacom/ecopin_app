@@ -11,6 +11,7 @@ import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_photo_upl
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_sidebar_card.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_progress_bar.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_mark_complete_button.dart';
+import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_field_feedback_card.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_shimmer_card.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
 import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
@@ -189,6 +190,11 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                         );
                       }
                     },
+                  ),
+                  const SizedBox(height: AppColors.spaceLG),
+                  FcFieldFeedbackCard(
+                    task: task,
+                    onFailureQueued: notifier.holdFailedLocation,
                   ),
                   const SizedBox(height: AppColors.spaceXL),
 

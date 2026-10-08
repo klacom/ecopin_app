@@ -66,7 +66,7 @@ class FcSyncManager {
   ///
   /// Returns an aggregated [FcSyncRunResult] describing what happened.
   /// Never throws — network errors are caught and recorded in the outbox.
-  Future<FcSyncRunResult> sync({bool reconciliationOnly = false}) async {
+  Future<FcSyncRunResult> sync({bool evidenceDependentOnly = false}) async {
     final allResults = <FcOpResult>[];
     int total = 0,
         succeeded = 0,
@@ -90,10 +90,12 @@ class FcSyncManager {
             item.operationType.startsWith('fc.photo.')) {
           continue;
         }
-        final isReconciliation =
-            item.operationType == FcOutboxOperationType.reconcileReportOutcome;
-        if (isReconciliation != reconciliationOnly) continue;
-        if (isReconciliation) {
+        final needsEvidence =
+            item.operationType ==
+                FcOutboxOperationType.reconcileReportOutcome ||
+            item.operationType == FcOutboxOperationType.submitTaskFailure;
+        if (needsEvidence != evidenceDependentOnly) continue;
+        if (needsEvidence) {
           final payload = jsonDecode(item.payloadJson) as Map<String, dynamic>;
           final refs = (payload['evidence_refs'] as List).cast<String>();
           if (await _local.resolveOutcomeEvidence(refs) == null) break;
@@ -210,13 +212,13 @@ class FcSyncManager {
   /// from [_kBaseBackoff], capped at 64 seconds.
   Future<FcSyncRunResult> syncWithBackoff({
     int maxAttempts = 3,
-    bool reconciliationOnly = false,
+    bool evidenceDependentOnly = false,
   }) async {
     FcSyncRunResult? last;
     Duration delay = _kBaseBackoff;
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-      last = await sync(reconciliationOnly: reconciliationOnly);
+      last = await sync(evidenceDependentOnly: evidenceDependentOnly);
       if (last.retryable == 0) return last;
 
       if (attempt < maxAttempts) {
@@ -264,7 +266,8 @@ class FcSyncManager {
   /// backend.
   Future<Map<String, dynamic>> _outboxItemToPayload(FcOutboxItem item) async {
     final payload = jsonDecode(item.payloadJson) as Map<String, dynamic>;
-    if (item.operationType == FcOutboxOperationType.reconcileReportOutcome) {
+    if (item.operationType == FcOutboxOperationType.reconcileReportOutcome ||
+        item.operationType == FcOutboxOperationType.submitTaskFailure) {
       final refs = (payload['evidence_refs'] as List).cast<String>();
       final remoteRefs = await _local.resolveOutcomeEvidence(refs);
       if (remoteRefs == null) {
@@ -303,6 +306,9 @@ class FcSyncManager {
         'Applied ${item.operationType} for ${item.entityId}: $result.status',
       );
     } else if (result.isTerminalFailure) {
+      if (result.serverRecord != null) {
+        await _patchLocalCache(item, result.serverRecord!);
+      }
       // Conflict or invalid — permanently fail; do not retry.
       await _local.markOutboxItemFailed(
         item.operationId,

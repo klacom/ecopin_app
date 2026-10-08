@@ -405,7 +405,9 @@ class FcLocalRepository {
     // Notes are always additive; every tap produces a distinct operation.
     final isAdditive =
         operationType == FcOutboxOperationType.addNote ||
-        operationType == FcOutboxOperationType.reconcileReportOutcome;
+        operationType == FcOutboxOperationType.reconcileReportOutcome ||
+        operationType == FcOutboxOperationType.recordFieldLoad ||
+        operationType == FcOutboxOperationType.submitTaskFailure;
     if (!isAdditive) {
       // Look for an existing pending/failed item for this operation + entity.
       final existing = await _db.getPendingOutboxItemForEntity(
@@ -517,6 +519,101 @@ class FcLocalRepository {
       }
     }
     return resolved;
+  }
+
+  Future<String> enqueueFieldLoad({
+    required CleanupTask task,
+    required String actorId,
+    required String eventType,
+    required DateTime observedAt,
+    num? fillPercent,
+    num? actualVolumeM3,
+    num? actualWeightKg,
+    String notes = '',
+  }) {
+    if (!task.assignedCrewIds.contains(actorId) ||
+        task.assignmentGeneration <= 0 ||
+        task.assignedFieldCrewId == null ||
+        !{'load_observation', 'disposal'}.contains(eventType) ||
+        (eventType == 'load_observation' &&
+            fillPercent == null &&
+            actualVolumeM3 == null &&
+            actualWeightKg == null) ||
+        (fillPercent != null && (fillPercent < 0 || fillPercent > 100)) ||
+        (actualVolumeM3 != null && actualVolumeM3 < 0) ||
+        (actualWeightKg != null && actualWeightKg < 0)) {
+      throw ArgumentError(
+        'A current assignment and valid load measurement are required',
+      );
+    }
+    final payload = <String, dynamic>{
+      'task_id': task.id,
+      'assignment_generation': task.assignmentGeneration,
+      'event_type': eventType,
+      'observed_at': observedAt.toUtc().toIso8601String(),
+      'notes': notes,
+    };
+    if (fillPercent != null) payload['fill_percent'] = fillPercent;
+    if (actualVolumeM3 != null) payload['actual_volume_m3'] = actualVolumeM3;
+    if (actualWeightKg != null) payload['actual_weight_kg'] = actualWeightKg;
+    return enqueueOutboxItem(
+      operationType: FcOutboxOperationType.recordFieldLoad,
+      entityId: task.id,
+      entityType: 'task',
+      baseVersion: task.fcVersion.toString(),
+      payload: payload,
+    );
+  }
+
+  Future<String> enqueueTaskFailure({
+    required CleanupTask task,
+    required String actorId,
+    required String reasonCode,
+    required String notes,
+    required DateTime observedAt,
+    required List<String> evidenceRefs,
+  }) async {
+    const allowed = {
+      'site_inaccessible',
+      'safety_hazard',
+      'vehicle_failure',
+      'crew_unavailable',
+    };
+    if (!task.assignedCrewIds.contains(actorId) ||
+        task.assignmentGeneration <= 0 ||
+        task.status == 'completed' ||
+        task.status == 'cancelled' ||
+        !allowed.contains(reasonCode) ||
+        notes.trim().isEmpty ||
+        evidenceRefs.isEmpty) {
+      throw ArgumentError(
+        'A current assignment, reason, notes and photo are required',
+      );
+    }
+    final operationId = await enqueueOutboxItem(
+      operationType: FcOutboxOperationType.submitTaskFailure,
+      entityId: task.id,
+      entityType: 'task',
+      baseVersion: task.fcVersion.toString(),
+      payload: {
+        'task_id': task.id,
+        'assignment_generation': task.assignmentGeneration,
+        'reason_code': reasonCode,
+        'notes': notes,
+        'observed_at': observedAt.toUtc().toIso8601String(),
+        'evidence_refs': List<String>.unmodifiable(evidenceRefs),
+      },
+    );
+    await applyLocalTaskPatch(task.id, {
+      'status': 'cancelled',
+      'failure_reason': notes,
+      'failure_class': reasonCode == 'site_inaccessible'
+          ? 'site'
+          : reasonCode == 'safety_hazard'
+          ? 'safety'
+          : 'transient',
+    });
+    return operationId;
   }
 
   /// Returns all pending and failed outbox items in FIFO order.

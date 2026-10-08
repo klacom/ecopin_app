@@ -188,7 +188,7 @@ class FcSyncTrigger {
       // has a remote URL. The saved receipt and observation remain immutable.
       final outcomeResult = await syncManager.syncWithBackoff(
         maxAttempts: 3,
-        reconciliationOnly: true,
+        evidenceDependentOnly: true,
       );
       mutationResult = FcSyncRunResult(
         total: ordinaryResult.total + outcomeResult.total,

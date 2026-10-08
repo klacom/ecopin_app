@@ -75,6 +75,17 @@ class FcTaskDetailNotifier extends Notifier<FcTaskDetailState> {
     await taskRepo.markTaskComplete(taskId);
   }
 
+  void holdFailedLocation(String reasonCode) {
+    final current = state.task;
+    if (current == null) return;
+    state = state.copyWith(
+      task: _patchTask(current, {
+        'status': 'cancelled',
+        'failure_reason_code': reasonCode,
+      }),
+    );
+  }
+
   CleanupTask _patchTask(CleanupTask t, Map<String, dynamic> patch) {
     final json = t.toJson();
     json.addAll(patch);

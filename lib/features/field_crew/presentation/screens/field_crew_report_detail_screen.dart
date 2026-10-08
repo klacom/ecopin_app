@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_photo_repository.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_report_detail_notifier.dart';
 import 'package:ecopin_app/features/field_crew/providers/cleanup_task_detail_provider.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_report_metadata_card.dart';
@@ -167,7 +166,7 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                     onViewOnMap: () => context.push('/field-crew/map'),
                     onStatusChange: (newStatus) async {
                       await notifier.updateStatus(newStatus);
-                      if (report.isOutlier && (newStatus.toLowerCase() == 'resolved' || newStatus.toLowerCase() == 'closed')) {
+                      if (report.breachedAt != null && (newStatus.toLowerCase() == 'resolved' || newStatus.toLowerCase() == 'closed')) {
                         if (context.mounted && taskAsync != null && taskAsync.value != null) {
                           final task = taskAsync.value!;
                           final currentIndex = task.reports?.indexWhere((r) => r.id == report.id) ?? -1;

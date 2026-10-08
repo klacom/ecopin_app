@@ -203,7 +203,7 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                   const SizedBox(height: AppColors.spaceXL),
 
                   Text(
-                    task.isOutlier
+                    task.dispatchKind == 'sweeper'
                         ? 'Optimized Route Waypoints'
                         : 'Reports in this Task',
                     style: AppTypography.h4.copyWith(

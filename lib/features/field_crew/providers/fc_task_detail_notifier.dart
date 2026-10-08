@@ -78,6 +78,7 @@ class FcTaskDetailNotifier extends Notifier<FcTaskDetailState> {
   void holdFailedLocation(String reasonCode) {
     final current = state.task;
     if (current == null) return;
+    ref.read(heldTasksProvider.notifier).holdTask(taskId);
     state = state.copyWith(
       task: _patchTask(current, {
         'status': 'cancelled',

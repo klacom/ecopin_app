@@ -34,3 +34,13 @@ class CompletedTasksNotifier extends Notifier<Set<String>> {
 }
 
 final completedTasksProvider = NotifierProvider<CompletedTasksNotifier, Set<String>>(() => CompletedTasksNotifier());
+
+class HeldTasksNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void holdTask(String taskId) => state = {...state, taskId};
+}
+
+final heldTasksProvider =
+    NotifierProvider<HeldTasksNotifier, Set<String>>(() => HeldTasksNotifier());

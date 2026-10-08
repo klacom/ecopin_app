@@ -156,6 +156,15 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
   // --- TICKET 2: Single-Destination Routing Logic ---
   // Isolates the active task and prevents routing to the entire queue
   Future<void> _startLiveNavigation(CleanupTask targetTask) async {
+    if (targetTask.status.toLowerCase() == 'cancelled' ||
+        ref.read(heldTasksProvider).contains(targetTask.id)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This location is on hold for officer review.')),
+        );
+      }
+      return;
+    }
     // ── Loading guard: prevent double-tap and give immediate visual feedback ──
     if (_isStartingNavigation) return;
     if (mounted) setState(() => _isStartingNavigation = true);
@@ -367,6 +376,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
     final routeAsync = ref.watch(myRouteProvider);
     final tasksAsync = ref.watch(myCleanupTasksProvider);
     final completedTasks = ref.watch(completedTasksProvider);
+    final heldTasks = ref.watch(heldTasksProvider);
 
     // Cancel navigation if the active task gets completed
     ref.listen(completedTasksProvider, (previous, next) {
@@ -381,6 +391,22 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                       _lastSpokenDistanceThreshold = 999999;
             });
           }
+        }
+      }
+    });
+
+    ref.listen(heldTasksProvider, (previous, next) {
+      if (_isNavigating &&
+          _activeNavigationTaskId != null &&
+          next.contains(_activeNavigationTaskId!)) {
+        flutterTts.stop();
+        if (mounted) {
+          setState(() {
+            _isNavigating = false;
+            _activeNavigationTaskId = null;
+            _lastSpokenStepIndex = -1;
+            _lastSpokenDistanceThreshold = 999999;
+          });
         }
       }
     });
@@ -724,7 +750,12 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                           builder: (context) {
                             // ignore: depend_on_referenced_packages
                             final uncompletedTasks = tasks.where((t) {
-                              if (t.status.toLowerCase() == 'completed' || completedTasks.contains(t.id)) return false;
+                              if (t.status.toLowerCase() == 'completed' ||
+                                  t.status.toLowerCase() == 'cancelled' ||
+                                  completedTasks.contains(t.id) ||
+                                  heldTasks.contains(t.id)) {
+                                return false;
+                              }
                               return route.waypoints.any((w) => w.cleanupTaskId == t.id);
                             }).toList();
                             

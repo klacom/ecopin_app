@@ -31,7 +31,8 @@ class ReportModel {
   final String? severityLevel;
   final Map<String, dynamic>? severityFactors;
   final String? lifecycleStage;
-  final bool isOutlier;
+  final String? lifecycleState;
+  final DateTime? breachedAt;
   final String? slaBreachDuration;
   final int fcVersion;
   final int reportClaimGeneration;
@@ -65,7 +66,8 @@ class ReportModel {
     this.severityLevel,
     this.severityFactors,
     this.lifecycleStage,
-    this.isOutlier = false,
+    this.lifecycleState,
+    this.breachedAt,
     this.slaBreachDuration,
     this.fcVersion = 0,
     this.reportClaimGeneration = 0,
@@ -158,7 +160,8 @@ class ReportModel {
       severityLevel: json['severity_level']?.toString(),
       severityFactors: json['severity_factors'] as Map<String, dynamic>?,
       lifecycleStage: (json['stage'] ?? json['lifecycle_stage'])?.toString(),
-      isOutlier: json['is_outlier'] == true || json['is_outlier'] == 'true',
+      lifecycleState: json['lifecycle_state']?.toString(),
+      breachedAt: DateTime.tryParse(json['breached_at']?.toString() ?? ''),
       slaBreachDuration: json['sla_breach_duration']?.toString(),
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
       reportClaimGeneration: int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,
@@ -189,7 +192,8 @@ class ReportModel {
       'severity_factors': severityFactors,
       'lifecycle_stage': lifecycleStage,
       'stage': lifecycleStage,
-      'is_outlier': isOutlier,
+      'lifecycle_state': lifecycleState,
+      'breached_at': breachedAt?.toIso8601String(),
       'sla_breach_duration': slaBreachDuration,
       'fc_version': fcVersion,
       'report_claim_generation': reportClaimGeneration,

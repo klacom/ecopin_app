@@ -20,7 +20,7 @@ class CleanupTask {
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<ReportModel>? reports;
-  final bool isOutlier;
+  final String dispatchKind;
   final int fcVersion;
   final int assignmentGeneration;
   final String? assignedFieldCrewId;
@@ -48,7 +48,7 @@ class CleanupTask {
     required this.createdAt,
     required this.updatedAt,
     this.reports,
-    this.isOutlier = false,
+    this.dispatchKind = 'standard',
     this.fcVersion = 0,
     this.assignmentGeneration = 0,
     this.assignedFieldCrewId,
@@ -98,7 +98,7 @@ class CleanupTask {
           return null;
         }
       }).whereType<ReportModel>().toList(),
-      isOutlier: json['is_outlier'] == true || json['is_outlier'] == 'true',
+      dispatchKind: json['dispatch_kind']?.toString() ?? 'standard',
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
       assignmentGeneration: int.tryParse(json['assignment_generation']?.toString() ?? '') ?? 0,
       assignedFieldCrewId: json['assigned_field_crew_id']?.toString(),
@@ -129,7 +129,7 @@ class CleanupTask {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       if (reports != null) 'reports': reports?.map((e) => e.toJson()).toList(),
-      'is_outlier': isOutlier,
+      'dispatch_kind': dispatchKind,
       'fc_version': fcVersion,
       'assignment_generation': assignmentGeneration,
       'assigned_field_crew_id': assignedFieldCrewId,

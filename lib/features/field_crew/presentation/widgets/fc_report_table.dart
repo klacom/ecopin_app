@@ -78,7 +78,7 @@ class FcReportTable extends StatelessWidget {
                     report.validationStatus.replaceAll('_', ' '),
                     style: AppTypography.caption.copyWith(color: Colors.grey),
                   ),
-                  if (report.isOutlier && report.slaBreachDuration != null) ...[
+                  if (report.breachedAt != null) ...[
                     const SizedBox(width: AppColors.spaceMD),
                     const Icon(
                       Icons.warning_amber_rounded,
@@ -87,7 +87,9 @@ class FcReportTable extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'SLA Breached: ${report.slaBreachDuration}',
+                      report.slaBreachDuration == null
+                          ? 'SLA breached'
+                          : 'SLA breached: ${report.slaBreachDuration}',
                       style: AppTypography.caption.copyWith(
                         color: AppColors.error,
                         fontWeight: FontWeight.bold,

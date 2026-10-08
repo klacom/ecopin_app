@@ -407,7 +407,8 @@ class FcLocalRepository {
     String? baseVersion,
   }) async {
     // Notes are always additive; every tap produces a distinct operation.
-    final isAdditive = operationType == FcOutboxOperationType.addNote;
+    final isAdditive = operationType == FcOutboxOperationType.addNote ||
+        operationType == FcOutboxOperationType.reconcileReportOutcome;
     if (!isAdditive) {
       // Look for an existing pending/failed item for this operation + entity.
       final existing = await _db.getPendingOutboxItemForEntity(
@@ -444,8 +445,51 @@ class FcLocalRepository {
       );
     } catch (e) {
       _log.severe('enqueueOutboxItem($operationType/$entityId) failed', e);
+      rethrow;
     }
     return operationId;
+  }
+
+  /// Records one immutable field observation with the receipt issued for the
+  /// downloaded task/report assignment. Never replace an earlier observation.
+  Future<String> enqueueReportOutcome({
+    required CleanupTask task,
+    required ReportModel report,
+    required String crewId,
+    required String outcome,
+    required DateTime observedAt,
+    required List<String> evidenceRefs,
+    String notes = '',
+  }) {
+    const allowed = {'cleaned', 'already_resolved', 'unable', 'skipped'};
+    final claimGeneration = report.reportClaimGeneration > 0
+        ? report.reportClaimGeneration
+        : task.reportClaimGenerations[report.id] ?? 0;
+    if (!allowed.contains(outcome) || task.id.isEmpty || report.id.isEmpty ||
+        !task.reportIds.contains(report.id) ||
+        task.assignedFieldCrewId != crewId ||
+        task.assignmentGeneration <= 0 || claimGeneration <= 0 ||
+        evidenceRefs.any((ref) => ref.trim().isEmpty)) {
+      throw ArgumentError('A valid server assignment receipt and outcome are required');
+    }
+    return enqueueOutboxItem(
+      operationType: FcOutboxOperationType.reconcileReportOutcome,
+      entityId: report.id,
+      entityType: 'report',
+      baseVersion: report.fcVersion.toString(),
+      payload: {
+        'task_id': task.id,
+        'report_id': report.id,
+        'crew_id': crewId,
+        'assignment_generation': task.assignmentGeneration,
+        'report_claim_generation': claimGeneration,
+        'base_fc_version': report.fcVersion,
+        'outcome': outcome,
+        'observed_at': observedAt.toUtc().toIso8601String(),
+        'evidence_refs': List<String>.unmodifiable(evidenceRefs),
+        'notes': notes,
+      },
+    );
   }
 
   /// Returns all pending and failed outbox items in FIFO order.

@@ -203,6 +203,7 @@ abstract class FcOutboxOperationType {
   static const String updateReportDetails = 'fc.report.update_details';
   static const String addNote = 'fc.note.add';
   static const String markTaskComplete = 'fc.task.mark_complete';
+  static const String reconcileReportOutcome = 'fc.report.reconcile';
   static const String uploadBeforePhoto = 'fc.photo.upload_before';
   static const String uploadAfterPhoto = 'fc.photo.upload_after';
   static const String deletePhoto = 'fc.photo.delete';

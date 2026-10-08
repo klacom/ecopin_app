@@ -49,7 +49,7 @@ class FcMarkCompleteButton extends StatelessWidget {
 
     for (var r in reports) {
       bool isScouting = r.issueType == 'scouting' || r.issueType == 'acknowledge_only';
-      bool isResolved = r.status.toLowerCase() == 'resolved' || r.status.toLowerCase() == 'closed';
+      bool isResolved = r.status.toLowerCase() == 'resolved' || r.status.toLowerCase() == 'completed';
       
       if (isScouting) {
         if (r.validationStatus.toLowerCase() != 'validated' && !isResolved) {

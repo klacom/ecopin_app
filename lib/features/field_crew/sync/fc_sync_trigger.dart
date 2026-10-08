@@ -1,40 +1,36 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:ecopin_app/core/database/app_database.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_photo_repository.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_repository.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_photo_sync_manager.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_gate.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_manager.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_result.dart';
-import 'package:ecopin_app/features/field_crew/sync/fc_sync_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
 // ── Providers ─────────────────────────────────────────────────────────────────
 
 final fcSyncManagerProvider = Provider<FcSyncManager>((ref) {
-  final api   = ref.watch(apiClientProvider);
+  final api = ref.watch(apiClientProvider);
   final local = ref.watch(fcLocalRepositoryProvider);
   return FcSyncManager(api, local);
 });
 
 final fcPhotoSyncManagerProvider = Provider<FcPhotoSyncManager>((ref) {
-  final api       = ref.watch(apiClientProvider);
+  final api = ref.watch(apiClientProvider);
   final photoRepo = ref.watch(fcLocalPhotoRepositoryProvider);
-  final local     = ref.watch(fcLocalRepositoryProvider);
+  final local = ref.watch(fcLocalRepositoryProvider);
   return FcPhotoSyncManager(api, photoRepo, local);
 });
 
 final fcSyncTriggerProvider = Provider<FcSyncTrigger>((ref) {
   final trigger = FcSyncTrigger(
-    syncManager:      ref.watch(fcSyncManagerProvider),
+    syncManager: ref.watch(fcSyncManagerProvider),
     photoSyncManager: ref.watch(fcPhotoSyncManagerProvider),
-    stateNotifier:    ref.read(fcSyncStateProvider.notifier),
-    gate:             ref.watch(fcSyncGateProvider),
+    stateNotifier: ref.read(fcSyncStateProvider.notifier),
+    gate: ref.watch(fcSyncGateProvider),
   );
   ref.onDispose(trigger.dispose);
   return trigger;
@@ -53,12 +49,12 @@ class FcSyncState {
   final List<FcConflictEvent> conflictEvents;
 
   const FcSyncState({
-    this.phase              = FcSyncPhase.idle,
+    this.phase = FcSyncPhase.idle,
     this.lastMutationResult,
     this.lastPhotoResult,
     this.errorMessage,
     this.lastSyncAt,
-    this.conflictEvents     = const [],
+    this.conflictEvents = const [],
   });
 
   FcSyncState copyWith({
@@ -68,15 +64,14 @@ class FcSyncState {
     String? errorMessage,
     DateTime? lastSyncAt,
     List<FcConflictEvent>? conflictEvents,
-  }) =>
-      FcSyncState(
-        phase:               phase               ?? this.phase,
-        lastMutationResult:  lastMutationResult  ?? this.lastMutationResult,
-        lastPhotoResult:     lastPhotoResult      ?? this.lastPhotoResult,
-        errorMessage:        errorMessage        ?? this.errorMessage,
-        lastSyncAt:          lastSyncAt          ?? this.lastSyncAt,
-        conflictEvents:      conflictEvents      ?? this.conflictEvents,
-      );
+  }) => FcSyncState(
+    phase: phase ?? this.phase,
+    lastMutationResult: lastMutationResult ?? this.lastMutationResult,
+    lastPhotoResult: lastPhotoResult ?? this.lastPhotoResult,
+    errorMessage: errorMessage ?? this.errorMessage,
+    lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+    conflictEvents: conflictEvents ?? this.conflictEvents,
+  );
 
   bool get hasPendingWork =>
       (lastMutationResult?.retryable ?? 0) > 0 ||
@@ -84,8 +79,9 @@ class FcSyncState {
       (lastPhotoResult?.deleteFailed ?? 0) > 0;
 }
 
-final fcSyncStateProvider =
-    NotifierProvider<FcSyncStateNotifier, FcSyncState>(FcSyncStateNotifier.new);
+final fcSyncStateProvider = NotifierProvider<FcSyncStateNotifier, FcSyncState>(
+  FcSyncStateNotifier.new,
+);
 
 class FcSyncStateNotifier extends Notifier<FcSyncState> {
   @override
@@ -96,12 +92,12 @@ class FcSyncStateNotifier extends Notifier<FcSyncState> {
   void setResult(FcSyncRunResult mutation, FcPhotoSyncRunResult photo) {
     final allGood = mutation.allSucceeded && photo.allSucceeded;
     state = state.copyWith(
-      phase:              allGood ? FcSyncPhase.success : FcSyncPhase.partialFailure,
+      phase: allGood ? FcSyncPhase.success : FcSyncPhase.partialFailure,
       lastMutationResult: mutation,
-      lastPhotoResult:    photo,
-      errorMessage:       null,
-      lastSyncAt:         DateTime.now(),
-      conflictEvents:     mutation.conflictEvents,
+      lastPhotoResult: photo,
+      errorMessage: null,
+      lastSyncAt: DateTime.now(),
+      conflictEvents: mutation.conflictEvents,
     );
   }
 
@@ -119,8 +115,8 @@ class FcSyncTrigger {
   final FcSyncStateNotifier stateNotifier;
   final FcSyncGate gate;
 
-  static const Duration _kPeriodicInterval     = Duration(minutes: 5);
-  static const Duration _kConnectivityDebounce  = Duration(seconds: 2);
+  static const Duration _kPeriodicInterval = Duration(minutes: 5);
+  static const Duration _kConnectivityDebounce = Duration(seconds: 2);
 
   final _log = Logger('FcSyncTrigger');
   bool _running = false;
@@ -186,8 +182,23 @@ class FcSyncTrigger {
     FcPhotoSyncRunResult photoResult;
 
     try {
-      mutationResult = await syncManager.syncWithBackoff(maxAttempts: 3);
-      photoResult    = await photoSyncManager.sync();
+      final ordinaryResult = await syncManager.syncWithBackoff(maxAttempts: 3);
+      photoResult = await photoSyncManager.sync();
+      // A physical outcome is transmitted only after its local evidence photo
+      // has a remote URL. The saved receipt and observation remain immutable.
+      final outcomeResult = await syncManager.syncWithBackoff(
+        maxAttempts: 3,
+        reconciliationOnly: true,
+      );
+      mutationResult = FcSyncRunResult(
+        total: ordinaryResult.total + outcomeResult.total,
+        succeeded: ordinaryResult.succeeded + outcomeResult.succeeded,
+        merged: ordinaryResult.merged + outcomeResult.merged,
+        conflicted: ordinaryResult.conflicted + outcomeResult.conflicted,
+        retryable: ordinaryResult.retryable + outcomeResult.retryable,
+        permanent: ordinaryResult.permanent + outcomeResult.permanent,
+        results: [...ordinaryResult.results, ...outcomeResult.results],
+      );
     } catch (e) {
       _log.severe('FcSyncTrigger: unhandled sync error', e);
       stateNotifier.setError(e.toString());
@@ -203,9 +214,9 @@ class FcSyncTrigger {
           ? FcSyncPhase.success
           : FcSyncPhase.partialFailure,
       lastMutationResult: mutationResult,
-      lastPhotoResult:    photoResult,
-      lastSyncAt:         DateTime.now(),
-      conflictEvents:     mutationResult.conflictEvents,
+      lastPhotoResult: photoResult,
+      lastSyncAt: DateTime.now(),
+      conflictEvents: mutationResult.conflictEvents,
     );
   }
 
@@ -218,8 +229,9 @@ class FcSyncTrigger {
 
   void _subscribeToConnectivity() {
     _connectivitySub?.cancel();
-    _connectivitySub =
-        Connectivity().onConnectivityChanged.listen((results) async {
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((
+      results,
+    ) async {
       final isOnline = !results.contains(ConnectivityResult.none);
       if (isOnline && !_wasOnline) {
         await Future<void>.delayed(_kConnectivityDebounce);

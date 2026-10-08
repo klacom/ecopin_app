@@ -14,10 +14,10 @@ import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_mark_comp
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_shimmer_card.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
 import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_photo_repository.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_conflict_summary.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
+import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FieldCrewTaskDetailScreen extends ConsumerWidget {
@@ -36,16 +36,14 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
         backgroundColor: AppColors.backgroundDark,
         elevation: 0,
         leading: IconButton(
-          icon:
-              const Icon(Icons.arrow_back, color: AppColors.textPrimaryDark),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimaryDark),
           onPressed: () => context.pop(),
         ),
-        title: Text('Task Details',
-            style:
-                AppTypography.h5.copyWith(color: AppColors.textPrimaryDark)),
-        actions: [
-          if (state.task != null) _PendingSyncBadge(taskId: taskId),
-        ],
+        title: Text(
+          'Task Details',
+          style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark),
+        ),
+        actions: [if (state.task != null) _PendingSyncBadge(taskId: taskId)],
       ),
       body: _buildBody(context, ref, state, notifier),
     );
@@ -70,19 +68,24 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
               const SizedBox(height: 16),
-              Text('Could not load task.',
-                  style: AppTypography.h5
-                      .copyWith(color: AppColors.textPrimaryDark)),
+              Text(
+                'Could not load task.',
+                style: AppTypography.h5.copyWith(
+                  color: AppColors.textPrimaryDark,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(state.errorMessage!,
-                  style:
-                      AppTypography.caption.copyWith(color: AppColors.error),
-                  textAlign: TextAlign.center),
+              Text(
+                state.errorMessage!,
+                style: AppTypography.caption.copyWith(color: AppColors.error),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: notifier.refresh,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryDark),
+                  backgroundColor: AppColors.primaryDark,
+                ),
                 child: const Text('Retry'),
               ),
             ],
@@ -93,18 +96,18 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
 
     final task = state.task!;
     final reports = state.reports;
-    final currentUserId =
-        Supabase.instance.client.auth.currentUser?.id;
-    final isAssigned = currentUserId != null &&
-        task.assignedCrewIds.contains(currentUserId);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isAssigned =
+        currentUserId != null && task.assignedCrewIds.contains(currentUserId);
 
     // Resolved count computed from local state.
     int resolvedCount = 0;
     for (final r in reports) {
       final isScouting =
           r.issueType == 'scouting' || r.issueType == 'acknowledge_only';
-      final isResolved = r.status.toLowerCase() == 'resolved' ||
-          r.status.toLowerCase() == 'closed';
+      final isResolved =
+          r.status.toLowerCase() == 'resolved' ||
+          r.status.toLowerCase() == 'completed';
       if (isScouting) {
         if (r.validationStatus.toLowerCase() == 'validated' || isResolved) {
           resolvedCount++;
@@ -157,14 +160,12 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                     task: task,
                     isAssigned: isAssigned,
                     onUpload: (file, type) async {
-                      final repo =
-                          ref.read(cleanupTaskRepositoryProvider);
+                      final repo = ref.read(cleanupTaskRepositoryProvider);
                       await repo.uploadTaskPhoto(task.id, file, type);
                       await notifier.refresh();
                     },
                     onDelete: (slot, type) async {
-                      final repo =
-                          ref.read(cleanupTaskRepositoryProvider);
+                      final repo = ref.read(cleanupTaskRepositoryProvider);
                       await repo.deleteTaskPhoto(task.id, type);
                       await notifier.refresh();
                     },
@@ -195,18 +196,32 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                   FcPhotoGalleryCard(reports: reports),
                   const SizedBox(height: AppColors.spaceXL),
 
-                  Text(task.isOutlier ? 'Optimized Route Waypoints' : 'Reports in this Task',
-                      style: AppTypography.h4
-                          .copyWith(color: AppColors.textPrimaryDark)),
+                  Text(
+                    task.isOutlier
+                        ? 'Optimized Route Waypoints'
+                        : 'Reports in this Task',
+                    style: AppTypography.h4.copyWith(
+                      color: AppColors.textPrimaryDark,
+                    ),
+                  ),
                   const SizedBox(height: AppColors.spaceMD),
                 ],
               ),
             ),
           ),
           SliverPadding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: AppColors.spaceLG),
-            sliver: FcReportTable(reports: reports, taskId: taskId),
+            padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceLG),
+            sliver: FcReportTable(
+              reports: reports,
+              taskId: taskId,
+              onOutcome:
+                  isAssigned &&
+                      task.status != 'completed' &&
+                      task.status != 'cancelled'
+                  ? (report, outcome) =>
+                        _queueReportOutcome(context, ref, task, report, outcome)
+                  : null,
+            ),
           ),
           const SliverPadding(
             padding: EdgeInsets.only(bottom: AppColors.spaceXL),
@@ -214,6 +229,98 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _queueReportOutcome(
+    BuildContext context,
+    WidgetRef ref,
+    CleanupTask task,
+    ReportModel report,
+    String outcome,
+  ) async {
+    final actor = Supabase.instance.client.auth.currentUser?.id;
+    if (actor == null) return;
+    final localPhoto = ref.read(fcLocalPhotoRepositoryProvider);
+    final taskPhoto = await localPhoto.getActivePhoto(task.id, 'task', 'after');
+    final reportPhoto = await localPhoto.getActivePhoto(
+      report.id,
+      'report',
+      'after',
+    );
+    final evidence = <String>[
+      if (reportPhoto != null)
+        'local-photo:${reportPhoto.localPhotoId}'
+      else if (taskPhoto != null)
+        'local-photo:${taskPhoto.localPhotoId}'
+      else if (report.afterPhotoUrl?.startsWith('https://') == true)
+        report.afterPhotoUrl!
+      else if (task.afterPhotoUrl?.startsWith('https://') == true)
+        task.afterPhotoUrl!,
+    ];
+    if (!context.mounted) return;
+    if (evidence.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Capture an after photo before recording this site outcome.',
+          ),
+        ),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          outcome == 'already_resolved'
+              ? 'Site already clear?'
+              : 'Confirm physical cleanup',
+        ),
+        content: Text(
+          outcome == 'already_resolved'
+              ? 'This records an arrival observation. It does not claim cleanup credit.'
+              : 'This queues a physical cleanup receipt with the captured photo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Queue outcome'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref
+          .read(fcLocalRepositoryProvider)
+          .enqueueReportOutcome(
+            task: task,
+            report: report,
+            crewId: actor,
+            outcome: outcome,
+            observedAt: DateTime.now(),
+            evidenceRefs: evidence,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Outcome saved offline. It will sync with its assignment receipt.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    }
   }
 }
 
@@ -291,8 +398,10 @@ class _SyncChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 12),
       child: Chip(
-        label: Text(label,
-            style: const TextStyle(fontSize: 10, color: Colors.white)),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: Colors.white),
+        ),
         backgroundColor: color,
         padding: EdgeInsets.zero,
         labelPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: -4),
@@ -349,10 +458,16 @@ class _TaskPhotoSectionState extends ConsumerState<_TaskPhotoSection> {
 
   Future<void> _resolveSlots() async {
     final photoRepo = ref.read(fcLocalPhotoRepositoryProvider);
-    final before =
-        await photoRepo.getActivePhoto(widget.task.id, 'task', 'before');
-    final after =
-        await photoRepo.getActivePhoto(widget.task.id, 'task', 'after');
+    final before = await photoRepo.getActivePhoto(
+      widget.task.id,
+      'task',
+      'before',
+    );
+    final after = await photoRepo.getActivePhoto(
+      widget.task.id,
+      'task',
+      'after',
+    );
 
     if (!mounted) return;
     setState(() {
@@ -379,7 +494,8 @@ class _TaskPhotoSectionState extends ConsumerState<_TaskPhotoSection> {
   @override
   Widget build(BuildContext context) {
     // Only show the section if there are photos or the user is assigned.
-    final hasContent = (_beforeSlot != null && _beforeSlot!.hasPhoto) ||
+    final hasContent =
+        (_beforeSlot != null && _beforeSlot!.hasPhoto) ||
         (_afterSlot != null && _afterSlot!.hasPhoto) ||
         widget.isAssigned;
 

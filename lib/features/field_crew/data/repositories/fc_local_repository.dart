@@ -27,10 +27,7 @@ class FcLocalRepository {
       _db.getFcSyncCursor(collectionKey);
 
   /// Marks a collection as synced at [syncedAt] (defaults to now).
-  Future<void> recordSyncAt(
-    String collectionKey, [
-    DateTime? syncedAt,
-  ]) =>
+  Future<void> recordSyncAt(String collectionKey, [DateTime? syncedAt]) =>
       _db.setFcSyncCursor(collectionKey, syncedAt ?? DateTime.now());
 
   // ── Reports ─────────────────────────────────────────────────────────────
@@ -99,12 +96,10 @@ class FcLocalRepository {
   Future<FcOutboxItem?> findPendingOutboxItem(
     String operationType,
     String entityId,
-  ) =>
-      _db.getPendingOutboxItemForEntity(
-        operationType: operationType,
-        entityId: entityId,
-      );
-
+  ) => _db.getPendingOutboxItemForEntity(
+    operationType: operationType,
+    entityId: entityId,
+  );
 
   /// Returns only reports that have pending local mutations.
   Future<List<ReportModel>> getLocallyModifiedReports() async {
@@ -137,8 +132,7 @@ class FcLocalRepository {
     try {
       final existing = await _db.getFcReportById(reportId);
       if (existing == null) return;
-      final json =
-          jsonDecode(existing.jsonData) as Map<String, dynamic>;
+      final json = jsonDecode(existing.jsonData) as Map<String, dynamic>;
       json.addAll(patch);
       await _db.updateFcReportJson(reportId, jsonEncode(json));
       await _db.markFcReportLocallyModified(reportId);
@@ -147,8 +141,7 @@ class FcLocalRepository {
     }
   }
 
-  Future<void> markFcReportSynced(String id) =>
-      _db.markFcReportSynced(id);
+  Future<void> markFcReportSynced(String id) => _db.markFcReportSynced(id);
 
   // ── Tasks ────────────────────────────────────────────────────────────────
 
@@ -156,7 +149,9 @@ class FcLocalRepository {
   Future<void> saveTasks(List<CleanupTask> tasks) async {
     try {
       final rows = tasks.map((t) {
-        _log.info('saveTasks: Saving task ${t.id}. streetAddress=${t.streetAddress}');
+        _log.info(
+          'saveTasks: Saving task ${t.id}. streetAddress=${t.streetAddress}',
+        );
         return FcCachedTasksCompanion.insert(
           id: t.id,
           jsonData: jsonEncode(t.toJson()),
@@ -182,10 +177,14 @@ class FcLocalRepository {
             try {
               final jsonMap = jsonDecode(r.jsonData) as Map<String, dynamic>;
               if (r.address != null && r.address!.isNotEmpty) {
-                _log.info('Task ${r.id} has explicit Drift address column: ${r.address}');
+                _log.info(
+                  'Task ${r.id} has explicit Drift address column: ${r.address}',
+                );
                 jsonMap['street_address'] = r.address;
               } else {
-                _log.warning('Task ${r.id} Drift address column is null/empty. jsonData street_address is: ${jsonMap['street_address']}');
+                _log.warning(
+                  'Task ${r.id} Drift address column is null/empty. jsonData street_address is: ${jsonMap['street_address']}',
+                );
               }
               return CleanupTask.fromJson(jsonMap);
             } catch (e) {
@@ -216,17 +215,17 @@ class FcLocalRepository {
   }
 
   /// Returns the raw Drift row for a task, exposing [localSyncState].
-  Future<FcCachedTask?> getCachedTaskDbRow(String id) =>
-      _db.getFcTaskById(id);
-
+  Future<FcCachedTask?> getCachedTaskDbRow(String id) => _db.getFcTaskById(id);
 
   Future<void> markFcTaskLocallyModified(String id) =>
       _db.markFcTaskLocallyModified(id);
 
-  Future<void> markFcTaskSynced(String id) =>
-      _db.markFcTaskSynced(id);
+  Future<void> markFcTaskSynced(String id) => _db.markFcTaskSynced(id);
 
-  Future<void> applyLocalTaskPatch(String taskId, Map<String, dynamic> patch) async {
+  Future<void> applyLocalTaskPatch(
+    String taskId,
+    Map<String, dynamic> patch,
+  ) async {
     try {
       final existing = await _db.getFcTaskById(taskId);
       if (existing == null) return;
@@ -240,8 +239,9 @@ class FcLocalRepository {
   }
 
   Future<void> updateFcTaskJson(String id, String newJsonData) async {
-    await (_db.update(_db.fcCachedTasks)..where((t) => t.id.equals(id)))
-        .write(FcCachedTasksCompanion(jsonData: Value(newJsonData)));
+    await (_db.update(_db.fcCachedTasks)..where((t) => t.id.equals(id))).write(
+      FcCachedTasksCompanion(jsonData: Value(newJsonData)),
+    );
   }
 
   // ── Evidence ─────────────────────────────────────────────────────────────
@@ -268,9 +268,7 @@ class FcLocalRepository {
   }
 
   /// Returns cached evidence items for [reportId].
-  Future<List<Map<String, dynamic>>> getCachedEvidences(
-    String reportId,
-  ) async {
+  Future<List<Map<String, dynamic>>> getCachedEvidences(String reportId) async {
     try {
       final rows = await _db.getFcEvidencesForReport(reportId);
       return rows.map((r) {
@@ -380,15 +378,13 @@ class FcLocalRepository {
   Future<List<FcCachedPhotoMetadataData>> getPhotoMetadata(
     String entityId,
     String entityType,
-  ) =>
-      _db.getFcPhotosForEntity(entityId, entityType);
+  ) => _db.getFcPhotosForEntity(entityId, entityType);
 
   Future<void> deletePhotoMetadata(
     String entityId,
     String entityType,
     String photoType,
-  ) =>
-      _db.deleteFcPhotoMetadata('${entityId}_${entityType}_$photoType');
+  ) => _db.deleteFcPhotoMetadata('${entityId}_${entityType}_$photoType');
 
   // ── Outbox ────────────────────────────────────────────────────────────────
 
@@ -407,7 +403,8 @@ class FcLocalRepository {
     String? baseVersion,
   }) async {
     // Notes are always additive; every tap produces a distinct operation.
-    final isAdditive = operationType == FcOutboxOperationType.addNote ||
+    final isAdditive =
+        operationType == FcOutboxOperationType.addNote ||
         operationType == FcOutboxOperationType.reconcileReportOutcome;
     if (!isAdditive) {
       // Look for an existing pending/failed item for this operation + entity.
@@ -465,12 +462,17 @@ class FcLocalRepository {
     final claimGeneration = report.reportClaimGeneration > 0
         ? report.reportClaimGeneration
         : task.reportClaimGenerations[report.id] ?? 0;
-    if (!allowed.contains(outcome) || task.id.isEmpty || report.id.isEmpty ||
+    if (!allowed.contains(outcome) ||
+        task.id.isEmpty ||
+        report.id.isEmpty ||
         !task.reportIds.contains(report.id) ||
-        task.assignedFieldCrewId != crewId ||
-        task.assignmentGeneration <= 0 || claimGeneration <= 0 ||
+        !task.assignedCrewIds.contains(crewId) ||
+        task.assignmentGeneration <= 0 ||
+        claimGeneration <= 0 ||
         evidenceRefs.any((ref) => ref.trim().isEmpty)) {
-      throw ArgumentError('A valid server assignment receipt and outcome are required');
+      throw ArgumentError(
+        'A valid server assignment receipt and outcome are required',
+      );
     }
     return enqueueOutboxItem(
       operationType: FcOutboxOperationType.reconcileReportOutcome,
@@ -490,6 +492,31 @@ class FcLocalRepository {
         'notes': notes,
       },
     );
+  }
+
+  /// Keeps the saved observation immutable while replacing local photo IDs
+  /// with uploaded URLs only in the transport copy. Null means upload pending.
+  Future<List<String>?> resolveOutcomeEvidence(List<String> refs) async {
+    final resolved = <String>[];
+    for (final ref in refs) {
+      if (ref.startsWith('local-photo:')) {
+        final photo = await _db.getFcLocalPhotoById(
+          ref.substring('local-photo:'.length),
+        );
+        if (photo == null ||
+            photo.remoteUrl == null ||
+            photo.remoteUrl!.isEmpty) {
+          return null;
+        }
+        resolved.add(photo.remoteUrl!);
+      } else if (Uri.tryParse(ref)?.hasScheme == true &&
+          ref.startsWith('https://')) {
+        resolved.add(ref);
+      } else {
+        return null;
+      }
+    }
+    return resolved;
   }
 
   /// Returns all pending and failed outbox items in FIFO order.
@@ -537,4 +564,3 @@ class FcLocalRepository {
     return json;
   }
 }
-

@@ -52,17 +52,13 @@ class FcTaskDetailNotifier extends Notifier<FcTaskDetailState> {
 
       final task = await taskRepo.fetchTaskById(taskId);
       List<ReportModel> reports = [];
-      if (task.clusterId != null && task.clusterId!.isNotEmpty) {
-        reports = await reportRepo.fetchReportsByClusterId(task.clusterId!);
-      } else if (task.reportIds.isNotEmpty) {
+      if (task.reportIds.isNotEmpty) {
         reports = await reportRepo.fetchReportsByIds(task.reportIds);
+      } else if (task.clusterId != null && task.clusterId!.isNotEmpty) {
+        reports = await reportRepo.fetchReportsByClusterId(task.clusterId!);
       }
 
-      state = FcTaskDetailState(
-        task: task,
-        reports: reports,
-        isLoading: false,
-      );
+      state = FcTaskDetailState(task: task, reports: reports, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
@@ -89,5 +85,5 @@ class FcTaskDetailNotifier extends Notifier<FcTaskDetailState> {
 /// Family provider — one notifier per taskId.
 final fcTaskDetailNotifierProvider =
     NotifierProvider.family<FcTaskDetailNotifier, FcTaskDetailState, String>(
-  (taskId) => FcTaskDetailNotifier(taskId),
-);
+      (taskId) => FcTaskDetailNotifier(taskId),
+    );

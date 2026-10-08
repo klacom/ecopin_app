@@ -138,6 +138,10 @@ class FcSyncManager {
           } else {
             succeeded++;
           }
+          if (result.status == FcOpStatus.contested ||
+              result.status == FcOpStatus.verificationRequired) {
+            conflicted++;
+          }
         } else if (result.isTerminalFailure) {
           permanent++;
           conflicted += (result.status == FcOpStatus.conflict) ? 1 : 0;

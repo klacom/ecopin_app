@@ -22,6 +22,11 @@ class CleanupTask {
   final List<ReportModel>? reports;
   final bool isOutlier;
   final int fcVersion;
+  final int assignmentGeneration;
+  final String? assignedFieldCrewId;
+  final Map<String, int> reportClaimGenerations;
+  final List<String> satelliteReportIds;
+  final num? bundleDetourMin;
 
   CleanupTask({
     required this.id,
@@ -45,12 +50,24 @@ class CleanupTask {
     this.reports,
     this.isOutlier = false,
     this.fcVersion = 0,
+    this.assignmentGeneration = 0,
+    this.assignedFieldCrewId,
+    this.reportClaimGenerations = const {},
+    this.satelliteReportIds = const [],
+    this.bundleDetourMin,
   });
 
   static List<String> _parseStringList(dynamic value) {
     if (value == null) return [];
     if (value is List) return value.map((e) => e.toString()).toList();
     return [];
+  }
+
+  static Map<String, int> _parseClaimGenerations(dynamic value) {
+    if (value is! Map) return const {};
+    return value.map((key, generation) => MapEntry(
+      key.toString(), int.tryParse(generation.toString()) ?? 0,
+    ));
   }
 
   factory CleanupTask.fromJson(Map<String, dynamic> json) {
@@ -83,6 +100,11 @@ class CleanupTask {
       }).whereType<ReportModel>().toList(),
       isOutlier: json['is_outlier'] == true || json['is_outlier'] == 'true',
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
+      assignmentGeneration: int.tryParse(json['assignment_generation']?.toString() ?? '') ?? 0,
+      assignedFieldCrewId: json['assigned_field_crew_id']?.toString(),
+      reportClaimGenerations: _parseClaimGenerations(json['report_claim_generations']),
+      satelliteReportIds: _parseStringList(json['satellite_report_ids']),
+      bundleDetourMin: num.tryParse(json['bundle_detour_min']?.toString() ?? ''),
     );
   }
 
@@ -109,6 +131,11 @@ class CleanupTask {
       if (reports != null) 'reports': reports?.map((e) => e.toJson()).toList(),
       'is_outlier': isOutlier,
       'fc_version': fcVersion,
+      'assignment_generation': assignmentGeneration,
+      'assigned_field_crew_id': assignedFieldCrewId,
+      'report_claim_generations': reportClaimGenerations,
+      'satellite_report_ids': satelliteReportIds,
+      'bundle_detour_min': bundleDetourMin,
     };
   }
 }

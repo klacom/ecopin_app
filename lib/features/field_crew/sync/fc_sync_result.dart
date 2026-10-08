@@ -108,6 +108,11 @@ class FcOpResult {
   static FcOpStatus _parseStatus(String raw) {
     switch (raw) {
       case 'success':   return FcOpStatus.success;
+      case 'applied': return FcOpStatus.applied;
+      case 'acknowledged_already_resolved': return FcOpStatus.acknowledgedAlreadyResolved;
+      case 'verification_required': return FcOpStatus.verificationRequired;
+      case 'contested': return FcOpStatus.contested;
+      case 'rejected': return FcOpStatus.rejected;
       case 'merged':    return FcOpStatus.merged;
       case 'conflict':  return FcOpStatus.conflict;
       case 'duplicate': return FcOpStatus.duplicate;
@@ -118,11 +123,16 @@ class FcOpResult {
 
   bool get isTerminalSuccess =>
       status == FcOpStatus.success ||
+      status == FcOpStatus.applied ||
+      status == FcOpStatus.acknowledgedAlreadyResolved ||
+      status == FcOpStatus.verificationRequired ||
+      status == FcOpStatus.contested ||
       status == FcOpStatus.merged ||
       status == FcOpStatus.duplicate;
 
   bool get isTerminalFailure =>
-      status == FcOpStatus.conflict || status == FcOpStatus.invalid;
+      status == FcOpStatus.conflict || status == FcOpStatus.invalid ||
+      status == FcOpStatus.rejected;
 
   bool get isRetryable => status == FcOpStatus.failed;
 
@@ -131,7 +141,10 @@ class FcOpResult {
       'FcOpResult($operationId, $status, detail=$conflictDetail, err=$errorMessage)';
 }
 
-enum FcOpStatus { success, merged, conflict, duplicate, failed, invalid }
+enum FcOpStatus {
+  success, applied, acknowledgedAlreadyResolved, verificationRequired,
+  contested, rejected, merged, conflict, duplicate, failed, invalid
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Aggregated run result
@@ -206,6 +219,18 @@ class FcSyncRunResult {
           message:
               'One change was not applied — another crew member\'s update '
               'was accepted first.',
+        ));
+      } else if (r.status == FcOpStatus.verificationRequired) {
+        events.add(FcConflictEvent(
+          operationId: r.operationId,
+          status: r.status,
+          message: 'Already-clean observation sent for verification. This report remains open until reviewed.',
+        ));
+      } else if (r.status == FcOpStatus.contested) {
+        events.add(FcConflictEvent(
+          operationId: r.operationId,
+          status: r.status,
+          message: 'Physical completion was recorded and needs officer review. Do not revisit this stop.',
         ));
       }
     }

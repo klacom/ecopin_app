@@ -34,6 +34,7 @@ class ReportModel {
   final bool isOutlier;
   final String? slaBreachDuration;
   final int fcVersion;
+  final int reportClaimGeneration;
 
   ReportModel({
     required this.id,
@@ -67,6 +68,7 @@ class ReportModel {
     this.isOutlier = false,
     this.slaBreachDuration,
     this.fcVersion = 0,
+    this.reportClaimGeneration = 0,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -159,6 +161,7 @@ class ReportModel {
       isOutlier: json['is_outlier'] == true || json['is_outlier'] == 'true',
       slaBreachDuration: json['sla_breach_duration']?.toString(),
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
+      reportClaimGeneration: int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,
     );
   }
 
@@ -189,6 +192,7 @@ class ReportModel {
       'is_outlier': isOutlier,
       'sla_breach_duration': slaBreachDuration,
       'fc_version': fcVersion,
+      'report_claim_generation': reportClaimGeneration,
     };
   }
 }

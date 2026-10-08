@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
+import 'package:ecopin_app/features/field_crew/providers/cleanup_tasks_provider.dart';
+import 'package:ecopin_app/features/field_crew/providers/field_crew_reports_provider.dart';
+import 'package:ecopin_app/features/field_crew/providers/my_route_provider.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_photo_sync_manager.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_gate.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_manager.dart';
@@ -31,6 +34,12 @@ final fcSyncTriggerProvider = Provider<FcSyncTrigger>((ref) {
     photoSyncManager: ref.watch(fcPhotoSyncManagerProvider),
     stateNotifier: ref.read(fcSyncStateProvider.notifier),
     gate: ref.watch(fcSyncGateProvider),
+    onSynced: () {
+      ref.invalidate(myCleanupTasksProvider);
+      ref.invalidate(fieldCrewReportsProvider);
+      ref.invalidate(activeRoutesProvider);
+      ref.invalidate(myRouteProvider);
+    },
   );
   ref.onDispose(trigger.dispose);
   return trigger;
@@ -114,6 +123,7 @@ class FcSyncTrigger {
   final FcPhotoSyncManager photoSyncManager;
   final FcSyncStateNotifier stateNotifier;
   final FcSyncGate gate;
+  final void Function() onSynced;
 
   static const Duration _kPeriodicInterval = Duration(minutes: 5);
   static const Duration _kConnectivityDebounce = Duration(seconds: 2);
@@ -129,6 +139,7 @@ class FcSyncTrigger {
     required this.photoSyncManager,
     required this.stateNotifier,
     required this.gate,
+    required this.onSynced,
   });
 
   void start() {
@@ -208,6 +219,7 @@ class FcSyncTrigger {
 
     _running = false;
     stateNotifier.setResult(mutationResult, photoResult);
+    onSynced();
 
     return FcSyncState(
       phase: (mutationResult.allSucceeded && photoResult.allSucceeded)

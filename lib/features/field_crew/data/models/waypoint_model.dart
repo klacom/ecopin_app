@@ -15,6 +15,7 @@ class PolylinePoint {
 class WaypointModel {
   final String waypointType;
   final String? cleanupTaskId;
+  final String? reportId;
   final int sequenceOrder;
   final num? distanceFromPreviousMeters;
   final num? estimatedTimeFromPreviousMin;
@@ -25,6 +26,7 @@ class WaypointModel {
   WaypointModel({
     required this.waypointType,
     this.cleanupTaskId,
+    this.reportId,
     required this.sequenceOrder,
     this.distanceFromPreviousMeters,
     this.estimatedTimeFromPreviousMin,
@@ -45,6 +47,7 @@ class WaypointModel {
     return WaypointModel(
       waypointType: json['waypoint_type']?.toString() ?? '',
       cleanupTaskId: json['cleanup_task_id']?.toString(),
+      reportId: json['report_id']?.toString(),
       sequenceOrder: json['sequence_order'] as int? ?? 0,
       distanceFromPreviousMeters: json['distance_from_previous_meters'] as num?,
       estimatedTimeFromPreviousMin: json['estimated_time_from_previous_min'] as num?,

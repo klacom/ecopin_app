@@ -9,6 +9,7 @@ class ReportModel {
   final String? description;
   final String? issueType;
   final LatLng location;
+  final String locationPrecision;
   final String validationStatus;
   final String status;
   final String? clusterId;
@@ -44,6 +45,7 @@ class ReportModel {
     this.description,
     this.issueType,
     required this.location,
+    this.locationPrecision = 'exact',
     required this.validationStatus,
     required this.status,
     this.clusterId,
@@ -127,6 +129,7 @@ class ReportModel {
       description: json['description']?.toString(),
       issueType: json['issue_type']?.toString(),
       location: latLng,
+      locationPrecision: json['location_precision']?.toString() ?? 'exact',
       validationStatus: json['validation_status']?.toString() ?? 'pending_ai_validation',
       status: json['status']?.toString() ?? 'unresolved',
       clusterId: json['cluster_id']?.toString(),
@@ -177,6 +180,7 @@ class ReportModel {
       'issue_type': issueType,
       'latitude': location.latitude,
       'longitude': location.longitude,
+      'location_precision': locationPrecision,
       'on_private_property': onPrivateProperty,
       'property_owner_consent_status': propertyOwnerConsentStatus,
       'satisfaction_rating': satisfactionRating,

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/status_badge.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +15,9 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
-import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
+import 'package:ecopin_app/shared/reports/providers/public_report_map_provider.dart';
+import 'package:ecopin_app/shared/reports/data/datasources/public_report_map_datasource.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_status.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_layer.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
@@ -31,6 +32,7 @@ class MapScreen extends ConsumerStatefulWidget {
   final bool showOptimizedRoute;
   final bool showOtherCrews;
   final bool showBaseOfOperations;
+  final TileProvider? tileProvider;
 
   const MapScreen({
     super.key,
@@ -38,6 +40,7 @@ class MapScreen extends ConsumerStatefulWidget {
     this.showOptimizedRoute = false,
     this.showOtherCrews = false,
     this.showBaseOfOperations = false,
+    this.tileProvider,
   });
 
   @override
@@ -48,16 +51,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   final Logger log = Logger("Maps Screen");
   final MapController _mapController = MapController();
 
+  Timer? _viewportDebounce;
+  Timer? _refreshTimer;
+  ReportViewport? _viewport;
+
   bool _showHeatmap = false;
   bool _isLoadingLocation = false;
 
   @override
   void initState() {
     super.initState();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      if (mounted &&
+          _viewport != null &&
+          TickerMode.valuesOf(context).enabled &&
+          (lifecycle == null || lifecycle == AppLifecycleState.resumed)) {
+        ref.invalidate(publicReportMapProvider(_viewport!));
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _runOnce(); // check and ask for user data/location disclosure initially.
     });
-}
+  }
 
   void _runOnce() async {
     final apiClient = ref.read(apiClientProvider);
@@ -77,7 +93,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   void dispose() {
-super.dispose();
+    _viewportDebounce?.cancel();
+    _refreshTimer?.cancel();
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  void _updateViewport(MapCamera camera) {
+    final bounds = camera.visibleBounds;
+    final next = ReportViewport(
+      south: bounds.south.clamp(-90.0, 90.0),
+      north: bounds.north.clamp(-90.0, 90.0),
+      west: bounds.west,
+      east: bounds.east,
+    );
+    _viewportDebounce?.cancel();
+    _viewportDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted && next != _viewport) setState(() => _viewport = next);
+    });
   }
 
   // For Data/Location Disclosure
@@ -214,7 +247,10 @@ super.dispose();
 
   @override
   Widget build(BuildContext context) {
-    final reportsAsync = ref.watch(reportsStreamProvider);
+    final reportsAsync = _viewport == null
+        ? const AsyncLoading<ReportMapPage>()
+        : ref.watch(publicReportMapProvider(_viewport!));
+    final reports = reportsAsync.asData?.value.reports ?? <ReportModel>[];
     final colorScheme = Theme.of(context).colorScheme;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final textPrimary = isDark
@@ -222,396 +258,433 @@ super.dispose();
         : AppColors.textPrimaryLight;
     final textSecondary = textPrimary.withValues(alpha: 0.6);
 
-    return Scaffold(
-      body: reportsAsync.when(
-        data: (reports) {
-          // Filter out rejected reports
-          var visibleReports = reports
-              .where((r) => r.validationStatus.toLowerCase() != 'rejected')
-              .toList();
+    // Filter out rejected reports
+    var visibleReports = reports
+        .where((r) => r.validationStatus.toLowerCase() != 'rejected')
+        .toList();
 
-          if (widget.isFieldCrewMode) {
-            visibleReports = visibleReports
-                .where(
-                  (r) =>
-                      r.status.toLowerCase() == 'in progress' ||
-                      r.status.toLowerCase() == 'acknowledged' ||
-                      r.status.toLowerCase() == 'pending',
-                )
-                .toList();
-          }
-          return Stack(
-            fit: StackFit.expand,
+    if (widget.isFieldCrewMode) {
+      visibleReports = visibleReports
+          .where(
+            (r) =>
+                r.status.toLowerCase() == 'in progress' ||
+                r.status.toLowerCase() == 'acknowledged' ||
+                r.status.toLowerCase() == 'pending',
+          )
+          .toList();
+    }
+
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: pasigInitialCenter,
+              initialZoom: 15.0,
+              minZoom: 3,
+              maxZoom: 18,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all,
+              ),
+              onMapReady: () => _updateViewport(_mapController.camera),
+              onPositionChanged: (camera, hasGesture) =>
+                  _updateViewport(camera),
+              onTap: null,
+            ),
             children: [
-              FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: pasigInitialCenter,
-                  initialZoom: 15.0,
-                  minZoom: 3,
-                  maxZoom: 18,
-                  interactionOptions: const InteractionOptions(
-                    flags: InteractiveFlag.all,
-                  ),
-                  onTap: null,
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate: Theme.of(context).brightness == Brightness.dark
-                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
-                        : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
-                    subdomains: const ['a', 'b', 'c'],
-                    userAgentPackageName: 'dev.ecopinas.ecopin_app',
-                  ),
-                  if (_showHeatmap)
-                    HeatMapLayer(
-                      heatMapDataSource: InMemoryHeatMapDataSource(
-                        data: visibleReports.map((report) {
-                          double weight;
-                          switch (report.status.toLowerCase()) {
-                            case 'resolved':
-                            case 'closed':
-                              weight = 0.3;
-                              break;
-                            case 'in progress':
-                            case 'acknowledged':
-                            case 'waiting_for_feedback':
-                              weight = 0.6;
-                              break;
-                            case 'pending_owner_consent':
-                              weight = 0.8;
-                              break;
-                            default:
-                              weight = 1.0;
-                              break;
-                          }
-                          return WeightedLatLng(report.location, weight);
-                        }).toList(),
-                      ),
-                      heatMapOptions: HeatMapOptions(
-                        radius: 50,
-                        minOpacity: 0.6,
-                      ),
-                    ),
-                  CurrentLocationLayer(
-                    alignPositionOnUpdate: AlignOnUpdate.never,
-                    alignDirectionOnUpdate: AlignOnUpdate.never,
-                    style: LocationMarkerStyle(
-                      marker: DefaultLocationMarker(
-                        child: Icon(
-                          Icons.navigation,
-                          color: colorScheme.surface,
-                        ),
-                      ),
-                      markerSize: Size(40, 40),
-                      markerDirection: MarkerDirection.heading,
-                      accuracyCircleColor: Colors.blue,
-                      headingSectorColor: Colors.blue,
-                      headingSectorRadius: 60,
-                      showAccuracyCircle: true,
-                    ),
-                  ),
-                  if (widget.showOptimizedRoute)
-                    const PolylineLayer(polylines: <Polyline<Object>>[]),
-                  if (widget.showBaseOfOperations)
-                    const MarkerLayer(markers: []),
-                  if (widget.showOtherCrews) const MarkerLayer(markers: []),
-                  MyMarkerClusterLayer(
-                    markers: visibleReports.map((report) {
-                      return Marker(
-                        point: report.location,
-                        width: 40,
-                        height: 40,
-                        child: GestureDetector(
-                          onTap: () => _showReportPreview(context, report),
-                          child: ReportMarker(status: report.status),
-                        ),
-                      );
+              TileLayer(
+                tileProvider: widget.tileProvider,
+                urlTemplate: Theme.of(context).brightness == Brightness.dark
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
+                    : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                subdomains: const ['a', 'b', 'c'],
+                userAgentPackageName: 'dev.ecopinas.ecopin_app',
+              ),
+              if (_showHeatmap)
+                HeatMapLayer(
+                  heatMapDataSource: InMemoryHeatMapDataSource(
+                    data: visibleReports.map((report) {
+                      double weight;
+                      switch (report.status.toLowerCase()) {
+                        case 'resolved':
+                        case 'closed':
+                          weight = 0.3;
+                          break;
+                        case 'in progress':
+                        case 'acknowledged':
+                        case 'waiting_for_feedback':
+                          weight = 0.6;
+                          break;
+                        case 'pending_owner_consent':
+                          weight = 0.8;
+                          break;
+                        default:
+                          weight = 1.0;
+                          break;
+                      }
+                      return WeightedLatLng(report.location, weight);
                     }).toList(),
                   ),
-
-                ],
+                  heatMapOptions: HeatMapOptions(radius: 50, minOpacity: 0.6),
+                ),
+              CurrentLocationLayer(
+                alignPositionOnUpdate: AlignOnUpdate.never,
+                alignDirectionOnUpdate: AlignOnUpdate.never,
+                style: LocationMarkerStyle(
+                  marker: DefaultLocationMarker(
+                    child: Icon(Icons.navigation, color: colorScheme.surface),
+                  ),
+                  markerSize: Size(40, 40),
+                  markerDirection: MarkerDirection.heading,
+                  accuracyCircleColor: Colors.blue,
+                  headingSectorColor: Colors.blue,
+                  headingSectorRadius: 60,
+                  showAccuracyCircle: true,
+                ),
               ),
-              // ── Right Side Controls (Search, Heatmap, Center, OSM) ─────────────────
-              if (!widget.isFieldCrewMode)
-                Positioned(
-                  top: AppColors.spaceMD,
-                  right: AppColors.spaceMD,
-                  child: SafeArea(
-                    child: Consumer(
-                      builder: (context, ref, child) {
-                        final isDark = Theme.of(context).brightness == Brightness.dark;
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            // 1. Search
-                            GestureDetector(
-                              onTap: () {
-                                showGeneralDialog(
-                                  context: context,
-                                  pageBuilder: (context, animation, secondaryAnimation) => SearchOverlay(mapController: _mapController),
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(AppColors.spaceSM + 4),
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.15),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  Icons.search,
-                                  color: isDark ? AppColors.secondaryDark : AppColors.secondaryLight,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: AppColors.spaceMD),
-                            // 2. Heatmap
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _showHeatmap = !_showHeatmap;
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(AppColors.spaceSM + 4),
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.15),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  Icons.thermostat,
-                                  color: _showHeatmap
-                                      ? AppColors.success
-                                      : (isDark ? AppColors.secondaryDark : AppColors.secondaryLight),
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: AppColors.spaceMD),
-                            // 3. Center
-                            GestureDetector(
-                              onTap: _getCurrentLocation,
-                              child: Container(
-                                padding: const EdgeInsets.all(AppColors.spaceSM + 4),
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.15),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: _isLoadingLocation
-                                    ? SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.my_location,
-                                        color: isDark ? AppColors.secondaryDark : AppColors.secondaryLight,
-                                        size: 24,
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(height: AppColors.spaceMD),
-                            // 4. Attribution
-                            GestureDetector(
-                              onTap: () => launchUrl(Uri.parse('https://openstreetmap.org/copyright')),
-                              child: Container(
-                                padding: const EdgeInsets.all(AppColors.spaceSM + 4),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).brightness == Brightness.dark 
-                                      ? AppColors.surfaceDark.withValues(alpha: 0.8)
-                                      : AppColors.surfaceLight.withValues(alpha: 0.8),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.15),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  Icons.info_outline,
-                                  color: Theme.of(context).brightness == Brightness.dark 
-                                      ? AppColors.textPrimaryDark 
-                                      : AppColors.textPrimaryLight,
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }
+              if (widget.showOptimizedRoute)
+                const PolylineLayer(polylines: <Polyline<Object>>[]),
+              if (widget.showBaseOfOperations) const MarkerLayer(markers: []),
+              if (widget.showOtherCrews) const MarkerLayer(markers: []),
+              MyMarkerClusterLayer(
+                markers: visibleReports.map((report) {
+                  return Marker(
+                    point: report.location,
+                    width: 40,
+                    height: 40,
+                    child: GestureDetector(
+                      onTap: () => _showReportPreview(context, report),
+                      child: ReportMarker(status: report.status),
                     ),
-                  ),
-                ),
-              // ── Field Crew Route Card (top of screen) ──────────────────
-              if (widget.isFieldCrewMode)
-                Positioned(
-                  top: 0,
-                  left: AppColors.spaceMD,
-                  right: AppColors.spaceMD,
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: AppColors.spaceSM),
-                      child: Container(
-                        padding: const EdgeInsets.all(AppColors.spaceMD),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.surfaceDark : Colors.white,
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radiusCard,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // ── Header row ────────────────────────────────
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary
-                                        .withValues(alpha: 0.15),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.route_rounded,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'AI-Optimized Task Route',
-                                        style: AppTypography.body.copyWith(
-                                          color: textPrimary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Traffic: Normal · Weather: Clear · Road works: Avoided',
-                                        style: AppTypography.caption.copyWith(
-                                          color: textSecondary,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // ── Metrics row ───────────────────────────────
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildMetric(
-                                  Icons.linear_scale_rounded,
-                                  'Distance',
-                                  '4.8 km',
-                                  textPrimary,
-                                  textSecondary,
-                                ),
-                                _buildMetric(
-                                  Icons.access_time_rounded,
-                                  'Est. Time',
-                                  '24 mins',
-                                  textPrimary,
-                                  textSecondary,
-                                ),
-                                _buildMetric(
-                                  Icons.people_alt_rounded,
-                                  'Other Crews',
-                                  '2 Nearby',
-                                  textPrimary,
-                                  textSecondary,
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // ── Divider ───────────────────────────────────
-                            Divider(
-                              color: isDark
-                                  ? AppColors.dividerDark
-                                  : AppColors.dividerLight,
-                              thickness: 1,
-                              height: 1,
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // ── Update Status button ──────────────────────
-                            // TODO: Enable this button when the field crew is
-                            // detected within the required proximity radius of
-                            // the assigned report location. Wire up the
-                            // `_isWithinRadius` flag once proximity detection
-                            // is implemented.
-                            _buildUpdateStatusButton(
-                              isWithinRadius:
-                                  false, // placeholder — replace with real proximity check
-                              onUpdateStatus: () {
-                                // TODO: Implement status update call:
-                                // advance report.status to next lifecycle stage
-                              },
-                              textPrimary: textPrimary,
-                              textSecondary: textSecondary,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                  );
+                }).toList(),
+              ),
             ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => const NoInternetScreen(),
+          ),
+          Positioned(
+            left: 16,
+            right: 80,
+            bottom: 16,
+            child: SafeArea(
+              child: ReportMapStatus(
+                value: reportsAsync,
+                onRetry: () {
+                  if (_viewport != null) {
+                    ref.invalidate(publicReportMapProvider(_viewport!));
+                  }
+                },
+              ),
+            ),
+          ),
+          // ── Right Side Controls (Search, Heatmap, Center, OSM) ─────────────────
+          if (!widget.isFieldCrewMode)
+            Positioned(
+              top: AppColors.spaceMD,
+              right: AppColors.spaceMD,
+              child: SafeArea(
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final isDark =
+                        Theme.of(context).brightness == Brightness.dark;
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // 1. Search
+                        GestureDetector(
+                          onTap: () {
+                            showGeneralDialog(
+                              context: context,
+                              pageBuilder:
+                                  (context, animation, secondaryAnimation) =>
+                                      SearchOverlay(
+                                        mapController: _mapController,
+                                      ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(
+                              AppColors.spaceSM + 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppColors.surfaceDark
+                                  : AppColors.surfaceLight,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.search,
+                              color: isDark
+                                  ? AppColors.secondaryDark
+                                  : AppColors.secondaryLight,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppColors.spaceMD),
+                        // 2. Heatmap
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showHeatmap = !_showHeatmap;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(
+                              AppColors.spaceSM + 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppColors.surfaceDark
+                                  : AppColors.surfaceLight,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.thermostat,
+                              color: _showHeatmap
+                                  ? AppColors.success
+                                  : (isDark
+                                        ? AppColors.secondaryDark
+                                        : AppColors.secondaryLight),
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppColors.spaceMD),
+                        // 3. Center
+                        GestureDetector(
+                          onTap: _getCurrentLocation,
+                          child: Container(
+                            padding: const EdgeInsets.all(
+                              AppColors.spaceSM + 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppColors.surfaceDark
+                                  : AppColors.surfaceLight,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: _isLoadingLocation
+                                ? SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: isDark
+                                          ? AppColors.textPrimaryDark
+                                          : AppColors.textPrimaryLight,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.my_location,
+                                    color: isDark
+                                        ? AppColors.secondaryDark
+                                        : AppColors.secondaryLight,
+                                    size: 24,
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: AppColors.spaceMD),
+                        // 4. Attribution
+                        GestureDetector(
+                          onTap: () => launchUrl(
+                            Uri.parse('https://openstreetmap.org/copyright'),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(
+                              AppColors.spaceSM + 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? AppColors.surfaceDark.withValues(alpha: 0.8)
+                                  : AppColors.surfaceLight.withValues(
+                                      alpha: 0.8,
+                                    ),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.info_outline,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? AppColors.textPrimaryDark
+                                  : AppColors.textPrimaryLight,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          // ── Field Crew Route Card (top of screen) ──────────────────
+          if (widget.isFieldCrewMode)
+            Positioned(
+              top: 0,
+              left: AppColors.spaceMD,
+              right: AppColors.spaceMD,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: AppColors.spaceSM),
+                  child: Container(
+                    padding: const EdgeInsets.all(AppColors.spaceMD),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceDark : Colors.white,
+                      borderRadius: BorderRadius.circular(AppColors.radiusCard),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Header row ────────────────────────────────
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.route_rounded,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'AI-Optimized Task Route',
+                                    style: AppTypography.body.copyWith(
+                                      color: textPrimary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Traffic: Normal · Weather: Clear · Road works: Avoided',
+                                    style: AppTypography.caption.copyWith(
+                                      color: textSecondary,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ── Metrics row ───────────────────────────────
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildMetric(
+                              Icons.linear_scale_rounded,
+                              'Distance',
+                              '4.8 km',
+                              textPrimary,
+                              textSecondary,
+                            ),
+                            _buildMetric(
+                              Icons.access_time_rounded,
+                              'Est. Time',
+                              '24 mins',
+                              textPrimary,
+                              textSecondary,
+                            ),
+                            _buildMetric(
+                              Icons.people_alt_rounded,
+                              'Other Crews',
+                              '2 Nearby',
+                              textPrimary,
+                              textSecondary,
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ── Divider ───────────────────────────────────
+                        Divider(
+                          color: isDark
+                              ? AppColors.dividerDark
+                              : AppColors.dividerLight,
+                          thickness: 1,
+                          height: 1,
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ── Update Status button ──────────────────────
+                        // TODO: Enable this button when the field crew is
+                        // detected within the required proximity radius of
+                        // the assigned report location. Wire up the
+                        // `_isWithinRadius` flag once proximity detection
+                        // is implemented.
+                        _buildUpdateStatusButton(
+                          isWithinRadius:
+                              false, // placeholder — replace with real proximity check
+                          onUpdateStatus: () {
+                            // TODO: Implement status update call:
+                            // advance report.status to next lifecycle stage
+                          },
+                          textPrimary: textPrimary,
+                          textSecondary: textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -628,7 +701,9 @@ super.dispose();
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppColors.radiusCard)),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppColors.radiusCard),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.2),
@@ -663,6 +738,11 @@ super.dispose();
               report.issueType ?? 'General Issue',
               style: TextStyle(color: Colors.grey.shade600),
             ),
+            if (report.locationPrecision == 'approximate')
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('Approximate location'),
+              ),
             const SizedBox(height: 16),
             Text(
               report.description ?? 'No description.',

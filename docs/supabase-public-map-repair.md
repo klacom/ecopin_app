@@ -1,0 +1,11 @@
+# Bounded public report map
+
+The citizen map previously consumed the shared, unbounded reports table stream. It now requests the safe public_reports projection for the visible area, with 19 explicit fields and a 200-report page plus one truncation sentinel. Private owner identity, notes and evidence URLs are excluded. The officer map keeps its existing authorized data path pending a separate bounded staff contract.
+
+Map movement is debounced by 300 ms. Viewport-keyed providers prevent old request completions from replacing the current area's results. The map stays mounted during loading, empty results, failures and retry. Truncation is visible, private consented locations are labeled approximate, and a 60-second refresh runs only while the screen is enabled and the app is resumed. The public feed creates no reports Realtime subscription.
+
+Verification on 11 October 2026: the full Flutter suite passes **106 tests**; targeted analysis of all changed map/model files and the 13 map tests reports **no issues**. Verification uses the installed Supabase Dart client with synthetic HTTP responses, covering selected fields, viewport/dateline/world bounds, deterministic ordering, page limits, truncation, empty results and propagated errors. Widget tests cover status/retry, camera preservation and stale completion. Synthetic map tiles and consent/location fixtures avoid real uploads, credentials or GPS.
+
+The first complete regression run found two pre-existing stale test fixtures: offline preparation expected five stages despite the existing route stage, and pending-summary fixtures omitted required failedPhotoCount. The fixture repair preserves formatting/empty-state checks, asserts all six download stages, and adds separate failed-photo visibility checks. No production behavior or check was disabled to resolve these failures.
+
+This source checkpoint does not establish hosted deployment, actual device/Auth compatibility, a successful APK build, measured mobile latency, all staff/owner callers, restrictive base access or Storage assignment repairs. The prior live web payload comparison is evidence for viewport bounding's response size in that workload, not a mobile latency benchmark. All 55 original optimization gates remain tracked in the execution ledger.

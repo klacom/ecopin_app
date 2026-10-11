@@ -1,4 +1,4 @@
-﻿// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print
 //
 // Phase 7 End-to-End and Reliability Tests
 //
@@ -569,9 +569,16 @@ void main() {
       expect(done.isDownloading, isFalse);
     });
 
-    test('buildInitialSteps produces 5 steps all pending', () {
+    test('offline preparation includes routes and every download stage starts pending', () {
       final steps = buildInitialSteps();
-      expect(steps.length, 5);
+      expect(steps.map((step) => step.label), [
+        'Assigned cleanup tasks',
+        'Assigned reports',
+        'Citizen evidence metadata',
+        'Field notes',
+        'Reference data',
+        'Active routes',
+      ]);
       expect(steps.every((s) => !s.completed && !s.inProgress), isTrue);
     });
   });

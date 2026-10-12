@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
@@ -722,7 +723,7 @@ class _OfficerCleanupTaskDetailsScreenState
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
+                child: PrivateMediaImage(
                   photoUrl,
                   width: double.infinity,
                   height: 200,
@@ -942,7 +943,7 @@ class _OfficerCleanupTaskDetailsScreenState
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
+            PrivateMediaImage(
               photo['url'] as String,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {

@@ -1,4 +1,5 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecopin_app/shared/widgets/private_media_image.dart';
+
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
@@ -387,7 +388,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                                     ),
                                   );
                                 },
-                                child: Image.network(
+                                child: PrivateMediaImage(
                                   evidence['url'],
                                   width: 200,
                                   height: 200,
@@ -436,7 +437,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                             (widget.report.beforePhotoUrl != null))
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: CachedNetworkImage(
+                            child: PrivateMediaImage.cached(
                               imageUrl:
                                   widget.cleanupTask?.beforePhotoUrl ??
                                   widget.report.beforePhotoUrl!,
@@ -513,7 +514,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                             (widget.report.afterPhotoUrl != null))
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: CachedNetworkImage(
+                            child: PrivateMediaImage.cached(
                               imageUrl:
                                   widget.cleanupTask?.afterPhotoUrl ??
                                   widget.report.afterPhotoUrl!,

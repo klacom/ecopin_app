@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
@@ -341,7 +342,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
                       color: AppColors.backgroundDark,
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: Image.network(
+                    child: PrivateMediaImage(
                       url,
                       fit: BoxFit.cover,
                       loadingBuilder: (context, child, progress) {
@@ -520,7 +521,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   Widget _buildImageWidget(FcPhotoSlot slot) {
     // Prefer remote URL for synced photos; otherwise show local file.
     if (slot.remoteUrl != null) {
-      return Image.network(
+      return PrivateMediaImage(
         slot.remoteUrl!,
         fit: BoxFit.cover,
         loadingBuilder: (context, child, progress) {

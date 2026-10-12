@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 import 'package:flutter/material.dart';
 
 class FullScreenImageView extends StatelessWidget {
@@ -15,7 +16,7 @@ class FullScreenImageView extends StatelessWidget {
       ),
       body: Center(
         child: InteractiveViewer(
-          child: Image.network(
+          child: PrivateMediaImage(
             imageUrl,
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {

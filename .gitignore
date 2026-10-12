@@ -59,3 +59,5 @@ PLAN.md
 .agent
 .agents/
 .agent/
+# Generated local patch dump
+/diff.txt

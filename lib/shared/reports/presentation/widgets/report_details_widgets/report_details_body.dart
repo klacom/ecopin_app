@@ -647,11 +647,11 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             const SizedBox(height: 16),
           ],
           const SizedBox(height: 100),
-          // LGU-specific actions
+          // Officer-specific actions
           if (widget.isOfficerUser) ...[
             const SizedBox(height: 24),
             const Text(
-              'LGU Actions',
+              'Officer Actions',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),

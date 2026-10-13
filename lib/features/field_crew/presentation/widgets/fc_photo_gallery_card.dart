@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
-// import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 
 class FcPhotoGalleryCard extends StatelessWidget {
   final List<ReportModel> reports;
@@ -73,10 +73,13 @@ class FcPhotoGalleryCard extends StatelessWidget {
               height: 100,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppColors.radiusCard),
-                image: DecorationImage(
-                  image: NetworkImage(url),
-                  fit: BoxFit.cover,
-                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: PrivateMediaImage(
+                url,
+                fit: BoxFit.cover,
+                width: 100,
+                height: 100,
               ),
             ),
           );
@@ -95,7 +98,7 @@ class FcPhotoGalleryCard extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             InteractiveViewer(
-              child: Image.network(
+              child: PrivateMediaImage(
                 url,
                 fit: BoxFit.contain,
                 width: double.infinity,

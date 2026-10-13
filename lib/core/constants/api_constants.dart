@@ -1,4 +1,4 @@
-﻿class ApiConstants {
+class ApiConstants {
   static const String register = '/api/auth/register';
   static const String resendVerification = '/api/auth/resend-verification';
   static const String passwordRequirements = '/api/auth/password-requirements';
@@ -117,14 +117,27 @@
     return '/api/spatial-forecast/current/$horizon';
   }
 
-  // Optimization API Constants
+  // Optimization API Constants (Phase 3 Capacity-Aware Planning)
   static const String optimizationRuns = '/api/optimization/runs';
   static const String optimizationRun = '/api/optimization/run';
   static String optimizationRunById(String id) => '/api/optimization/runs/$id';
   static String approveOptimizationRun(String id) => '/api/optimization/runs/$id/approve';
   static String discardOptimizationRun(String id) => '/api/optimization/runs/$id/discard';
+  static const String planGenerate = '/api/optimization/plan/generate';
+  static String planJob(String jobId) => '/api/optimization/plan/jobs/$jobId';
+  static String dispatchPlan(String planId) => '/api/optimization/plan/$planId';
+  static String commitDispatchPlan(String planId) => '/api/optimization/plan/$planId/commit';
+  static String planDisassemblePreview(String planOrRunId) => '/api/optimization/plan/$planOrRunId/disassemble-preview';
+  static String planDisassemble(String planOrRunId) => '/api/optimization/plan/$planOrRunId/disassemble';
+  static const String optimizationTemplates = '/api/optimization/templates';
+  static const String optimizationOptions = '/api/optimization/options';
 
-  // Phase 4 â€” Field Crew Sync Engine
-  /// POST /api/fc/sync/batch  â€” batch outbox drain endpoint.
+  // Crew Management
+  static const String fieldCrews = '/api/optimization/crews';
+  static const String unassignedCrewMembers = '/api/optimization/crews/unassigned-members';
+  static String crewMembers(String crewId) => '/api/optimization/crews/$crewId/members';
+
+  // Phase 4 — Field Crew Sync Engine
+  /// POST /api/fc/sync/batch  — batch outbox drain endpoint.
   static const String fcSyncBatch = '/api/fc/sync/batch';
 }

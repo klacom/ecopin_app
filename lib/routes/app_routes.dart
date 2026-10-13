@@ -1,4 +1,4 @@
-﻿// Accessible by everyone
+// Accessible by everyone
 
 class PublicAppRoutes {
   static const String splash = '/splash';
@@ -47,6 +47,7 @@ class OfficerAppRoutes {
   static const String notifications = '/officer/notifications';
   static const String spatialScan = '/officer/spatial-scan';
   static const String optimization = '/officer/optimization';
+  static const String crewManagement = '/officer/crew-management';
 
   static const officerRoutes = [
     dashboard,
@@ -60,6 +61,7 @@ class OfficerAppRoutes {
     notifications,
     spatialScan,
     optimization,
+    crewManagement,
   ];
 }
 

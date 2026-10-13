@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/features/officer/presentation/widgets/officer_reports_filter_bar.dart';
 
-class LguReport {
+class OfficerReportSummary {
   final String id;
   final String? title;
   final String? description;
@@ -20,7 +20,7 @@ class LguReport {
   final String? rejectionReason;
   final DateTime? rejectedAt;
 
-  LguReport({
+  OfficerReportSummary({
     required this.id,
     this.title,
     this.description,
@@ -34,8 +34,8 @@ class LguReport {
     this.rejectedAt,
   });
 
-  factory LguReport.fromJson(Map<String, dynamic> json) {
-    return LguReport(
+  factory OfficerReportSummary.fromJson(Map<String, dynamic> json) {
+    return OfficerReportSummary(
       id: json['id']?.toString() ?? '',
       title: json['title'] as String?,
       description: json['description'] as String?,
@@ -55,15 +55,18 @@ class LguReport {
   }
 }
 
-class LguReportsNotifier extends ChangeNotifier {
-  final ApiClient _apiClient;
-  AsyncValue<List<LguReport>> _reports = const AsyncValue.loading();
+// Deprecated alias for legacy backwards compatibility
+typedef LguReport = OfficerReportSummary;
 
-  LguReportsNotifier(this._apiClient) {
+class OfficerReportsNotifier extends ChangeNotifier {
+  final ApiClient _apiClient;
+  AsyncValue<List<OfficerReportSummary>> _reports = const AsyncValue.loading();
+
+  OfficerReportsNotifier(this._apiClient) {
     loadReports();
   }
 
-  AsyncValue<List<LguReport>> get reports => _reports;
+  AsyncValue<List<OfficerReportSummary>> get reports => _reports;
 
   Future<void> loadReports() async {
     _reports = const AsyncValue.loading();
@@ -74,8 +77,8 @@ class LguReportsNotifier extends ChangeNotifier {
           ? response.data as List<dynamic>
           : [];
       final reports = data
-          .map((json) => LguReport.fromJson(json as Map<String, dynamic>))
-          // Filter out rejected reports entirely for LGU
+          .map((json) => OfficerReportSummary.fromJson(json as Map<String, dynamic>))
+          // Filter out rejected reports entirely for Officer triage
           .where(
             (report) => report.validationStatus?.toLowerCase() != 'rejected',
           )
@@ -98,9 +101,12 @@ class LguReportsNotifier extends ChangeNotifier {
   }
 }
 
-final officerReportsProvider = ChangeNotifierProvider<LguReportsNotifier>((ref) {
+// Deprecated alias for legacy backwards compatibility
+typedef LguReportsNotifier = OfficerReportsNotifier;
+
+final officerReportsProvider = ChangeNotifierProvider<OfficerReportsNotifier>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return LguReportsNotifier(apiClient);
+  return OfficerReportsNotifier(apiClient);
 });
 
 class OfficerReportsScreen extends ConsumerStatefulWidget {

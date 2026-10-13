@@ -81,7 +81,7 @@ class OfficerClusterDetailsScreen extends ConsumerStatefulWidget {
 
 class _OfficerClusterDetailsScreenState
     extends ConsumerState<OfficerClusterDetailsScreen> {
-  final Logger log = Logger('Lgu Cluster Details Screen');
+  final Logger log = Logger('Officer Cluster Details Screen');
   ClusterDetail? _cluster;
   List<Report> _reports = [];
   bool _isLoading = true;

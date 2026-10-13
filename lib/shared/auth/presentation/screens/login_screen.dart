@@ -56,9 +56,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final roleString = userData?['role'] as String?;
         UserRole role = UserRole.citizen; // Default
 
+        if (roleString == 'admin') {
+          await Supabase.instance.client.auth.signOut();
+          if (mounted) {
+            SnackbarHelper.showError(
+              'Administrator access is restricted to the Web Command Center. Please use the web application.',
+            );
+          }
+          return;
+        }
+
         if (roleString != null) {
           if (roleString == 'field_crew') {
             role = UserRole.fieldCrew;
+          } else if (roleString == 'lgu' || roleString == 'officer') {
+            role = UserRole.officer;
           } else {
             role = UserRole.values.firstWhere(
               (e) => e.name == roleString,
@@ -74,8 +86,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
           if (role == UserRole.officer) {
             context.go('/officer/dashboard');
-          } else if (role == UserRole.admin) {
-            context.go('/admin/dashboard');
           } else if (role == UserRole.fieldCrew) {
             context.go('/field-crew/dashboard');
           } else {

@@ -27,11 +27,7 @@ import 'package:ecopin_app/shared/profile/presentation/screens/profile_screen.da
 import 'package:ecopin_app/shared/reports/presentation/screens/create_report_screen.dart';
 import 'package:ecopin_app/shared/reports/presentation/screens/reports_screen.dart';
 import 'package:ecopin_app/shared/splash/splash_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_main_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_dashboard_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_users_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_settings_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_audit_logs_screen.dart';
+import 'package:ecopin_app/features/officer/presentation/screens/officer_crew_management_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_main_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_dashboard_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_tasks_screen.dart';
@@ -76,15 +72,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (path == PublicAppRoutes.splash) {
         // If logged in, redirect based on role
         if (loggedIn) {
-          if (role == UserRole.officer) {
+          if (role == UserRole.admin) {
+            log.warning('Admin role blocked on mobile app — redirecting to unauthorized');
+            return PublicAppRoutes.unauthorized;
+          } else if (role == UserRole.officer) {
             log.info('Redirecting from splash to Officer Dashboard');
             return OfficerAppRoutes.dashboard;
           } else if (role == UserRole.fieldCrew) {
             log.info('Redirecting from splash to Field Crew Dashboard');
             return FieldCrewAppRoutes.dashboard;
-          } else if (role == UserRole.admin) {
-            log.info('Redirecting from splash to Admin Dashboard');
-            return AdminAppRoutes.dashboard;
           } else if (role == UserRole.citizen) {
             log.info('Redirecting from splash to Maps (Citizen)');
             return ProtectedAppRoutes.maps;
@@ -110,7 +106,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         'Route checks - IsPublicRoute: $isPublicRoute, IsOfficerRoute: $isOfficerRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
       );
 
-      if (loggedIn && isPublicRoute) {
+      if (loggedIn && role == UserRole.admin && path != PublicAppRoutes.unauthorized) {
+        log.warning('Admin role detected — blocking app access');
+        return PublicAppRoutes.unauthorized;
+      }
+
+      if (isAdminRoute) {
+        log.warning('Admin route requested — redirecting to unauthorized');
+        return PublicAppRoutes.unauthorized;
+      }
+
+      if (loggedIn && isPublicRoute && path != PublicAppRoutes.unauthorized) {
         // Route based on role
         log.info('Redirecting based on role: $role');
         if (role == UserRole.officer) {
@@ -119,9 +125,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         } else if (role == UserRole.fieldCrew) {
           log.info('Redirecting to Field Crew Dashboard');
           return FieldCrewAppRoutes.dashboard;
-        } else if (role == UserRole.admin) {
-          log.info('Redirecting to Admin Dashboard');
-          return AdminAppRoutes.dashboard;
         } else {
           log.info('Redirecting to Maps (Citizen)');
           return ProtectedAppRoutes.maps;
@@ -136,31 +139,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (loggedIn) {
         log.info('Role-based check - Role: $role');
 
-        if (isOfficerRoute &&
-            role != UserRole.officer &&
-            role != UserRole.admin) {
+        if (isOfficerRoute && role != UserRole.officer) {
           log.info(
-            'Redirecting to citizen maps - non-Officer/Admin on Officer route',
+            'Redirecting to citizen maps - non-Officer on Officer route',
           );
           return ProtectedAppRoutes.maps;
         }
 
         if (isFieldCrewRoute &&
             role != UserRole.fieldCrew &&
-            role != UserRole.admin &&
             role != UserRole.officer) {
           log.info(
             'Redirecting to citizen maps - unauthorized on Field Crew route',
           );
-          return ProtectedAppRoutes.maps;
-        }
-
-        if (isAdminRoute && role != UserRole.admin) {
-          log.info(
-            'Redirecting to appropriate screen - non-Admin on Admin route',
-          );
-          if (role == UserRole.officer) return OfficerAppRoutes.dashboard;
-          if (role == UserRole.fieldCrew) return FieldCrewAppRoutes.dashboard;
           return ProtectedAppRoutes.maps;
         }
 
@@ -324,41 +315,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, _) => const OfficerOptimizationScreen(),
           ),
           GoRoute(
+            path: OfficerAppRoutes.crewManagement,
+            builder: (_, _) => const OfficerCrewManagementScreen(),
+          ),
+          GoRoute(
             path: OfficerAppRoutes.profile,
             builder: (_, _) => const OfficerProfileScreen(),
           ),
           GoRoute(
             path: OfficerAppRoutes.notifications,
-            builder: (_, _) => const NotificationsScreen(),
-          ),
-        ],
-      ),
-      // Admin Shell Route
-      ShellRoute(
-        builder: (context, state, child) => AdminMainScreen(child: child),
-        routes: [
-          GoRoute(
-            path: AdminAppRoutes.dashboard,
-            builder: (_, _) => const AdminDashboardScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.users,
-            builder: (_, _) => const AdminUsersScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.settings,
-            builder: (_, _) => const AdminSettingsScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.auditLogs,
-            builder: (_, _) => const AdminAuditLogsScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.profile,
-            builder: (_, _) => const ProfileScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.notifications,
             builder: (_, _) => const NotificationsScreen(),
           ),
         ],
@@ -445,7 +410,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       } else if (role == UserRole.fieldCrew) {
         homePath = FieldCrewAppRoutes.dashboard;
       } else if (role == UserRole.admin) {
-        homePath = AdminAppRoutes.dashboard;
+        homePath = PublicAppRoutes.unauthorized;
       } else if (role == UserRole.citizen) {
         homePath = ProtectedAppRoutes.maps;
       }

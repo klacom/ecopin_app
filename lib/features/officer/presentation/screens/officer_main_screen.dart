@@ -99,6 +99,12 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
               route: OfficerAppRoutes.optimization,
             ),
             _buildMoreMenuItem(
+              icon: Icons.groups_outlined,
+              activeIcon: Icons.groups,
+              label: 'Crew Management',
+              route: OfficerAppRoutes.crewManagement,
+            ),
+            _buildMoreMenuItem(
               icon: Icons.history_outlined,
               activeIcon: Icons.history,
               label: 'Sys Logs',

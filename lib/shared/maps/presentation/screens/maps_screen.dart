@@ -126,7 +126,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           title: const Text("Data Privacy Consent"),
           content: const SingleChildScrollView(
             child: Text(
-              "To help the LGU verify and resolve your reports more efficiently, "
+              "To help officers verify and resolve your reports more efficiently, "
               "you may allow authorized personnel to access your profile information "
               "and location (when applicable).\n\n"
               "Your information will only be used for handling your reports and "

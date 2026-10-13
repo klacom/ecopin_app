@@ -21,7 +21,7 @@ class OfficerProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _OfficerProfileScreenState extends ConsumerState<OfficerProfileScreen> {
-  final Logger _log = Logger("LGU Profile Screen");
+  final Logger _log = Logger("Officer Profile Screen");
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _fullNameController;
   late TextEditingController _emailController;

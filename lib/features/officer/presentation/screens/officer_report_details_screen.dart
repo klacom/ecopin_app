@@ -7,7 +7,7 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 
-class LguReportDetail {
+class OfficerReportDetail {
   final String id;
   final String? title;
   final String? issue;
@@ -28,7 +28,7 @@ class LguReportDetail {
   final List<ResponseLog>? responseLogs;
   final String? validationStatus;
 
-  LguReportDetail({
+  OfficerReportDetail({
     required this.id,
     this.title,
     this.issue,
@@ -50,8 +50,8 @@ class LguReportDetail {
     this.validationStatus,
   });
 
-  factory LguReportDetail.fromJson(Map<String, dynamic> json) {
-    return LguReportDetail(
+  factory OfficerReportDetail.fromJson(Map<String, dynamic> json) {
+    return OfficerReportDetail(
       id: json['id']?.toString() ?? '',
       title: json['title'] as String?,
       issue: json['issue_type'] as String?,
@@ -141,6 +141,9 @@ class ResponseLog {
   }
 }
 
+// Deprecated alias for legacy backwards compatibility
+typedef LguReportDetail = OfficerReportDetail;
+
 class OfficerReportDetailsScreen extends ConsumerStatefulWidget {
   final String reportId;
 
@@ -153,7 +156,7 @@ class OfficerReportDetailsScreen extends ConsumerStatefulWidget {
 
 class _OfficerReportDetailsScreenState
     extends ConsumerState<OfficerReportDetailsScreen> {
-  LguReportDetail? _report;
+  OfficerReportDetail? _report;
   List<EvidencePhoto> _evidencePhotos = [];
   bool _isLoading = true;
   bool _hasError = false;
@@ -163,7 +166,7 @@ class _OfficerReportDetailsScreenState
   bool _isDeleting = false;
   final TextEditingController _notesController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
-  final Logger log = Logger("LGU Report Details Screen");
+  final Logger log = Logger("Officer Report Details Screen");
 
   @override
   void initState() {
@@ -477,7 +480,7 @@ class _OfficerReportDetailsScreenState
                   const SizedBox(height: 24),
                   _buildEvidencePhotosSection(),
                   const SizedBox(height: 24),
-                  _buildLguNotesSection(),
+                  _buildOfficerNotesSection(),
                   const SizedBox(height: 24),
                   _buildActivityLogSection(),
                 ],
@@ -835,21 +838,21 @@ class _OfficerReportDetailsScreenState
             ],
             if (_report?.beforePhotoUrl != null)
               _buildPhotoWithRemove(
-                'LGU Before Photo',
+                'SWMO / Officer Before Photo',
                 _report!.beforePhotoUrl!,
                 true,
               ),
             const SizedBox(height: 16),
-            _buildLguPhotoSection('Upload Before Photo', true),
+            _buildOfficerPhotoSection('Upload Before Photo', true),
             const SizedBox(height: 16),
             if (_report?.afterPhotoUrl != null)
               _buildPhotoWithRemove(
-                'LGU After Photo',
+                'SWMO / Officer After Photo',
                 _report!.afterPhotoUrl!,
                 false,
               ),
             const SizedBox(height: 16),
-            _buildLguPhotoSection('Upload After Photo', false),
+            _buildOfficerPhotoSection('Upload After Photo', false),
           ],
         ),
       ),
@@ -928,7 +931,7 @@ class _OfficerReportDetailsScreenState
     );
   }
 
-  Widget _buildLguPhotoSection(String label, bool isBefore) {
+  Widget _buildOfficerPhotoSection(String label, bool isBefore) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -948,7 +951,7 @@ class _OfficerReportDetailsScreenState
     );
   }
 
-  Widget _buildLguNotesSection() {
+  Widget _buildOfficerNotesSection() {
     final manualNotes =
         _report?.responseLogs
             ?.where((log) => log.actionType == 'manual_note')
@@ -973,7 +976,7 @@ class _OfficerReportDetailsScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'LGU Notes',
+              'SWMO / Officer Notes',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),

@@ -110,11 +110,25 @@ class AuthNotifier extends ChangeNotifier {
         _log.info('User data from backend: $userData');
         _log.info('Role string from backend: $roleString');
 
+        if (roleString == 'admin') {
+          _log.warning('Admin role blocked on mobile application');
+          await Supabase.instance.client.auth.signOut();
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('cached_user_role');
+          } catch (_) {}
+          _state = AppAuthState.unauthenticated();
+          notifyListeners();
+          return;
+        }
+
         UserRole? role;
         if (roleString != null) {
-          // Special case for snake_case coming from backend
+          // Special case for snake_case coming from backend & legacy lgu role
           if (roleString == 'field_crew') {
             role = UserRole.fieldCrew;
+          } else if (roleString == 'lgu' || roleString == 'officer') {
+            role = UserRole.officer;
           } else {
             role = UserRole.values.firstWhere(
               (e) => e.name == roleString,
@@ -149,10 +163,17 @@ class AuthNotifier extends ChangeNotifier {
           final prefs = await SharedPreferences.getInstance();
           final cachedRoleStr = prefs.getString('cached_user_role');
           if (cachedRoleStr != null) {
-            final cachedRole = UserRole.values.firstWhere(
-              (r) => r.name == cachedRoleStr, 
-              orElse: () => UserRole.citizen,
-            );
+            if (cachedRoleStr == 'admin') {
+              _state = AppAuthState.unauthenticated();
+              notifyListeners();
+              return;
+            }
+            final cachedRole = cachedRoleStr == 'lgu'
+                ? UserRole.officer
+                : UserRole.values.firstWhere(
+                    (r) => r.name == cachedRoleStr, 
+                    orElse: () => UserRole.citizen,
+                  );
             _log.info('Offline fallback to cached role: ${cachedRole.name}');
             _state = AppAuthState.authenticated(cachedRole);
             notifyListeners();

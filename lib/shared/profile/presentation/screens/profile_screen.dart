@@ -645,7 +645,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           subtitle: Text(
                             dataConsent
-                                ? "The LGU may access your profile information when handling your reports."
+                                ? "Officers may access your profile information when handling your reports."
                                 : "Your identity will remain hidden when possible.",
                           ),
                           value: dataConsent,

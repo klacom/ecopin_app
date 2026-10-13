@@ -427,9 +427,13 @@ class ApiClient {
     return _dio.patch(ApiConstants.markCleanupTaskComplete(taskId));
   }
 
-  // New report lifecycle methods
-  Future<dio.Response> lguResolveReport(String reportId) async {
+  // Report lifecycle resolution methods
+  Future<dio.Response> officerResolveReport(String reportId) async {
     return _dio.patch(ApiConstants.lguResolveReport(reportId));
+  }
+
+  Future<dio.Response> lguResolveReport(String reportId) async {
+    return officerResolveReport(reportId);
   }
 
   Future<dio.Response> citizenCloseReport(
@@ -622,7 +626,7 @@ class ApiClient {
     return _dio.get('/api/spatial-forecast/available-dates');
   }
 
-  // Optimization methods
+  // Optimization methods (Phase 3 Capacity-Aware Planning)
   Future<dio.Response> runOptimization(Map<String, dynamic> params) async {
     return _dio.post(ApiConstants.optimizationRun, data: params);
   }
@@ -641,6 +645,54 @@ class ApiClient {
 
   Future<dio.Response> discardOptimization(String id) async {
     return _dio.post(ApiConstants.discardOptimizationRun(id));
+  }
+
+  Future<dio.Response> generatePlan(Map<String, dynamic> settings) async {
+    return _dio.post(ApiConstants.planGenerate, data: {'settings': settings});
+  }
+
+  Future<dio.Response> getPlanJob(String jobId) async {
+    return _dio.get(ApiConstants.planJob(jobId));
+  }
+
+  Future<dio.Response> getDispatchPlan(String planId) async {
+    return _dio.get(ApiConstants.dispatchPlan(planId));
+  }
+
+  Future<dio.Response> commitPlan(String planId, [Map<String, dynamic>? options]) async {
+    return _dio.post(ApiConstants.commitDispatchPlan(planId), data: options ?? {});
+  }
+
+  Future<dio.Response> previewPlanDisassembly(String planOrRunId) async {
+    return _dio.get(ApiConstants.planDisassemblePreview(planOrRunId));
+  }
+
+  Future<dio.Response> disassemblePlan(String planOrRunId, [Map<String, dynamic>? body]) async {
+    return _dio.post(ApiConstants.planDisassemble(planOrRunId), data: body ?? {});
+  }
+
+  Future<dio.Response> getOptimizationTemplates() async {
+    return _dio.get(ApiConstants.optimizationTemplates);
+  }
+
+  Future<dio.Response> getOptimizationOptions() async {
+    return _dio.get(ApiConstants.optimizationOptions);
+  }
+
+  // Field Crews & Crew Management
+  Future<dio.Response> getFieldCrews() async {
+    return _dio.get(ApiConstants.fieldCrews);
+  }
+
+  Future<dio.Response> getUnassignedCrewMembers() async {
+    return _dio.get(ApiConstants.unassignedCrewMembers);
+  }
+
+  Future<dio.Response> updateCrewMember(String crewId, String userId, String action) async {
+    return _dio.patch(
+      ApiConstants.crewMembers(crewId),
+      data: {'user_id': userId, 'action': action},
+    );
   }
 
   // Active Routes for Field Crew

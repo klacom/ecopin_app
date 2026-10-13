@@ -28,7 +28,7 @@ class OfficerMapScreen extends ConsumerStatefulWidget {
 }
 
 class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
-  final Logger log = Logger("Lgu Maps Screen");
+  final Logger log = Logger("Officer Maps Screen");
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
   final LocationSearchService _searchService = LocationSearchService();

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 
+// Operational Notes Section (Formerly LGU Notes)
+typedef FcNotesSection = FcLguNotesSection;
+
 class FcLguNotesSection extends StatefulWidget {
   final Future<void> Function(String note) onSubmit;
   final bool isAssigned;

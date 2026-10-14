@@ -29,6 +29,8 @@ class FcReportActionButtons extends StatelessWidget {
     bool requiresPhotos = false;
 
     final currentStatus = report.status.toLowerCase();
+    final issueType = report.issueType?.toLowerCase() ?? '';
+    final isScouting = issueType == 'scouting' || issueType == 'acknowledge_only';
     
     if (currentStatus == 'unresolved' || currentStatus == 'submitted' || currentStatus == 'pending') {
       label = 'Mark as Acknowledged';
@@ -36,11 +38,11 @@ class FcReportActionButtons extends StatelessWidget {
     } else if (currentStatus == 'acknowledged') {
       label = 'Mark as Responded';
       nextStatus = 'responded';
-    } else if (currentStatus == 'responded') {
+    } else if (currentStatus == 'responded' || currentStatus == 'in_progress') {
       label = 'Cleanup Completed';
       nextStatus = 'resolved';
-      requiresPhotos = true;
-    } else if (currentStatus == 'resolved') {
+      requiresPhotos = !isScouting;
+    } else if (currentStatus == 'resolved' || currentStatus == 'waiting_for_feedback') {
       label = 'Waiting for Citizen to Close';
       enabled = false;
     } else if (currentStatus == 'closed') {

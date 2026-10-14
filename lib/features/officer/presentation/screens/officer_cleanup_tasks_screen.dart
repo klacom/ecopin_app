@@ -8,7 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 
 class OfficerCleanupTasksScreen extends ConsumerStatefulWidget {
-  const OfficerCleanupTasksScreen({super.key});
+  final String? initialStatus;
+
+  const OfficerCleanupTasksScreen({super.key, this.initialStatus});
 
   @override
   ConsumerState<OfficerCleanupTasksScreen> createState() =>
@@ -18,6 +20,14 @@ class OfficerCleanupTasksScreen extends ConsumerStatefulWidget {
 class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksScreen> {
   String _searchQuery = '';
   String _statusFilter = 'all';
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialStatus != null && widget.initialStatus!.isNotEmpty) {
+      _statusFilter = widget.initialStatus!;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

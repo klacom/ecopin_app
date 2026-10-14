@@ -110,7 +110,16 @@ final officerReportsProvider = ChangeNotifierProvider<OfficerReportsNotifier>((r
 });
 
 class OfficerReportsScreen extends ConsumerStatefulWidget {
-  const OfficerReportsScreen({super.key});
+  final String? initialStatus;
+  final String? initialValidation;
+  final bool? initialOverdue;
+
+  const OfficerReportsScreen({
+    super.key,
+    this.initialStatus,
+    this.initialValidation,
+    this.initialOverdue,
+  });
 
   @override
   ConsumerState<OfficerReportsScreen> createState() => _OfficerReportsScreenState();
@@ -123,8 +132,23 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
   String _validationStatusFilter = 'all';
   String _lifecycleStageFilter = 'all';
   String _sortBy = 'newest'; // 'newest' or 'oldest'
+  bool _onlyOverdue = false;
   int _currentPage = 1;
   static const int _pageSize = 10;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialStatus != null && widget.initialStatus!.isNotEmpty) {
+      _statusFilter = widget.initialStatus!;
+    }
+    if (widget.initialValidation != null && widget.initialValidation!.isNotEmpty) {
+      _validationStatusFilter = widget.initialValidation!;
+    }
+    if (widget.initialOverdue == true) {
+      _onlyOverdue = true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,11 +227,36 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
                   _validationStatusFilter = 'all';
                   _lifecycleStageFilter = 'all';
                   _sortBy = 'newest';
+                  _onlyOverdue = false;
                   _currentPage = 1;
                 });
               },
             ),
           ),
+          if (_onlyOverdue)
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
+              child: Row(
+                children: [
+                  Chip(
+                    avatar: const Icon(Icons.warning_amber_rounded, size: 16, color: Colors.red),
+                    label: const Text(
+                      'Filtered: SLA Overdue (>48h)',
+                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                    backgroundColor: Colors.red.withValues(alpha: 0.12),
+                    side: const BorderSide(color: Colors.red),
+                    onDeleted: () {
+                      setState(() {
+                        _onlyOverdue = false;
+                        _currentPage = 1;
+                      });
+                    },
+                    deleteIconColor: Colors.red,
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: reportsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -257,10 +306,16 @@ class _OfficerReportsScreenState extends ConsumerState<OfficerReportsScreen> {
     );
   }
 
-
-
   List<LguReport> _filterReports(List<LguReport> reports) {
+    final now = DateTime.now();
     var filtered = reports.where((report) {
+      if (_onlyOverdue) {
+        final isOverdue = report.isOverdue == true ||
+            (report.createdAt != null &&
+                now.difference(report.createdAt!).inHours > 48);
+        if (!isOverdue) return false;
+      }
+
       final matchesSearch =
           _searchQuery.isEmpty ||
           (report.title?.toLowerCase().contains(_searchQuery.toLowerCase()) ??

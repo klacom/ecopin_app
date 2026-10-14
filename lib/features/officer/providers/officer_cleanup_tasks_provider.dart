@@ -18,6 +18,8 @@ class CleanupTask {
   final List<String>? afterPhotos;
   final bool isCustom;
   final List<String>? reportIds;
+  final List<String>? assignedCrewIds;
+  final String? assignedTo;
 
   CleanupTask({
     required this.id,
@@ -34,6 +36,8 @@ class CleanupTask {
     this.afterPhotos,
     this.isCustom = false,
     this.reportIds,
+    this.assignedCrewIds,
+    this.assignedTo,
   });
 
   factory CleanupTask.fromJson(Map<String, dynamic> json) {
@@ -60,6 +64,10 @@ class CleanupTask {
       reportIds: json['report_ids'] != null
           ? (json['report_ids'] as List).map((e) => e.toString()).toList()
           : null,
+      assignedCrewIds: json['assigned_crew_ids'] != null
+          ? (json['assigned_crew_ids'] as List).map((e) => e.toString()).toList()
+          : null,
+      assignedTo: json['assigned_to']?.toString(),
     );
   }
 }

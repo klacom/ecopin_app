@@ -508,11 +508,16 @@ class ApiClient {
 
   Future<dio.Response> updateReportValidation(
     String reportId,
-    String validationStatus,
-  ) async {
+    String validationStatus, {
+    String? rejectionReason,
+  }) async {
+    final payload = <String, dynamic>{'validation_status': validationStatus};
+    if (rejectionReason != null && rejectionReason.isNotEmpty) {
+      payload['rejection_reason'] = rejectionReason;
+    }
     return _dio.patch(
       ApiConstants.updateReportValidation(reportId),
-      data: {'validation_status': validationStatus},
+      data: payload,
     );
   }
 
@@ -523,6 +528,16 @@ class ApiClient {
     return _dio.patch(
       ApiConstants.updateReportLifecycleStage(reportId),
       data: {'stage': stage},
+    );
+  }
+
+  Future<dio.Response> updatePropertyOwnerConsent(
+    String reportId,
+    String consentStatus,
+  ) async {
+    return _dio.patch(
+      ApiConstants.updatePropertyOwnerConsent(reportId),
+      data: {'consent_status': consentStatus},
     );
   }
 

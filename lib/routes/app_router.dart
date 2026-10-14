@@ -270,7 +270,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: OfficerAppRoutes.cleanupTasks,
-            builder: (_, _) => const OfficerCleanupTasksScreen(),
+            builder: (_, state) {
+              final status = state.uri.queryParameters['status'] ??
+                  (state.extra is Map ? (state.extra as Map)['status']?.toString() : null);
+              return OfficerCleanupTasksScreen(initialStatus: status);
+            },
             routes: [
               GoRoute(
                 path: 'create',
@@ -287,7 +291,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: OfficerAppRoutes.reports,
-            builder: (_, _) => const OfficerReportsScreen(),
+            builder: (_, state) {
+              final filter = state.uri.queryParameters['filter'] ??
+                  (state.extra is Map ? (state.extra as Map)['filter']?.toString() : null);
+              final status = state.uri.queryParameters['status'] ??
+                  (state.extra is Map ? (state.extra as Map)['status']?.toString() : null);
+              return OfficerReportsScreen(
+                initialStatus: status,
+                initialValidation: filter == 'manual_review' ? 'manual_review' : null,
+                initialOverdue: filter == 'overdue',
+              );
+            },
             routes: [
               GoRoute(
                 path: ':id',

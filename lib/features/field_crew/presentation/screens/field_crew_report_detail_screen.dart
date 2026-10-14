@@ -158,35 +158,69 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                   const SizedBox(height: AppColors.spaceLG),
 
                   // Action buttons (status transitions)
-                  FcReportActionButtons(
-                    report: report,
-                    isAssigned: isAssigned,
-                    hasBeforePhoto: report.beforePhotoUrl != null,
-                    hasAfterPhoto: report.afterPhotoUrl != null,
-                    onViewOnMap: () => context.push('/field-crew/map'),
-                    onStatusChange: (newStatus) async {
-                      await notifier.updateStatus(newStatus);
-                      if (report.breachedAt != null && (newStatus.toLowerCase() == 'resolved' || newStatus.toLowerCase() == 'closed')) {
-                        if (context.mounted && taskAsync != null && taskAsync.value != null) {
-                          final task = taskAsync.value!;
-                          final currentIndex = task.reports?.indexWhere((r) => r.id == report.id) ?? -1;
-                          
-                          if (currentIndex != -1 && task.reports != null) {
-                            // Find next unresolved report
-                            try {
-                              final nextReport = task.reports!.skip(currentIndex + 1).firstWhere(
-                                (r) => r.status.toLowerCase() != 'resolved' && r.status.toLowerCase() != 'closed'
-                              );
-                              context.pushReplacement('/field-crew/tasks/${task.id}/reports/${nextReport.id}');
-                            } catch (_) {
-                              // No next report found (all done or at end of list)
-                              context.pop();
+                  FutureBuilder<List<FcLocalPhoto?>>(
+                    future: Future.wait([
+                      ref.read(fcLocalPhotoRepositoryProvider).getActivePhoto(report.id, 'report', 'before'),
+                      ref.read(fcLocalPhotoRepositoryProvider).getActivePhoto(report.id, 'report', 'after'),
+                    ]),
+                    builder: (context, snapshot) {
+                      final localBefore = snapshot.data != null && snapshot.data!.isNotEmpty ? snapshot.data![0] : null;
+                      final localAfter = snapshot.data != null && snapshot.data!.length > 1 ? snapshot.data![1] : null;
+                      final hasBefore = (report.beforePhotoUrl != null && report.beforePhotoUrl!.isNotEmpty) ||
+                          (localBefore != null && localBefore.localPath.isNotEmpty);
+                      final hasAfter = (report.afterPhotoUrl != null && report.afterPhotoUrl!.isNotEmpty) ||
+                          (localAfter != null && localAfter.localPath.isNotEmpty);
+
+                      return FcReportActionButtons(
+                        report: report,
+                        isAssigned: isAssigned,
+                        hasBeforePhoto: hasBefore,
+                        hasAfterPhoto: hasAfter,
+                        onViewOnMap: () => context.push('/field-crew/map'),
+                        onStatusChange: (newStatus) async {
+                          if (newStatus.toLowerCase() == 'resolved') {
+                            final issueType = report.issueType?.toLowerCase() ?? '';
+                            final isScouting = issueType == 'scouting' ||
+                                issueType == 'acknowledge_only';
+                            if (!isScouting && (!hasBefore || !hasAfter)) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Before and after photos are required before completing cleanup.',
+                                    ),
+                                    backgroundColor: AppColors.error,
+                                  ),
+                                );
+                              }
+                              return;
                             }
-                          } else {
-                            context.pop();
                           }
-                        }
-                      }
+
+                          await notifier.updateStatus(newStatus);
+                          if (report.breachedAt != null && (newStatus.toLowerCase() == 'resolved' || newStatus.toLowerCase() == 'closed')) {
+                            if (context.mounted && taskAsync != null && taskAsync.value != null) {
+                              final task = taskAsync.value!;
+                              final currentIndex = task.reports?.indexWhere((r) => r.id == report.id) ?? -1;
+                              
+                              if (currentIndex != -1 && task.reports != null) {
+                                // Find next unresolved report
+                                try {
+                                  final nextReport = task.reports!.skip(currentIndex + 1).firstWhere(
+                                    (r) => r.status.toLowerCase() != 'resolved' && r.status.toLowerCase() != 'closed'
+                                  );
+                                  context.pushReplacement('/field-crew/tasks/${task.id}/reports/${nextReport.id}');
+                                } catch (_) {
+                                  // No next report found (all done or at end of list)
+                                  context.pop();
+                                }
+                              } else {
+                                context.pop();
+                              }
+                            }
+                          }
+                        },
+                      );
                     },
                   ),
                   const SizedBox(height: AppColors.spaceXL),

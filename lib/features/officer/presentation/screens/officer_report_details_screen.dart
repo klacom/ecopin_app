@@ -27,6 +27,9 @@ class OfficerReportDetail {
   final String? afterPhotoUrl;
   final List<ResponseLog>? responseLogs;
   final String? validationStatus;
+  final bool? onPrivateProperty;
+  final String? propertyOwnerConsentStatus;
+  final String? rejectionReason;
 
   OfficerReportDetail({
     required this.id,
@@ -48,6 +51,9 @@ class OfficerReportDetail {
     this.afterPhotoUrl,
     this.responseLogs,
     this.validationStatus,
+    this.onPrivateProperty,
+    this.propertyOwnerConsentStatus,
+    this.rejectionReason,
   });
 
   factory OfficerReportDetail.fromJson(Map<String, dynamic> json) {
@@ -81,6 +87,10 @@ class OfficerReportDetail {
                 .toList()
           : null,
       validationStatus: json['validation_status'] as String?,
+      onPrivateProperty: json['on_private_property'] as bool?,
+      propertyOwnerConsentStatus:
+          json['property_owner_consent_status'] as String?,
+      rejectionReason: json['rejection_reason'] as String?,
     );
   }
 }
@@ -340,11 +350,15 @@ class _OfficerReportDetailsScreenState
     }
   }
 
-  Future<void> _updateValidationStatus(String status) async {
+  Future<void> _updateValidationStatus(String status, {String? rejectionReason}) async {
     setState(() => _isUpdating = true);
     try {
       final apiClient = ref.read(apiClientProvider);
-      await apiClient.updateReportValidation(widget.reportId, status);
+      await apiClient.updateReportValidation(
+        widget.reportId,
+        status,
+        rejectionReason: rejectionReason,
+      );
       await _loadReportDetails();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -355,6 +369,80 @@ class _OfficerReportDetailsScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to update validation status')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+      }
+    }
+  }
+
+  Future<void> _onValidationStatusChanged(String status) async {
+    if (status == 'rejected') {
+      final reasonController = TextEditingController();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          title: const Text('Reject Report'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Please provide a reason for rejecting this report:'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  hintText: 'e.g., Duplicate, Invalid photo, Not environmental issue',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Reject', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        await _updateValidationStatus(
+          'rejected',
+          rejectionReason: reasonController.text.trim().isNotEmpty
+              ? reasonController.text.trim()
+              : 'Rejected by officer',
+        );
+      }
+    } else {
+      await _updateValidationStatus(status);
+    }
+  }
+
+  Future<void> _updatePropertyOwnerConsent(String consentStatus) async {
+    setState(() => _isUpdating = true);
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      await apiClient.updatePropertyOwnerConsent(widget.reportId, consentStatus);
+      await _loadReportDetails();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Property owner consent marked as $consentStatus')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update owner consent: $e')),
         );
       }
     } finally {
@@ -607,6 +695,15 @@ class _OfficerReportDetailsScreenState
             _buildInfoRow('Title', _report?.title ?? 'N/A'),
             _buildInfoRow('Issue', _report?.issue ?? 'N/A'),
             _buildInfoRow('Description', _report?.description ?? 'N/A'),
+            if (_report?.rejectionReason != null && _report!.rejectionReason!.isNotEmpty)
+              _buildInfoRow('Rejection Reason', _report!.rejectionReason!),
+            if (_report?.onPrivateProperty == true) ...[
+              _buildInfoRow('Private Property', 'Yes'),
+              _buildInfoRow(
+                'Owner Consent',
+                (_report?.propertyOwnerConsentStatus ?? 'pending').toUpperCase(),
+              ),
+            ],
           ],
         ),
       ),
@@ -725,10 +822,64 @@ class _OfficerReportDetailsScreenState
                   ? null
                   : (value) {
                       if (value != null) {
-                        _updateValidationStatus(value);
+                        _onValidationStatusChanged(value);
                       }
                     },
             ),
+            if (_report?.onPrivateProperty == true) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text(
+                'Property Owner Consent',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Current Status: ${(_report?.propertyOwnerConsentStatus ?? "pending").toUpperCase()}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _report?.propertyOwnerConsentStatus == 'granted'
+                      ? Colors.green
+                      : (_report?.propertyOwnerConsentStatus == 'denied'
+                          ? Colors.red
+                          : Colors.orange),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isUpdating || _report?.propertyOwnerConsentStatus == 'granted'
+                          ? null
+                          : () => _updatePropertyOwnerConsent('granted'),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Grant'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isUpdating || _report?.propertyOwnerConsentStatus == 'denied'
+                          ? null
+                          : () => _updatePropertyOwnerConsent('denied'),
+                      icon: const Icon(Icons.close, size: 18),
+                      label: const Text('Deny'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

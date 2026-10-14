@@ -205,9 +205,20 @@ class _OfficerCleanupTaskDetailsScreenState
   }
 
   Future<void> _markTaskComplete() async {
-    // Check if all reports are resolved (lifecycle stage)
+    // Check if all reports are resolved (stage or status)
     if (_reports.isNotEmpty) {
-      final unresolvedReports = _reports.where((r) => r.stage != 'resolved');
+      final unresolvedReports = _reports.where((r) {
+        final issueType = r.issueType?.toLowerCase() ?? '';
+        final isScouting = issueType == 'scouting' || issueType == 'acknowledge_only';
+        if (isScouting) return false;
+        final stage = r.stage?.toLowerCase() ?? '';
+        final status = r.status?.toLowerCase() ?? '';
+        final isResolved = stage == 'resolved' ||
+            status == 'resolved' ||
+            status == 'waiting_for_feedback' ||
+            status == 'closed';
+        return !isResolved;
+      });
       if (unresolvedReports.isNotEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

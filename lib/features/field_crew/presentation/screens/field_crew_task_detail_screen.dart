@@ -253,22 +253,24 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
       'report',
       'after',
     );
+    final issueType = report.issueType?.toLowerCase() ?? '';
+    final isScouting = issueType == 'scouting' || issueType == 'acknowledge_only';
     final evidence = <String>[
       if (reportPhoto != null)
         'local-photo:${reportPhoto.localPhotoId}'
-      else if (taskPhoto != null)
-        'local-photo:${taskPhoto.localPhotoId}'
       else if (report.afterPhotoUrl?.startsWith('https://') == true)
         report.afterPhotoUrl!
-      else if (task.afterPhotoUrl?.startsWith('https://') == true)
+      else if (outcome == 'already_resolved' && taskPhoto != null)
+        'local-photo:${taskPhoto.localPhotoId}'
+      else if (outcome == 'already_resolved' && task.afterPhotoUrl?.startsWith('https://') == true)
         task.afterPhotoUrl!,
     ];
     if (!context.mounted) return;
-    if (evidence.isEmpty) {
+    if (!isScouting && evidence.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Capture an after photo before recording this site outcome.',
+            'Capture an after photo for this report before recording cleanup.',
           ),
         ),
       );

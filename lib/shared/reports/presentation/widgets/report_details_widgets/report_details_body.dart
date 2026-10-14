@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 
 import 'package:ecopin_app/routes/app_routes.dart';
@@ -45,6 +46,62 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
 }
 
 class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
+  bool _isUpdatingStatus = false;
+
+  Future<void> _handleOfficerStatusUpdate(String newStatus) async {
+    if (newStatus == 'resolved') {
+      final issueType = widget.report.issueType?.toLowerCase() ?? '';
+      final isScouting = issueType == 'scouting' || issueType == 'acknowledge_only';
+      final hasBefore = widget.report.beforePhotoUrl != null &&
+          widget.report.beforePhotoUrl!.isNotEmpty;
+      final hasAfter = widget.report.afterPhotoUrl != null &&
+          widget.report.afterPhotoUrl!.isNotEmpty;
+
+      if (!isScouting && (!hasBefore || !hasAfter)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Before and after photos are required before marking as resolved.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() => _isUpdatingStatus = true);
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      await apiClient.updateReportStatus(widget.report.id, newStatus);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Report marked as ${newStatus == "resolved" ? "Resolved" : "In Progress"}',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update status: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingStatus = false);
+      }
+    }
+  }
+
   Color _getSeverityColor(String level) {
     switch (level.toLowerCase()) {
       case 'minimal':
@@ -189,8 +246,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             ),
           ],
           // Show rejection reason if report is rejected
-          if (widget.report.validationStatus.toLowerCase() == 'rejected' &&
-              widget.report.rejectionReason != null) ...[
+          if (widget.report.validationStatus.toLowerCase() == 'rejected') ...[
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
@@ -213,7 +269,9 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.report.rejectionReason!,
+                    widget.report.rejectionReason != null && widget.report.rejectionReason!.trim().isNotEmpty
+                        ? widget.report.rejectionReason!
+                        : 'This report was rejected during validation. You may submit a new report with clearer photos or updated details.',
                     style: TextStyle(fontSize: 14, color: Colors.red.shade700),
                   ),
                   if (widget.report.rejectedAt != null) ...[
@@ -226,6 +284,56 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                       ),
                     ),
                   ],
+                ],
+              ),
+            ),
+          ],
+          // Show Private Property & Consent Status
+          if (widget.report.onPrivateProperty) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.home_work_outlined, color: Colors.amber.shade900, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Private Property',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber.shade900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    widget.report.propertyOwnerConsentStatus == 'obtained' || widget.report.propertyOwnerConsentStatus == 'granted'
+                        ? 'Property owner consent has been granted for cleanup crews to enter.'
+                        : widget.report.propertyOwnerConsentStatus == 'denied'
+                            ? 'Property owner consent was denied. Crews cannot enter private premises.'
+                            : 'This site is located on private property. LGU review and property owner consent are required before dispatch.',
+                    style: TextStyle(fontSize: 13, color: Colors.amber.shade900),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Consent Status: ${widget.report.propertyOwnerConsentStatus.replaceAll('_', ' ').toUpperCase()}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.amber.shade900,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -592,9 +700,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               ),
           ],
           const SizedBox(height: 32),
-          // Satisfaction rating button if waiting for feedback (citizen only)
+          // Satisfaction rating button if waiting for feedback or resolved (citizen only)
           if (!widget.isOfficerUser &&
-              widget.report.status.toLowerCase() == 'waiting_for_feedback') ...[
+              (widget.report.status.toLowerCase() == 'waiting_for_feedback' ||
+               widget.report.status.toLowerCase() == 'resolved')) ...[
             const Text(
               'The issue has been resolved! Please rate the service.',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -660,21 +769,30 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Implement resolve report
-                  },
+                  onPressed: _isUpdatingStatus
+                      ? null
+                      : () => _handleOfficerStatusUpdate('resolved'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.green,
                   ),
-                  child: const Text(
-                    'Mark as Resolved',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isUpdatingStatus
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Mark as Resolved',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             const SizedBox(height: 12),
@@ -682,21 +800,30 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Implement mark as in progress
-                  },
+                  onPressed: _isUpdatingStatus
+                      ? null
+                      : () => _handleOfficerStatusUpdate('in_progress'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.orange,
                   ),
-                  child: const Text(
-                    'Mark as In Progress',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isUpdatingStatus
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Mark as In Progress',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
           ],

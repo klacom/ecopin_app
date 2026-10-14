@@ -1,5 +1,4 @@
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_repository.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_service.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
@@ -17,16 +16,18 @@ const _kOfflineNoteCount = 'fc_offline_note_count';
 // Provider
 // ─────────────────────────────────────────────────────────────────────────────
 
-final fcOfflinePackageServiceProvider = Provider<FcOfflinePackageService>((ref) {
-  final api   = ref.watch(apiClientProvider);
+final fcOfflinePackageServiceProvider = Provider<FcOfflinePackageService>((
+  ref,
+) {
+  final api = ref.watch(apiClientProvider);
   final local = ref.watch(fcLocalRepositoryProvider);
   return FcOfflinePackageService(api, local);
 });
 
 final fcOfflinePackageNotifierProvider =
     NotifierProvider<FcOfflinePackageNotifier, FcOfflinePackageState>(
-  FcOfflinePackageNotifier.new,
-);
+      FcOfflinePackageNotifier.new,
+    );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Notifier
@@ -47,7 +48,9 @@ class FcOfflinePackageNotifier extends Notifier<FcOfflinePackageState> {
   /// Calculates the storage estimate, then downloads the full package.
   Future<void> prepare() async {
     if (state.isDownloading) {
-      _log.warning('[OFFLINE NOTIFIER] prepare() called but already downloading. Ignoring double-tap.');
+      _log.warning(
+        '[OFFLINE NOTIFIER] prepare() called but already downloading. Ignoring double-tap.',
+      );
       return;
     }
 
@@ -61,33 +64,55 @@ class FcOfflinePackageNotifier extends Notifier<FcOfflinePackageState> {
       steps: buildInitialSteps(),
     );
 
-    final estimatedBytes = await service.estimateBytes();
-    if (estimatedBytes == 0) {
-      _log.warning('[OFFLINE NOTIFIER] Estimation returned 0 bytes (tasks might not be loaded yet). Continuing anyway.');
-    } else {
-      _log.info('[OFFLINE NOTIFIER] Estimation complete: $estimatedBytes bytes');
-    }
-
-    // ── Phase 2: Download ────────────────────────────────────────────────────
-    _log.info('[OFFLINE NOTIFIER] Transitioning to download phase...');
-    state = state.copyWith(
-      phase:          FcOfflinePackagePhase.downloading,
-      estimatedBytes: estimatedBytes,
-    );
-
     try {
+      final estimatedBytes = await service.estimateBytes();
+      if (!ref.mounted) return;
+      if (estimatedBytes == 0) {
+        _log.warning(
+          '[OFFLINE NOTIFIER] Estimation returned 0 bytes (tasks might not be loaded yet). Continuing anyway.',
+        );
+      } else {
+        _log.info(
+          '[OFFLINE NOTIFIER] Estimation complete: $estimatedBytes bytes',
+        );
+      }
+
+      // ── Phase 2: Download ────────────────────────────────────────────────────
+      _log.info('[OFFLINE NOTIFIER] Transitioning to download phase...');
+      state = state.copyWith(
+        phase: FcOfflinePackagePhase.downloading,
+        estimatedBytes: estimatedBytes,
+      );
+
       final result = await service.download(
         onStepProgress: _handleStepProgress,
-        onCountUpdate:  _handleCountUpdate,
+        onCountUpdate: _handleCountUpdate,
       );
       _log.info('[OFFLINE NOTIFIER] Download phase completed successfully.');
-      state = result;
-      _saveToPrefs(result);
+      if (!ref.mounted) return;
+      var prepared = result.copyWith(
+        steps: state.steps,
+        estimatedBytes: estimatedBytes,
+      );
+      try {
+        await _saveToPrefs(prepared);
+      } catch (error, stack) {
+        _log.warning('Preparation receipt could not save', error, stack);
+        if (ref.mounted) {
+          prepared = prepared.copyWith(
+            errorMessage:
+                'Work was cached, but its preparation receipt could not save. Check preparation again before leaving.',
+          );
+        }
+      }
+      if (ref.mounted) state = prepared;
     } catch (e, st) {
       _log.severe('[OFFLINE NOTIFIER] Download phase failed', e, st);
+      if (!ref.mounted) return;
       state = state.copyWith(
-        phase:        FcOfflinePackagePhase.failed,
-        errorMessage: 'Preparation failed: $e',
+        phase: FcOfflinePackagePhase.failed,
+        errorMessage:
+            'Preparation could not finish. Check your connection and try again. Any data already cached remains on this device.',
       );
     }
   }
@@ -101,14 +126,19 @@ class FcOfflinePackageNotifier extends Notifier<FcOfflinePackageState> {
   // ── Private ────────────────────────────────────────────────────────────────
 
   Future<void> _initFromPrefs() async {
-    _log.info('[OFFLINE NOTIFIER] Attempting to initialize state from SharedPreferences...');
+    _log.info(
+      '[OFFLINE NOTIFIER] Attempting to initialize state from SharedPreferences...',
+    );
     final prefs = await SharedPreferences.getInstance();
+    if (!ref.mounted || state.phase != FcOfflinePackagePhase.idle) return;
     final preparedAtMs = prefs.getInt(_kOfflinePreparedAt);
-    
+
     if (preparedAtMs != null) {
       final preparedAt = DateTime.fromMillisecondsSinceEpoch(preparedAtMs);
       if (DateTime.now().difference(preparedAt).inHours < 24) {
-        _log.info('[OFFLINE NOTIFIER] Loaded valid state from SharedPreferences (prepared at $preparedAt)');
+        _log.info(
+          '[OFFLINE NOTIFIER] Loaded valid state from SharedPreferences (prepared at $preparedAt)',
+        );
         state = state.copyWith(
           phase: FcOfflinePackagePhase.ready,
           preparedAt: preparedAt,
@@ -118,20 +148,29 @@ class FcOfflinePackageNotifier extends Notifier<FcOfflinePackageState> {
           noteCount: prefs.getInt(_kOfflineNoteCount) ?? 0,
         );
       } else {
-        _log.info('[OFFLINE NOTIFIER] Loaded state is stale (older than 24h). Clearing.');
+        _log.info(
+          '[OFFLINE NOTIFIER] Loaded state is stale (older than 24h). Clearing.',
+        );
         await _clearPrefs(prefs);
       }
     } else {
-      _log.info('[OFFLINE NOTIFIER] No previous offline package state found in SharedPreferences.');
+      _log.info(
+        '[OFFLINE NOTIFIER] No previous offline package state found in SharedPreferences.',
+      );
     }
   }
 
   Future<void> _saveToPrefs(FcOfflinePackageState result) async {
     if (result.preparedAt == null) return;
-    
-    _log.info('[OFFLINE NOTIFIER] Saving offline package state to SharedPreferences...');
+
+    _log.info(
+      '[OFFLINE NOTIFIER] Saving offline package state to SharedPreferences...',
+    );
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kOfflinePreparedAt, result.preparedAt!.millisecondsSinceEpoch);
+    await prefs.setInt(
+      _kOfflinePreparedAt,
+      result.preparedAt!.millisecondsSinceEpoch,
+    );
     await prefs.setInt(_kOfflineTaskCount, result.taskCount);
     await prefs.setInt(_kOfflineReportCount, result.reportCount);
     await prefs.setInt(_kOfflineEvidenceCount, result.evidenceCount);
@@ -149,17 +188,18 @@ class FcOfflinePackageNotifier extends Notifier<FcOfflinePackageState> {
 
   void _handleStepProgress(
     String stepLabel, {
-    bool completed  = false,
+    bool completed = false,
     bool inProgress = false,
     String? error,
   }) {
+    if (!ref.mounted) return;
     final updated = state.steps.map((s) {
       if (s.label != stepLabel) return s;
       return FcDownloadStep(
-        label:      s.label,
-        completed:  completed,
+        label: s.label,
+        completed: completed,
         inProgress: inProgress && !completed,
-        error:      error,
+        error: error,
       );
     }).toList();
     state = state.copyWith(steps: updated);
@@ -171,11 +211,12 @@ class FcOfflinePackageNotifier extends Notifier<FcOfflinePackageState> {
     int? evidence,
     int? notes,
   }) {
+    if (!ref.mounted) return;
     state = state.copyWith(
-      taskCount:     tasks     ?? state.taskCount,
-      reportCount:   reports   ?? state.reportCount,
-      evidenceCount: evidence  ?? state.evidenceCount,
-      noteCount:     notes     ?? state.noteCount,
+      taskCount: tasks ?? state.taskCount,
+      reportCount: reports ?? state.reportCount,
+      evidenceCount: evidence ?? state.evidenceCount,
+      noteCount: notes ?? state.noteCount,
     );
   }
 }

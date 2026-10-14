@@ -1,36 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/core/theme/typography.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
+import '../controllers/fc_dashboard_presentation.dart';
 
 class FcTaskStatusBadge extends StatelessWidget {
-  final String status;
-
   const FcTaskStatusBadge({super.key, required this.status});
-
+  final String status;
   @override
   Widget build(BuildContext context) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'completed':
-        color = AppColors.success;
-        break;
-      case 'in_progress':
-        color = AppColors.info;
-        break;
-      default:
-        color = AppColors.warning;
-    }
-    
+    final theme = Theme.of(context),
+        colors = Theme.of(context).extension<AppStatusColors>();
+    final color = switch (crewTaskKey(status)) {
+      'completed' => colors?.success ?? theme.colorScheme.onSurface,
+      'in_progress' => colors?.info ?? theme.colorScheme.onSurface,
+      'pending' ||
+      'assigned' ||
+      'scheduled' ||
+      'on_hold' => colors?.warning ?? theme.colorScheme.onSurface,
+      _ => theme.colorScheme.onSurface,
+    };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppColors.radiusChip),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        color: color.withValues(alpha: .08),
+        border: Border.all(color: color.withValues(alpha: .35)),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        status.toUpperCase().replaceAll('_', ' '),
-        style: AppTypography.caption.copyWith(color: color, fontWeight: FontWeight.bold),
+        crewTaskLabel(status),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

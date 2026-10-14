@@ -1,126 +1,71 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:logging/logging.dart';
-
-final _log = Logger('FcTaskQueueCard');
+import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
+import '../controllers/fc_dashboard_presentation.dart';
+import '../controllers/fc_sync_ui_providers.dart';
+import 'fc_task_status_badge.dart';
 
 class FcTaskQueueCard extends ConsumerWidget {
-  final CleanupTask task;
-
   const FcTaskQueueCard({super.key, required this.task});
-
+  final CleanupTask task;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    String locationText = task.location.isNotEmpty ? task.location : 'Location not specified';
-    LatLng? coordToGeocode;
-
-    if (task.reports != null && task.reports!.isNotEmpty) {
-      final loc = task.reports!.first.location;
-      if (loc.latitude != 0 || loc.longitude != 0) {
-        coordToGeocode = loc;
-      }
-    } else if (task.location.startsWith('POINT(')) {
-      try {
-        final parts = task.location.replaceAll('POINT(', '').replaceAll(')', '').split(' ');
-        coordToGeocode = LatLng(double.parse(parts[1]), double.parse(parts[0]));
-      } catch (_) {}
-    }
-
-    if (task.streetAddress != null && task.streetAddress!.isNotEmpty) {
-      _log.info('Task ${task.id} has streetAddress: ${task.streetAddress}');
-      locationText = task.streetAddress!;
-    } else if (coordToGeocode != null) {
-      _log.warning('Task ${task.id} streetAddress is missing. Falling back to coordinates.');
-      locationText = '${coordToGeocode.latitude.toStringAsFixed(4)}, ${coordToGeocode.longitude.toStringAsFixed(4)}';
-    } else {
-      _log.warning('Task ${task.id} streetAddress AND coordinates are missing. Falling back to location: ${task.location}');
-    }
-
-    return InkWell(
-      onTap: () => context.push('/field-crew/tasks/${task.id}'),
-      borderRadius: BorderRadius.circular(AppColors.radiusCard),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: AppColors.spaceSM),
-        padding: const EdgeInsets.all(12),
-        decoration: const BoxDecoration(
-          color: Colors.transparent,
+  Widget build(BuildContext context, WidgetRef ref) => Semantics(
+    button: true,
+    child: Material(
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusCard),
+        side: BorderSide(
+          color:
+              Theme.of(context).dividerTheme.color ??
+              Theme.of(context).dividerColor,
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
-                borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppColors.radiusCard),
+        onTap: () async {
+          await context.push(crewTaskPath(task.id));
+          if (context.mounted) ref.invalidate(fcPendingSummaryProvider);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(task.title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(
+                crewTaskLocation(task),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
-              child: const Icon(Icons.cleaning_services, color: AppColors.primaryDark, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  FcTaskStatusBadge(status: task.status),
                   Text(
-                    task.title,
-                    style: AppTypography.body.copyWith(color: AppColors.textPrimaryDark, fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    locationText,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    '${crewTaskLabel(task.priority)} priority',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _buildStatusText(task.status),
-                const SizedBox(height: 4),
-                Text(
-                  task.id.length > 8 ? task.id.substring(0, 8).toUpperCase() : task.id.toUpperCase(),
-                  style: const TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 0.5),
+              const SizedBox(height: 12),
+              Text(
+                'Open task details',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.linkDark
+                      : AppColors.accent,
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
-    );
-  }
-
-  Widget _buildStatusText(String status) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'completed':
-        color = AppColors.success;
-        break;
-      case 'in_progress':
-        color = AppColors.info;
-        break;
-      default:
-        color = Colors.grey;
-    }
-    
-    return Text(
-      status.length > 1 ? status[0].toUpperCase() + status.substring(1).toLowerCase() : status,
-      style: TextStyle(
-        color: color, 
-        fontSize: 12, 
-        fontWeight: FontWeight.bold,
-      ),
-    );
-  }
+    ),
+  );
 }

@@ -44,8 +44,10 @@ class ReportMapInfo extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 16),
-      const Text('Heatmap shading summarizes nearby reports and their current response status.'),
-      const SizedBox(height: 16),
+        const Text(
+          'Heatmap shading summarizes nearby reports and their current response status.',
+        ),
+        const SizedBox(height: 16),
         const Text(
           'Some public pins show an approximate area. The report preview identifies approximate locations.',
         ),

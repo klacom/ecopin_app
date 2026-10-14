@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:ecopin_app/core/theme/colors.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
@@ -370,7 +368,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ReportMapCredits(openSource: _openSource),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 64),
+                    child: ReportMapCredits(openSource: _openSource),
+                  ),
                 ],
               ),
             ),

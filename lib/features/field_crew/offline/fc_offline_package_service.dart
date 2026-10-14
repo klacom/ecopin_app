@@ -11,11 +11,16 @@ import 'package:logging/logging.dart';
 // Callback types
 // ─────────────────────────────────────────────────────────────────────────────
 
-typedef StepProgressCallback = void Function(String stepLabel,
-    {bool completed, bool inProgress, String? error});
+typedef StepProgressCallback =
+    void Function(
+      String stepLabel, {
+      bool completed,
+      bool inProgress,
+      String? error,
+    });
 
-typedef CountCallback = void Function(
-    {int? tasks, int? reports, int? evidence, int? notes});
+typedef CountCallback =
+    void Function({int? tasks, int? reports, int? evidence, int? notes});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FcOfflinePackageService
@@ -54,11 +59,11 @@ class FcOfflinePackageService {
 
   // Timeout options — tight on purpose so the UI stays responsive.
   static final _listOptions = Options(
-    sendTimeout:    const Duration(seconds: 20),
+    sendTimeout: const Duration(seconds: 20),
     receiveTimeout: const Duration(seconds: 30),
   );
   static final _itemOptions = Options(
-    sendTimeout:    const Duration(seconds: 10),
+    sendTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 15),
   );
 
@@ -75,10 +80,10 @@ class FcOfflinePackageService {
   ///   Evidence row ≈  0.5 KB
   ///   Note row ≈  0.5 KB
   ///   (thumbnails are handled by cached_network_image, not counted here)
-  static const int _bytesPerTask     = 2 * 1024;
-  static const int _bytesPerReport   = 3 * 1024;
+  static const int _bytesPerTask = 2 * 1024;
+  static const int _bytesPerReport = 3 * 1024;
   static const int _bytesPerEvidence = 512;
-  static const int _bytesPerNote     = 512;
+  static const int _bytesPerNote = 512;
   static const int _baseOverheadBytes = 64 * 1024; // reference data + index
 
   Future<int> estimateBytes() async {
@@ -95,7 +100,9 @@ class FcOfflinePackageService {
       for (final t in tasks) {
         reportIds.addAll(t.reportIds);
         if (t.reports != null) {
-          for (final r in t.reports!) reportIds.add(r.id);
+          for (final r in t.reports!) {
+            reportIds.add(r.id);
+          }
         }
       }
 
@@ -123,11 +130,11 @@ class FcOfflinePackageService {
     required StepProgressCallback onStepProgress,
     required CountCallback onCountUpdate,
   }) async {
-    int taskCount    = 0;
-    int reportCount  = 0;
+    int taskCount = 0;
+    int reportCount = 0;
     int evidenceCount = 0;
-    int noteCount    = 0;
-    int routeCount   = 0;
+    int noteCount = 0;
+    int routeCount = 0;
 
     // ── Step 1: Assigned cleanup tasks ──────────────────────────────────────
     List<CleanupTask> tasks = [];
@@ -145,8 +152,11 @@ class FcOfflinePackageService {
       onStepProgress(FcOfflineStepLabel.tasks, completed: true);
       _log.info('Offline package: cached $taskCount tasks');
     } catch (e) {
-      onStepProgress(FcOfflineStepLabel.tasks,
-          completed: false, error: _friendlyError(e));
+      onStepProgress(
+        FcOfflineStepLabel.tasks,
+        completed: false,
+        error: _friendlyError(e),
+      );
       _log.warning('Offline package: task fetch failed: $e');
     }
 
@@ -155,7 +165,9 @@ class FcOfflinePackageService {
     for (final t in tasks) {
       reportIds.addAll(t.reportIds);
       if (t.reports != null) {
-        for (final r in t.reports!) reportIds.add(r.id);
+        for (final r in t.reports!) {
+          reportIds.add(r.id);
+        }
       }
       if (t.clusterId != null && t.clusterId!.isNotEmpty) {
         // For cluster-based tasks we fetch by cluster below.
@@ -164,6 +176,7 @@ class FcOfflinePackageService {
 
     // ── Step 2: Fetch each report ────────────────────────────────────────────
     final List<ReportModel> reports = [];
+    int failedReportGroups = 0;
     onStepProgress(FcOfflineStepLabel.reports, inProgress: true);
     try {
       // Batch by ID when possible; fall back to cluster fetch for cluster tasks.
@@ -202,17 +215,34 @@ class FcOfflinePackageService {
             if (!existingIds.contains(r.id)) reports.add(r);
           }
         } catch (e) {
+          failedReportGroups++;
           _log.warning('Offline package: cluster $clusterId fetch failed: $e');
         }
       }
 
       reportCount = reports.length;
       onCountUpdate(reports: reportCount);
-      onStepProgress(FcOfflineStepLabel.reports, completed: true);
+      final missingReports = reportIds
+          .difference(reports.map((report) => report.id).toSet())
+          .length;
+      final gaps = <String>[
+        if (failedReportGroups > 0)
+          '$failedReportGroups assigned report ${failedReportGroups == 1 ? 'group could' : 'groups could'} not download',
+        if (missingReports > 0)
+          '$missingReports linked ${missingReports == 1 ? 'report was' : 'reports were'} not returned by the service',
+      ];
+      onStepProgress(
+        FcOfflineStepLabel.reports,
+        completed: true,
+        error: gaps.isEmpty ? null : gaps.join('. '),
+      );
       _log.info('Offline package: cached $reportCount reports');
     } catch (e) {
-      onStepProgress(FcOfflineStepLabel.reports,
-          completed: false, error: _friendlyError(e));
+      onStepProgress(
+        FcOfflineStepLabel.reports,
+        completed: false,
+        error: _friendlyError(e),
+      );
       _log.warning('Offline package: report fetch failed: $e');
     }
 
@@ -238,12 +268,16 @@ class FcOfflinePackageService {
     if (evidenceFailed == 0 || reports.isEmpty) {
       onStepProgress(FcOfflineStepLabel.evidence, completed: true);
     } else {
-      onStepProgress(FcOfflineStepLabel.evidence,
-          completed: true,
-          error: '$evidenceFailed report(s) had no evidence cached');
+      onStepProgress(
+        FcOfflineStepLabel.evidence,
+        completed: true,
+        error: '$evidenceFailed report(s) had no evidence cached',
+      );
     }
-    _log.info('Offline package: cached $evidenceCount evidence items '
-        '($evidenceFailed failures)');
+    _log.info(
+      'Offline package: cached $evidenceCount evidence items '
+      '($evidenceFailed failures)',
+    );
 
     // ── Step 4: Agency-response notes ───────────────────────────────────────
     onStepProgress(FcOfflineStepLabel.notes, inProgress: true);
@@ -267,11 +301,15 @@ class FcOfflinePackageService {
     if (notesFailed == 0 || reports.isEmpty) {
       onStepProgress(FcOfflineStepLabel.notes, completed: true);
     } else {
-      onStepProgress(FcOfflineStepLabel.notes,
-          completed: true,
-          error: '$notesFailed report(s) had no notes cached');
+      onStepProgress(
+        FcOfflineStepLabel.notes,
+        completed: true,
+        error: '$notesFailed report(s) had no notes cached',
+      );
     }
-    _log.info('Offline package: cached $noteCount notes ($notesFailed failures)');
+    _log.info(
+      'Offline package: cached $noteCount notes ($notesFailed failures)',
+    );
 
     // ── Step 5: Issue-type reference data ────────────────────────────────────
     onStepProgress(FcOfflineStepLabel.issueTypes, inProgress: true);
@@ -285,9 +323,11 @@ class FcOfflinePackageService {
       onStepProgress(FcOfflineStepLabel.issueTypes, completed: true);
     } catch (e) {
       // Non-fatal — hard-coded fallback exists in the repository.
-      onStepProgress(FcOfflineStepLabel.issueTypes,
-          completed: true,
-          error: 'Using cached reference data');
+      onStepProgress(
+        FcOfflineStepLabel.issueTypes,
+        completed: true,
+        error: 'Using cached reference data',
+      );
       _log.fine('Issue-type fetch failed (fallback used): $e');
     }
 
@@ -312,22 +352,25 @@ class FcOfflinePackageService {
       onStepProgress(FcOfflineStepLabel.routes, completed: true);
       _log.info('Offline package: cached $routeCount routes');
     } catch (e) {
-      onStepProgress(FcOfflineStepLabel.routes,
-          completed: true, error: _friendlyError(e));
+      onStepProgress(
+        FcOfflineStepLabel.routes,
+        completed: true,
+        error: _friendlyError(e),
+      );
       _log.warning('Offline package: routes fetch failed: $e');
     }
 
     await _local.recordSyncAt('fc_offline_package');
     return FcOfflinePackageState(
-      phase:         FcOfflinePackagePhase.ready,
-      taskCount:     taskCount,
-      reportCount:   reportCount,
+      phase: FcOfflinePackagePhase.ready,
+      taskCount: taskCount,
+      reportCount: reportCount,
       evidenceCount: evidenceCount,
-      noteCount:     noteCount,
-      steps:         buildInitialSteps()
+      noteCount: noteCount,
+      steps: buildInitialSteps()
           .map((s) => s.copyWith(completed: true))
           .toList(),
-      preparedAt:    DateTime.now(),
+      preparedAt: DateTime.now(),
     );
   }
 

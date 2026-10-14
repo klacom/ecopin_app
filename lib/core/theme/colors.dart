@@ -15,10 +15,15 @@ class AppColors {
   // ── Brand: Accent ───────────────────────────────────
   static const Color accent = Color(0xFF0052CC);
   static const Color accentBlue = Color(0xFF0052CC);
+  static const Color linkDark = Color(0xFF82B6FF);
+  static const Color environmentalLight = Color(0xFF27754D);
+  static const Color environmentalDark = Color(0xFF83CBA0);
 
   // ── Neutrals ──────────────────────────────────────────────
-  static const Color textPrimaryLight = Color(0xFF000000);
-  static const Color textPrimaryDark = Color(0xFFFFFFFF);
+  static const Color textPrimaryLight = Color(0xFF17212E);
+  static const Color textPrimaryDark = Color(0xFFF5F5F5);
+  static const Color textSecondaryLight = Color(0xFF59636E);
+  static const Color textSecondaryDark = Color(0xFFB0B0B0);
 
   static const Color backgroundLight = Color(0xFFFFFFFF);
   static const Color backgroundDark = Color(0xFF121212);
@@ -34,7 +39,7 @@ class AppColors {
   static const Color surfaceDark = Color(0xFF1C1C1C);
 
   // ── Divider / Border ──────────────────────────────────────
-  static const Color dividerLight = Color(0xFF000000);
+  static const Color dividerLight = Color(0xFFE5E9EE);
   static const Color dividerDark = Color(0xFF333333);
 
   // ── Shadows ───────────────────────────────────────────────

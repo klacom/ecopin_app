@@ -699,7 +699,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => const NoInternetScreen(),
+          error: (err, stack) => NoInternetScreen(onRetry: () => ref.invalidate(profileProvider)),
         ),
       ),
     );

@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:image/image.dart' as image;
 import 'package:dio/dio.dart' as dio;
 import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_preview.dart';
 import 'package:ecopin_app/shared/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/shared/reports/data/datasources/public_report_map_datasource.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
@@ -12,19 +15,26 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class _SyntheticConsentApi extends ApiClient {
+  bool fail = false;
+  int reads = 0;
   @override
-  Future<dio.Response> getProfile() async => dio.Response(
+  Future<dio.Response> getProfile() async {
+    reads++;
+    if (fail) throw StateError('Synthetic privacy read failure');
+    return dio.Response(
     requestOptions: dio.RequestOptions(path: '/synthetic-profile'),
     data: {
       'profile': {'data_consent': true},
     },
     statusCode: 200,
   );
+  }
 }
 
 class _ControlledReports extends PublicReportMapDataSource {
@@ -95,12 +105,13 @@ void main() {
     }
   });
 
-  ReportMapPage page(int count) => ReportMapPage(
+  ReportMapPage page(int count, {String title = 'Synthetic report', bool approximate = false}) => ReportMapPage(
     reports: List.generate(
       count,
       (index) => ReportModel.fromJson({
         'id': 'synthetic-$index',
-        'title': 'Synthetic report',
+        'title': title,
+        'location_precision': approximate ? 'approximate' : 'exact',
         'latitude': 14.58,
         'longitude': 121.08,
         'validation_status': 'approved',
@@ -111,14 +122,14 @@ void main() {
     hasMore: false,
   );
 
-  Future<_ControlledReports> mount(WidgetTester tester) async {
+  Future<_ControlledReports> mount(WidgetTester tester, {GoRouter? router, bool dark = false, _SyntheticConsentApi? consent}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          apiClientProvider.overrideWithValue(_SyntheticConsentApi()),
+          apiClientProvider.overrideWithValue(consent ?? _SyntheticConsentApi()),
           publicReportMapDataSourceProvider.overrideWithValue(reports),
         ],
-        child: MaterialApp(home: MapScreen(tileProvider: _SyntheticTiles())),
+        child: router == null ? MaterialApp(theme: dark ? AppTheme.dark : AppTheme.light, home: MapScreen(tileProvider: _SyntheticTiles())) : MaterialApp.router(theme: AppTheme.light, routerConfig: router),
       ),
     );
     await tester.pump(const Duration(milliseconds: 350));
@@ -173,4 +184,69 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets('preview selection remains stable through a refresh and uses only public data', (tester) async {
+    await mount(tester);
+    reports.requests.first.$2.complete(page(1, title: 'Original report', approximate: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Original report, Unresolved'));
+    await tester.pumpAndSettle();
+    expect(reports.requests, hasLength(1));
+    expect(find.text('Approximate location shown on the public map.'), findsOneWidget);
+    expect(tester.widget<ReportMarker>(find.byType(ReportMarker)).selected, isTrue);
+    final container = ProviderScope.containerOf(tester.element(find.byType(MapScreen)));
+    container.invalidate(publicReportMapProvider(reports.requests.first.$1));
+    await tester.pump();
+    expect(reports.requests, hasLength(2));
+    expect(find.byType(ReportMarker), findsOneWidget);
+    reports.requests.last.$2.complete(page(1, title: 'Updated report', approximate: true));
+    await tester.pumpAndSettle();
+    expect(tester.widget<ReportMapPreview>(find.byType(ReportMapPreview)).report.title, 'Original report');
+    expect(tester.widget<ReportMarker>(find.byType(ReportMarker)).title, 'Updated report');
+    await tester.tap(find.byTooltip('Close report preview'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<ReportMarker>(find.byType(ReportMarker)).selected, isFalse);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('view report closes the sheet before navigating with the live map context', (tester) async {
+    final router = GoRouter(initialLocation: '/maps', routes: [
+      GoRoute(path: '/maps', builder: (_, _) => MapScreen(tileProvider: _SyntheticTiles())),
+      GoRoute(path: '/reports/:id', builder: (_, state) => Scaffold(body: Text('Report destination ${state.pathParameters['id']}'))),
+    ]);
+    addTearDown(router.dispose);
+    await mount(tester, router: router);
+    reports.requests.first.$2.complete(page(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Synthetic report, Unresolved'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View report'));
+    await tester.pumpAndSettle();
+    expect(find.text('Report destination synthetic-0'), findsOneWidget);
+    expect(find.byType(ReportMapPreview), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('theme changes update map tiles without replacing the mounted map', (tester) async {
+    await mount(tester);
+    reports.requests.first.$2.complete(page(0));
+    await tester.pumpAndSettle();
+    final state = tester.state(find.byType(FlutterMap));
+    expect(tester.widget<TileLayer>(find.byType(TileLayer)).urlTemplate, contains('light_all'));
+    await mount(tester, dark: true);
+    expect(tester.widget<TileLayer>(find.byType(TileLayer)).urlTemplate, contains('dark_all'));
+    expect(tester.state(find.byType(FlutterMap)), same(state));
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('failed privacy read is recoverable without inventing consent', (tester) async {
+    final consent = _SyntheticConsentApi()..fail = true;
+    await mount(tester, consent: consent);
+    reports.requests.first.$2.complete(page(0));
+    await tester.pumpAndSettle();
+    expect(find.text('Privacy preferences could not load. Please try again.'), findsOneWidget);
+    consent.fail = false;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(consent.reads, 2);
+    expect(find.text('Data Privacy Consent'), findsNothing);
+    expect(find.byType(FlutterMap), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

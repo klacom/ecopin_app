@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
+import 'package:ecopin_app/shared/widgets/app_button.dart';
+import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 
 class SatisfactionRatingScreen extends ConsumerStatefulWidget {
   final String reportId;
@@ -17,6 +19,7 @@ class _SatisfactionRatingScreenState
     extends ConsumerState<SatisfactionRatingScreen> {
   int _selectedRating = 3; // Default to neutral
   bool _isLoading = false;
+  String? _error;
 
   final List<Map<String, dynamic>> _emojis = [
     {'emoji': '😢', 'label': 'Very Dissatisfied', 'rating': 1},
@@ -28,7 +31,7 @@ class _SatisfactionRatingScreenState
 
   Future<void> _submitRating() async {
     if (_isLoading) return; // Prevent multiple submissions
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _error = null; });
 
     try {
       final apiClient = ref.read(apiClientProvider);
@@ -39,10 +42,12 @@ class _SatisfactionRatingScreenState
       SnackbarHelper.showValidMessage(
         'Thank you for your feedback! Report closed successfully.',
       );
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      ref.invalidate(reportDetailsProvider(widget.reportId));
+      ref.invalidate(myReportsProvider);
+      Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      SnackbarHelper.showError('Failed to close report. Please try again.');
+      setState(() => _error = 'Your feedback could not be saved. Your selection is still here. Please try again.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -51,118 +56,29 @@ class _SatisfactionRatingScreenState
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Rate the Service')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text(
-                'How was the response to your report?',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
-              // Emoji selection
-              Expanded(
-                child: Center(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // Calculate appropriate emoji size based on screen width
-                      final emojiSize = constraints.maxWidth < 400
-                          ? 36.0
-                          : 48.0;
-                      final labelFontSize = constraints.maxWidth < 400
-                          ? 10.0
-                          : 12.0;
-
-                      return Wrap(
-                        spacing: 16,
-                        runSpacing: 24,
-                        alignment: WrapAlignment.center,
-                        children: _emojis.map((emojiData) {
-                          final isSelected =
-                              _selectedRating == emojiData['rating'];
-                          return GestureDetector(
-                            onTap: _isLoading
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _selectedRating = emojiData['rating'];
-                                    });
-                                  },
-                            child: Column(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(emojiSize * 0.25),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? Colors.blue.withValues(alpha: 0.1)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? Colors.blue
-                                          : Colors.transparent,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    emojiData['emoji'],
-                                    style: TextStyle(fontSize: emojiSize),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  emojiData['label'],
-                                  style: TextStyle(
-                                    fontSize: labelFontSize,
-                                    color: isSelected
-                                        ? Colors.blue
-                                        : Colors.grey,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              // Submit button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitRating,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blue,
-                    disabledBackgroundColor: Colors.grey.shade400,
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Submit Feedback',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Rate the response')),
+    body: SafeArea(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(header: true, child: Text('How was the response to your report?', style: Theme.of(context).textTheme.titleLarge)),
+        const SizedBox(height: 16),
+        Text('Submitting your feedback closes this report. You will return to its details after your feedback is saved.', style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 32),
+        for (final rating in _emojis) Padding(padding: const EdgeInsets.only(bottom: 12), child: ChoiceChip(
+          label: Text('${rating['emoji']} ${rating['label']}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: _selectedRating == rating['rating'] ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface)),
+          selected: _selectedRating == rating['rating'], selectedColor: Theme.of(context).colorScheme.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          onSelected: _isLoading ? null : (selected) { if (selected) setState(() => _selectedRating = rating['rating']); },
+        )),
+        const SizedBox(height: 24),
+        if (_error != null) ...[
+          Semantics(liveRegion: true, child: Text(_error!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.error))),
+          const SizedBox(height: 16),
+        ],
+        AppButton(text: 'Submit feedback and close report', isLoading: _isLoading, onPressed: _isLoading ? null : _submitRating),
+      ],
+    ))),
+  );
 }

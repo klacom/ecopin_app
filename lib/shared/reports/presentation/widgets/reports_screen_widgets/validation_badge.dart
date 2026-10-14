@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 
 class ValidationBadge extends StatelessWidget {
   final String status;
@@ -8,30 +9,31 @@ class ValidationBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final statusColors = Theme.of(context).extension<AppStatusColors>()!;
     Color color;
     String label;
 
     switch (status.toLowerCase()) {
       case 'validated':
       case 'approved':
-        color = AppColors.success;
-        label = 'AI OK';
+        color = statusColors.success;
+        label = 'Approved';
         break;
       case 'manual_review':
-        color = AppColors.warning;
-        label = 'REVIEW';
+        color = statusColors.warning;
+        label = 'Needs review';
         break;
       case 'rejected':
-        color = AppColors.error;
-        label = 'INVALID';
+        color = statusColors.error;
+        label = 'Rejected';
         break;
       case 'pending_ai_validation':
-        color = Colors.grey;
-        label = 'AI PENDING';
+        color = Theme.of(context).colorScheme.onSurface;
+        label = 'Awaiting automated review';
         break;
       default:
-        color = Colors.grey;
-        label = 'PENDING';
+        color = Theme.of(context).colorScheme.onSurface;
+        label = status.isEmpty ? 'Pending review' : status.replaceAll('_', ' ');
         break;
     }
 
@@ -45,8 +47,8 @@ class ValidationBadge extends StatelessWidget {
         label,
         style: TextStyle(
           color: color,
-          fontSize: 8,
-          fontWeight: FontWeight.bold,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

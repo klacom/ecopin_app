@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
@@ -8,97 +7,31 @@ class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          // Cyber dot-matrix background
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _DotMatrixPainter(Theme.of(context).brightness),
-            ),
-          ),
-          
-          // Main content
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceXL),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Spacer(flex: 2),
-                  
-                  // App Title / Logo area
-                  Image.asset(
-                    Theme.of(context).brightness == Brightness.light 
-                        ? 'assets/logos/Full Logo Light.png' 
-                        : 'assets/logos/Full Logo Dark.png',
-                    height: 80,
-                  ),
-                  const SizedBox(height: AppColors.spaceMD),
-                  
-                  // Value Proposition
-                  Text(
-                    'Empowering communities for a cleaner environment. Report, track, and resolve issues in real-time.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).brightness == Brightness.light ? Colors.black87 : Colors.white70,
-                      height: 1.5,
-                    ),
-                  ),
-                  
-                  const Spacer(flex: 3),
-                  
-                  // Login Button
-                  AppButton(
-                    text: 'Login',
-                    variant: ButtonVariant.primary, // Neon Lime by default
-                    onPressed: () => context.go('/login'),
-                  ),
-                  const SizedBox(height: AppColors.spaceMD),
-                  
-                  // Register Button
-                  AppButton(
-                    text: 'Register',
-                    variant: ButtonVariant.secondary, // Assuming secondary is dark grey/outline
-                    onPressed: () => context.go('/register'),
-                  ),
-                  
-                  const Spacer(flex: 1),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DotMatrixPainter extends CustomPainter {
-  final Brightness brightness;
-  _DotMatrixPainter(this.brightness);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = (brightness == Brightness.light ? Colors.black : const Color(0xFFCCFF00)).withValues(alpha: 0.08)
-      ..style = PaintingStyle.fill;
-
-    const double spacing = 20.0;
-    const double radius = 1.5;
-
-    for (double x = 0; x < size.width; x += spacing) {
-      for (double y = 0; y < size.height; y += spacing) {
-        // Create a subtle fade out pattern or random missing dots for terminal feel
-        if (Random().nextDouble() > 0.15) {
-          canvas.drawCircle(Offset(x, y), radius, paint);
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) => Scaffold(body: SafeArea(child: LayoutBuilder(builder: (context, constraints) {
+    final theme = Theme.of(context);
+    return SingleChildScrollView(padding: const EdgeInsets.all(24), child: Center(child: ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: 480, minHeight: (constraints.maxHeight - 48).clamp(0, double.infinity)),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Align(alignment: Alignment.centerLeft, child: Image.asset(
+          theme.brightness == Brightness.light ? 'assets/logos/Full Logo Light.png' : 'assets/logos/Full Logo Dark.png', height: 40)),
+        const SizedBox(height: 32),
+        Semantics(header: true, child: Text('A cleaner Pasig starts with us.', style: theme.textTheme.headlineSmall)),
+        const SizedBox(height: 16),
+        Text('Report an environmental concern, put it on the map, and follow its progress.', style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 32),
+        for (final benefit in [
+          (Icons.add_a_photo_outlined, 'Add a photo and location'),
+          (Icons.edit_note, 'Describe it in your own words'),
+          (Icons.update, 'Follow your report'),
+        ]) Padding(padding: const EdgeInsets.only(bottom: 16), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(benefit.$1, color: theme.brightness == Brightness.dark ? AppColors.linkDark : AppColors.accent),
+          const SizedBox(width: 12), Expanded(child: Text(benefit.$2, style: theme.textTheme.bodyMedium)),
+        ])),
+        const SizedBox(height: 16),
+        AppButton(text: 'Sign in', onPressed: () => context.go('/login')),
+        const SizedBox(height: 16),
+        AppButton(text: 'Create an account', variant: ButtonVariant.secondary, onPressed: () => context.go('/register')),
+      ]),
+    )));
+  })));
 }

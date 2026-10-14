@@ -13,7 +13,7 @@ class AppTheme {
       primary: AppColors.primaryLight,
       onPrimary: Colors.white,
       secondary: AppColors.secondaryLight,
-      onSecondary: Colors.white,
+      onSecondary: AppColors.textPrimaryLight,
       tertiary: AppColors.accent,
       surface: AppColors.surfaceLight,
       onSurface: AppColors.textPrimaryLight,
@@ -35,8 +35,8 @@ class AppTheme {
       tertiary: AppColors.accent,
       surface: AppColors.surfaceDark,
       onSurface: AppColors.textPrimaryDark,
-      error: AppColors.error,
-      onError: Colors.white,
+      error: Color(0xFFFCA5A5),
+      onError: AppColors.backgroundDark,
     );
 
     return _buildTheme(colorScheme);
@@ -46,12 +46,15 @@ class AppTheme {
   static ThemeData _buildTheme(ColorScheme colorScheme) {
     final bool isDark = colorScheme.brightness == Brightness.dark;
 
-    final Color textColor =
-        isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
-    final Color scaffoldBg =
-        isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
-    final Color dividerColor =
-        isDark ? AppColors.dividerDark : AppColors.dividerLight;
+    final Color textColor = isDark
+        ? AppColors.textPrimaryDark
+        : AppColors.textPrimaryLight;
+    final Color scaffoldBg = isDark
+        ? AppColors.backgroundDark
+        : AppColors.backgroundLight;
+    final Color dividerColor = isDark
+        ? AppColors.dividerDark
+        : AppColors.dividerLight;
 
     return ThemeData(
       useMaterial3: true,
@@ -67,7 +70,10 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
-        titleTextStyle: AppTypography.h5.copyWith(color: textColor),
+        titleTextStyle: AppTypography.h5.copyWith(
+          fontFamily: 'Outfit',
+          color: textColor,
+        ),
       ),
 
       // ── Text Theme ─────────────────────────────────────────
@@ -95,8 +101,9 @@ class AppTheme {
           textStyle: AppTypography.button.copyWith(color: Colors.white),
           elevation: 0,
           shape: const RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.all(Radius.circular(AppColors.radiusButton)),
+            borderRadius: BorderRadius.all(
+              Radius.circular(AppColors.radiusButton),
+            ),
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: AppColors.spaceLG,
@@ -108,11 +115,14 @@ class AppTheme {
       // ── Text Button ────────────────────────────────────────
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: colorScheme.primary,
-          textStyle: AppTypography.button.copyWith(color: colorScheme.primary),
+          foregroundColor: isDark ? AppColors.linkDark : colorScheme.primary,
+          textStyle: AppTypography.button.copyWith(
+            color: isDark ? AppColors.linkDark : colorScheme.primary,
+          ),
           shape: const RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.all(Radius.circular(AppColors.radiusButton)),
+            borderRadius: BorderRadius.all(
+              Radius.circular(AppColors.radiusButton),
+            ),
           ),
         ),
       ),
@@ -120,12 +130,18 @@ class AppTheme {
       // ── Outlined Button ────────────────────────────────────
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: colorScheme.primary,
-          side: BorderSide(color: colorScheme.primary, width: 1.5),
-          textStyle: AppTypography.button.copyWith(color: colorScheme.primary),
+          foregroundColor: isDark ? AppColors.linkDark : colorScheme.primary,
+          side: BorderSide(
+            color: isDark ? AppColors.linkDark : colorScheme.primary,
+            width: 1,
+          ),
+          textStyle: AppTypography.button.copyWith(
+            color: isDark ? AppColors.linkDark : colorScheme.primary,
+          ),
           shape: const RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.all(Radius.circular(AppColors.radiusButton)),
+            borderRadius: BorderRadius.all(
+              Radius.circular(AppColors.radiusButton),
+            ),
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: AppColors.spaceLG,
@@ -139,8 +155,7 @@ class AppTheme {
         color: isDark ? AppColors.surfaceDark : Colors.white,
         elevation: 0,
         shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.all(Radius.circular(AppColors.radiusCard)),
+          borderRadius: BorderRadius.all(Radius.circular(AppColors.radiusCard)),
         ),
         margin: const EdgeInsets.all(AppColors.spaceSM),
       ),
@@ -154,33 +169,43 @@ class AppTheme {
           vertical: AppColors.spaceMD,
         ),
         border: const OutlineInputBorder(
-          borderRadius:
-              BorderRadius.all(Radius.circular(AppColors.radiusInput)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(AppColors.radiusInput),
+          ),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius:
-              const BorderRadius.all(Radius.circular(AppColors.radiusInput)),
+          borderRadius: const BorderRadius.all(
+            Radius.circular(AppColors.radiusInput),
+          ),
           borderSide: BorderSide(color: dividerColor, width: 1),
         ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius:
-              BorderRadius.all(Radius.circular(AppColors.radiusInput)),
-          borderSide: BorderSide(color: AppColors.primaryLight, width: 1.5),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(
+            Radius.circular(AppColors.radiusInput),
+          ),
+          borderSide: BorderSide(
+            color: isDark ? AppColors.linkDark : AppColors.primaryLight,
+            width: 1.5,
+          ),
         ),
-        errorBorder: const OutlineInputBorder(
-          borderRadius:
-              BorderRadius.all(Radius.circular(AppColors.radiusInput)),
-          borderSide: BorderSide(color: AppColors.error, width: 1),
+        errorBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(
+            Radius.circular(AppColors.radiusInput),
+          ),
+          borderSide: BorderSide(color: colorScheme.error, width: 1),
         ),
-        focusedErrorBorder: const OutlineInputBorder(
-          borderRadius:
-              BorderRadius.all(Radius.circular(AppColors.radiusInput)),
-          borderSide: BorderSide(color: AppColors.error, width: 1.5),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(
+            Radius.circular(AppColors.radiusInput),
+          ),
+          borderSide: BorderSide(color: colorScheme.error, width: 1.5),
         ),
         labelStyle: AppTypography.label.copyWith(color: textColor),
         hintStyle: AppTypography.body.copyWith(
-          color: textColor.withValues(alpha: 0.4),
+          color: isDark
+              ? AppColors.textSecondaryDark
+              : AppColors.textSecondaryLight,
         ),
       ),
 
@@ -188,8 +213,9 @@ class AppTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
         shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.all(Radius.circular(AppColors.radiusDialog)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(AppColors.radiusDialog),
+          ),
         ),
         titleTextStyle: AppTypography.h3.copyWith(color: textColor),
         contentTextStyle: AppTypography.body.copyWith(color: textColor),
@@ -209,8 +235,13 @@ class AppTheme {
 
       // ── Chip ───────────────────────────────────────────────
       chipTheme: ChipThemeData(
-        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        backgroundColor: isDark
+            ? AppColors.surfaceDark
+            : AppColors.surfaceLight,
         labelStyle: AppTypography.label.copyWith(color: textColor),
+        secondaryLabelStyle: AppTypography.label.copyWith(
+          color: colorScheme.onSecondaryContainer,
+        ),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppColors.radiusChip)),
         ),
@@ -231,19 +262,19 @@ class AppTheme {
       // ── ScaffoldMessenger (snackbar / toast) ───────────────
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.textPrimaryLight,
-        contentTextStyle:
-            AppTypography.body.copyWith(color: Colors.white),
+        backgroundColor: isDark
+            ? AppColors.surfaceDark
+            : AppColors.textPrimaryLight,
+        contentTextStyle: AppTypography.body.copyWith(color: Colors.white),
         shape: RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.all(Radius.circular(AppColors.radiusCard)),
+          borderRadius: BorderRadius.all(Radius.circular(AppColors.radiusCard)),
         ),
       ),
 
       // ── Floating Action Button ─────────────────────────────
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.accent,
-        foregroundColor: Colors.black,
+        foregroundColor: Colors.white,
         elevation: 4,
         shape: const CircleBorder(),
       ),
@@ -251,10 +282,10 @@ class AppTheme {
       // ── Color scheme extension for status colors ───────────
       extensions: [
         AppStatusColors(
-          success: AppColors.success,
-          warning: AppColors.warning,
-          error: AppColors.error,
-          info: AppColors.info,
+          success: isDark ? const Color(0xFF83CBA0) : AppColors.success,
+          warning: isDark ? const Color(0xFFFCD34D) : const Color(0xFFB45309),
+          error: isDark ? const Color(0xFFFCA5A5) : AppColors.error,
+          info: isDark ? AppColors.linkDark : const Color(0xFF0369A1),
         ),
       ],
     );

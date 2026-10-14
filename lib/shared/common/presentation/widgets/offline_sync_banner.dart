@@ -21,9 +21,11 @@ class OfflineSyncBanner extends ConsumerWidget {
               children: [
                 Icon(Icons.wifi_off, color: Colors.white, size: 16),
                 SizedBox(width: 8),
-                Text(
-                  'You are offline. Changes will sync when reconnected.',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                Expanded(
+                  child: Text(
+                    'You are offline. Some actions may be unavailable. Check pending work before leaving.',
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
                 ),
               ],
             ),

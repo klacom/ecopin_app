@@ -1,4 +1,5 @@
 import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/landing_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/login_screen.dart';
@@ -21,6 +22,11 @@ import 'package:ecopin_app/features/officer/presentation/screens/officer_spatial
 import 'package:ecopin_app/features/officer/presentation/screens/officer_optimization_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_cluster_create_task.dart';
 import 'package:ecopin_app/features/citizen/presentation/screens/citizen_main_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_main_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_dashboard_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_users_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_settings_screen.dart';
+import 'package:ecopin_app/features/admin/presentation/screens/admin_audit_logs_screen.dart';
 import 'package:ecopin_app/shared/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/shared/notifications/presentation/screens/notifications_screen.dart';
 import 'package:ecopin_app/shared/profile/presentation/screens/profile_screen.dart';
@@ -68,13 +74,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       );
 
       if (isLoading) return null;
+      if (path == PublicAppRoutes.unauthorized) return null;
 
       if (path == PublicAppRoutes.splash) {
         // If logged in, redirect based on role
         if (loggedIn) {
           if (role == UserRole.admin) {
-            log.warning('Admin role blocked on mobile app — redirecting to unauthorized');
-            return PublicAppRoutes.unauthorized;
+            return AdminAppRoutes.dashboard;
           } else if (role == UserRole.officer) {
             log.info('Redirecting from splash to Officer Dashboard');
             return OfficerAppRoutes.dashboard;
@@ -106,14 +112,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         'Route checks - IsPublicRoute: $isPublicRoute, IsOfficerRoute: $isOfficerRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
       );
 
-      if (loggedIn && role == UserRole.admin && path != PublicAppRoutes.unauthorized) {
-        log.warning('Admin role detected — blocking app access');
+      if (isAdminRoute && (!loggedIn || role != UserRole.admin)) {
         return PublicAppRoutes.unauthorized;
       }
 
-      if (isAdminRoute) {
-        log.warning('Admin route requested — redirecting to unauthorized');
-        return PublicAppRoutes.unauthorized;
+      if (loggedIn &&
+          role == UserRole.admin &&
+          !isAdminRoute &&
+          path != PublicAppRoutes.unauthorized) {
+        return AdminAppRoutes.dashboard;
       }
 
       if (loggedIn && isPublicRoute && path != PublicAppRoutes.unauthorized) {
@@ -218,7 +225,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: ProtectedAppRoutes.notifications,
-            builder: (_, _) => const NotificationsScreen(),
+            builder: (_, _) =>
+                const NotificationsScreen(role: UserRole.citizen),
           ),
           GoRoute(
             path: ProtectedAppRoutes.profile,
@@ -271,8 +279,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: OfficerAppRoutes.cleanupTasks,
             builder: (_, state) {
-              final status = state.uri.queryParameters['status'] ??
-                  (state.extra is Map ? (state.extra as Map)['status']?.toString() : null);
+              final status =
+                  state.uri.queryParameters['status'] ??
+                  (state.extra is Map
+                      ? (state.extra as Map)['status']?.toString()
+                      : null);
               return OfficerCleanupTasksScreen(initialStatus: status);
             },
             routes: [
@@ -292,13 +303,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: OfficerAppRoutes.reports,
             builder: (_, state) {
-              final filter = state.uri.queryParameters['filter'] ??
-                  (state.extra is Map ? (state.extra as Map)['filter']?.toString() : null);
-              final status = state.uri.queryParameters['status'] ??
-                  (state.extra is Map ? (state.extra as Map)['status']?.toString() : null);
+              final filter =
+                  state.uri.queryParameters['filter'] ??
+                  (state.extra is Map
+                      ? (state.extra as Map)['filter']?.toString()
+                      : null);
+              final status =
+                  state.uri.queryParameters['status'] ??
+                  (state.extra is Map
+                      ? (state.extra as Map)['status']?.toString()
+                      : null);
               return OfficerReportsScreen(
                 initialStatus: status,
-                initialValidation: filter == 'manual_review' ? 'manual_review' : null,
+                initialValidation: filter == 'manual_review'
+                    ? 'manual_review'
+                    : null,
                 initialOverdue: filter == 'overdue',
               );
             },
@@ -338,7 +357,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: OfficerAppRoutes.notifications,
-            builder: (_, _) => const NotificationsScreen(),
+            builder: (_, _) =>
+                const NotificationsScreen(role: UserRole.officer),
           ),
         ],
       ),
@@ -403,7 +423,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: FieldCrewAppRoutes.notifications,
-            builder: (_, _) => const NotificationsScreen(),
+            builder: (_, _) =>
+                const NotificationsScreen(role: UserRole.fieldCrew),
           ),
           GoRoute(
             path: FieldCrewAppRoutes.syncCenter,
@@ -412,6 +433,35 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: FieldCrewAppRoutes.prepareOffline,
             builder: (_, _) => const FieldCrewPrepareOfflineScreen(),
+          ),
+        ],
+      ),
+      ShellRoute(
+        builder: (context, state, child) => AdminMainScreen(child: child),
+        routes: [
+          GoRoute(
+            path: AdminAppRoutes.dashboard,
+            builder: (_, _) => const AdminDashboardScreen(),
+          ),
+          GoRoute(
+            path: AdminAppRoutes.users,
+            builder: (_, _) => const AdminUsersScreen(),
+          ),
+          GoRoute(
+            path: AdminAppRoutes.settings,
+            builder: (_, _) => const AdminSettingsScreen(),
+          ),
+          GoRoute(
+            path: AdminAppRoutes.auditLogs,
+            builder: (_, _) => const AdminAuditLogsScreen(),
+          ),
+          GoRoute(
+            path: AdminAppRoutes.profile,
+            builder: (_, _) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: AdminAppRoutes.notifications,
+            builder: (_, _) => const NotificationsScreen(role: UserRole.admin),
           ),
         ],
       ),
@@ -424,13 +474,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       } else if (role == UserRole.fieldCrew) {
         homePath = FieldCrewAppRoutes.dashboard;
       } else if (role == UserRole.admin) {
-        homePath = PublicAppRoutes.unauthorized;
+        homePath = AdminAppRoutes.dashboard;
       } else if (role == UserRole.citizen) {
         homePath = ProtectedAppRoutes.maps;
       }
 
       return Scaffold(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -441,11 +491,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 color: Colors.redAccent,
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Page Not Found',
                 style: TextStyle(
                   fontSize: 24,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -460,8 +510,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 icon: const Icon(Icons.home),
                 label: const Text('Go to Home'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFCCFF00),
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 12,

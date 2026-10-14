@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 class AppTypography {
   AppTypography._();
+  static const String family = 'Outfit';
 
   // ── Display ───────────────────────────────────────────────
   static const TextStyle display = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w700,
     fontSize: 48,
     height: 1.1,
@@ -13,6 +15,7 @@ class AppTypography {
 
   // ── Headings ──────────────────────────────────────────────
   static const TextStyle h1 = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w700,
     fontSize: 40,
     height: 1.1,
@@ -20,6 +23,7 @@ class AppTypography {
   );
 
   static const TextStyle h2 = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w700,
     fontSize: 32,
     height: 1.15,
@@ -27,6 +31,7 @@ class AppTypography {
   );
 
   static const TextStyle h3 = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w700,
     fontSize: 28,
     height: 1.15,
@@ -34,18 +39,21 @@ class AppTypography {
   );
 
   static const TextStyle h4 = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w600,
     fontSize: 24,
     height: 1.2,
   );
 
   static const TextStyle h5 = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w600,
     fontSize: 20,
     height: 1.3,
   );
 
   static const TextStyle h6 = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w600,
     fontSize: 18,
     height: 1.3,
@@ -53,18 +61,21 @@ class AppTypography {
 
   // ── Body ──────────────────────────────────────────────────
   static const TextStyle bodyLarge = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w500,
     fontSize: 18,
     height: 1.5,
   );
 
   static const TextStyle body = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w400,
     fontSize: 16,
     height: 1.5,
   );
 
   static const TextStyle bodySmall = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w400,
     fontSize: 14,
     height: 1.4,
@@ -72,6 +83,7 @@ class AppTypography {
 
   // ── Caption ───────────────────────────────────────────────
   static const TextStyle caption = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w500,
     fontSize: 12,
     height: 1.3,
@@ -80,6 +92,7 @@ class AppTypography {
 
   // ── Label ─────────────────────────────────────────────────
   static const TextStyle label = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w500,
     fontSize: 14,
     height: 1.3,
@@ -88,6 +101,7 @@ class AppTypography {
 
   // ── Button ────────────────────────────────────────────────
   static const TextStyle button = TextStyle(
+    fontFamily: family,
     fontWeight: FontWeight.w600,
     fontSize: 16,
     height: 1.25,

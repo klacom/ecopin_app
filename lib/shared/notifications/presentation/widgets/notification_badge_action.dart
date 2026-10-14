@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:badges/badges.dart' as badges;
 import 'package:ecopin_app/shared/notifications/providers/notifications_provider.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
@@ -11,7 +10,9 @@ import 'package:ecopin_app/routes/app_routes.dart';
 // Navigates to the role-scoped notifications path so the correct shell
 // (OfficerMainScreen, AdminMainScreen, etc.) is preserved — not the citizen shell.
 class NotificationBadgeAction extends ConsumerWidget {
-  const NotificationBadgeAction({super.key});
+  const NotificationBadgeAction({super.key, this.role});
+  // A role-scoped page may provide its known destination; guards stay authoritative.
+  final UserRole? role;
 
   String _notificationsRouteForRole(UserRole? role) {
     switch (role) {
@@ -29,25 +30,34 @@ class NotificationBadgeAction extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unreadCount = ref.watch(unreadNotificationsCountProvider).value ?? 0;
-    final role = ref.watch(authNotifierProvider).state.role;
+    final unread = ref.watch(unreadNotificationsCountProvider);
+    final unreadCount = unread.value ?? 0;
+    final destinationRole = role ?? ref.watch(authNotifierProvider).state.role;
 
     return Padding(
       padding: const EdgeInsets.only(right: 16.0),
-      child: GestureDetector(
-        onTap: () {
-          context.push(_notificationsRouteForRole(role));
+      child: IconButton(
+        tooltip: unread.hasError
+            ? 'Notifications, unread count unavailable'
+            : unread.isLoading
+            ? 'Notifications, loading unread count'
+            : 'Notifications, $unreadCount unread',
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        onPressed: () {
+          context.push(_notificationsRouteForRole(destinationRole));
         },
-        child: Center(
-          child: badges.Badge(
-            showBadge: unreadCount > 0,
-            badgeContent: Text(
-              unreadCount.toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 10),
+        icon: Badge(
+          isLabelVisible: unreadCount > 0,
+          label: ExcludeSemantics(
+            child: MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.3,
+              child: Text(
+                unreadCount > 99 ? '99+' : '$unreadCount',
+                style: const TextStyle(fontSize: 12),
+              ),
             ),
-            position: badges.BadgePosition.topEnd(top: -5, end: -5),
-            child: const Icon(Icons.notifications_outlined),
           ),
+          child: const Icon(Icons.notifications_outlined),
         ),
       ),
     );

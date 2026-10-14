@@ -221,17 +221,17 @@ class _PrepareOfflineBanner extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFCCFF00).withValues(alpha: 0.08),
+            color: AppColors.accent.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: const Color(0xFFCCFF00).withValues(alpha: 0.3),
+              color: AppColors.accent.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
             children: [
               const Icon(
                 Icons.download_for_offline,
-                color: Color(0xFFCCFF00),
+                color: AppColors.accent,
                 size: 18,
               ),
               const SizedBox(width: 10),
@@ -247,7 +247,7 @@ class _PrepareOfflineBanner extends ConsumerWidget {
               ),
               const Icon(
                 Icons.chevron_right,
-                color: Color(0xFFCCFF00),
+                color: AppColors.accent,
                 size: 18,
               ),
             ],

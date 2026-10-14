@@ -3,6 +3,7 @@ class ApiConstants {
   static const String resendVerification = '/api/auth/resend-verification';
   static const String passwordRequirements = '/api/auth/password-requirements';
   static const String login = '/api/auth/login';
+  static const String forceChangePassword = '/api/auth/force-change-password';
   static const String me = '/api/auth/me';
   static const String logout = '/api/auth/logout';
   static const String createReport = '/api/reports';

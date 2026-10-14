@@ -119,10 +119,9 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
             isOfficerUser: isOfficerUser,
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => const NoInternetScreen(),
+          error: (err, stack) => NoInternetScreen(onRetry: () => ref.invalidate(reportDetailsProvider(widget.reportId))),
         ),
       ),
     );
   }
 }
-

@@ -1,8 +1,7 @@
 import 'dart:convert';
 
 import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/shared/maps/presentation/widgets/status_badge.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_heatmap/flutter_map_heatmap.dart';
@@ -22,9 +21,13 @@ import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_layer.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/search_overlay.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_preview.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_controls.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_info.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_credits.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/map_privacy_consent_dialog.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:logging/logging.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -48,7 +51,6 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
-  final Logger log = Logger("Maps Screen");
   final MapController _mapController = MapController();
 
   Timer? _viewportDebounce;
@@ -57,6 +59,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   bool _showHeatmap = false;
   bool _isLoadingLocation = false;
+  bool _checkingPrivacy = false;
+  String? _selectedReportId;
 
   @override
   void initState() {
@@ -75,20 +79,32 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     });
   }
 
-  void _runOnce() async {
-    final apiClient = ref.read(apiClientProvider);
-    await apiClient.getProfile().then((data) {
-      // log.fine('profile in runonce: ', data);
-      Map<String, dynamic> user = jsonDecode(data.toString());
-      // log.info('USER data consent run once : ', user['profile']['data_consent']);
-
-      // Checking
-      // If user hasn't given their consent yet.
-      if (user['profile']['data_consent'] == null) {
-        // log.info('IS USER CONSENT NULL: ', user['profile']['data_consent'].toString() == "");
-        if (mounted) _dialogBuilder(context);
+  Future<void> _runOnce() async {
+    if (!mounted || _checkingPrivacy) return;
+    _checkingPrivacy = true;
+    try {
+      final response = await ref.read(apiClientProvider).getProfile();
+      final data = response.data is String
+          ? jsonDecode(response.data)
+          : response.data;
+      final profile = data is Map ? data['profile'] : null;
+      if (profile is! Map) {
+        throw const FormatException('Privacy preference unavailable');
       }
-    });
+      if (mounted && profile['data_consent'] == null) {
+        await _dialogBuilder(context);
+      }
+    } catch (_) {
+      if (mounted) {
+        _notice(
+          'Privacy preferences could not load. Please try again.',
+          actionLabel: 'Retry',
+          action: _runOnce,
+        );
+      }
+    } finally {
+      _checkingPrivacy = false;
+    }
   }
 
   @override
@@ -115,133 +131,100 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // For Data/Location Disclosure
 
-  Future<void> _dialogBuilder(BuildContext context) {
-    final apiClient = ref.read(apiClientProvider);
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          icon: const Icon(Icons.privacy_tip_outlined),
-          title: const Text("Data Privacy Consent"),
-          content: const SingleChildScrollView(
-            child: Text(
-              "To help officers verify and resolve your reports more efficiently, "
-              "you may allow authorized personnel to access your profile information "
-              "and location (when applicable).\n\n"
-              "Your information will only be used for handling your reports and "
-              "will not be shared with unauthorized parties.\n\n"
-              "Your consent is optional, and you can continue using the app even if you decline.",
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: const Text("Disagree"),
-              onPressed: () async {
-                try {
-                  await apiClient.updateDataConsent(false);
-                } catch (e) {
-                  log.severe("Failed to update consent: $e");
-                }
-
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
-                }
-              },
-            ),
-            FilledButton(
-              child: const Text("Agree"),
-              onPressed: () async {
-                try {
-                  await apiClient.updateDataConsent(true);
-                } catch (e) {
-                  log.severe("Failed to update consent: $e");
-                }
-
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
-                }
-              },
-            ),
-          ],
-        );
+  Future<void> _dialogBuilder(BuildContext context) => showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => MapPrivacyConsentDialog(
+      onSave: (choice) async {
+        await ref.read(apiClientProvider).updateDataConsent(choice);
       },
+    ),
+  );
+
+  void _notice(String message, {String? actionLabel, VoidCallback? action}) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 6),
+        action: action == null
+            ? null
+            : SnackBarAction(label: actionLabel ?? 'Retry', onPressed: action),
+      ),
     );
   }
 
-  Future<void> _getCurrentLocation() async {
-    setState(() {
-      _isLoadingLocation = true;
-    });
-
+  Future<void> _locationSettings(bool serviceSettings) async {
     try {
-      bool serviceEnabled;
-      LocationPermission permission;
-
-      serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location services are disabled.')),
-          );
-        }
-        setState(() {
-          _isLoadingLocation = false;
-        });
-        return;
-      }
-
-      permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Location permissions are denied.')),
-            );
-          }
-          setState(() {
-            _isLoadingLocation = false;
-          });
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Location permissions are permanently denied, we cannot request permissions.',
-              ),
-            ),
-          );
-        }
-        setState(() {
-          _isLoadingLocation = false;
-        });
-        return;
-      }
-
-      final position = await Geolocator.getCurrentPosition();
-      if (mounted) {
-        _mapController.move(
-          LatLng(position.latitude, position.longitude),
-          16.0,
+      final opened = await (serviceSettings
+          ? Geolocator.openLocationSettings()
+          : Geolocator.openAppSettings());
+      if (!opened && mounted) {
+        _notice(
+          'Device settings could not open. You can still explore the map.',
         );
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
+        _notice(
+          'Device settings could not open. You can still explore the map.',
+        );
+      }
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    if (_isLoadingLocation) return;
+    setState(() => _isLoadingLocation = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        if (mounted) {
+          _notice(
+            'Turn on location services to center the map on your position.',
+            actionLabel: 'Settings',
+            action: () => _locationSettings(true),
+          );
+        }
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          _notice(
+            'Location access was not allowed. You can still explore the map.',
+          );
+        }
+        return;
+      }
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          _notice(
+            'Enable location access in device settings to find your position.',
+            actionLabel: 'Settings',
+            action: () => _locationSettings(false),
+          );
+        }
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition();
+      if (mounted) {
+        _mapController.move(LatLng(position.latitude, position.longitude), 16);
+      }
+    } catch (_) {
+      if (mounted) {
+        _notice(
+          'We could not find your location. Please try again.',
+          actionLabel: 'Retry',
+          action: _getCurrentLocation,
+        );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingLocation = false;
-        });
-      }
+      if (mounted) setState(() => _isLoadingLocation = false);
     }
   }
 
@@ -250,14 +233,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final reportsAsync = _viewport == null
         ? const AsyncLoading<ReportMapPage>()
         : ref.watch(publicReportMapProvider(_viewport!));
-    final reports = reportsAsync.asData?.value.reports ?? <ReportModel>[];
+    final reports = reportsAsync.value?.reports ?? <ReportModel>[];
     final colorScheme = Theme.of(context).colorScheme;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimaryDark
-        : AppColors.textPrimaryLight;
-    final textSecondary = textPrimary.withValues(alpha: 0.6);
-
     // Filter out rejected reports
     var visibleReports = reports
         .where((r) => r.validationStatus.toLowerCase() != 'rejected')
@@ -313,6 +290,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           weight = 0.3;
                           break;
                         case 'in progress':
+                        case 'in_progress':
                         case 'acknowledged':
                         case 'waiting_for_feedback':
                           weight = 0.6;
@@ -349,334 +327,93 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               if (widget.showBaseOfOperations) const MarkerLayer(markers: []),
               if (widget.showOtherCrews) const MarkerLayer(markers: []),
               MyMarkerClusterLayer(
-                markers: visibleReports.map((report) {
-                  return Marker(
-                    point: report.location,
-                    width: 40,
-                    height: 40,
-                    child: GestureDetector(
-                      onTap: () => _showReportPreview(context, report),
-                      child: ReportMarker(status: report.status),
-                    ),
-                  );
-                }).toList(),
+                markers: visibleReports
+                    .map(
+                      (report) => Marker(
+                        key: ValueKey(report.id),
+                        point: report.location,
+                        width: 48,
+                        height: 48,
+                        child: ReportMarker(
+                          status: report.status,
+                          title: report.title,
+                          selected: _selectedReportId == report.id,
+                          onTap: () => _showReportPreview(report),
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
             ],
           ),
           Positioned(
             left: 16,
-            right: 80,
-            bottom: 16,
+            right: 16,
+            bottom: widget.isFieldCrewMode
+                ? 16
+                : MediaQuery.textScalerOf(context).scale(48) + 40,
             child: SafeArea(
-              child: ReportMapStatus(
-                value: reportsAsync,
-                onRetry: () {
-                  if (_viewport != null) {
-                    ref.invalidate(publicReportMapProvider(_viewport!));
-                  }
-                },
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 64),
+                    child: ReportMapStatus(
+                      value: reportsAsync,
+                      onRetry: () {
+                        if (_viewport != null) {
+                          ref.invalidate(publicReportMapProvider(_viewport!));
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ReportMapCredits(openSource: _openSource),
+                ],
               ),
             ),
           ),
-          // ── Right Side Controls (Search, Heatmap, Center, OSM) ─────────────────
           if (!widget.isFieldCrewMode)
             Positioned(
-              top: AppColors.spaceMD,
-              right: AppColors.spaceMD,
+              top: 16,
+              right: 16,
               child: SafeArea(
-                child: Consumer(
-                  builder: (context, ref, child) {
-                    final isDark =
-                        Theme.of(context).brightness == Brightness.dark;
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        // 1. Search
-                        GestureDetector(
-                          onTap: () {
-                            showGeneralDialog(
-                              context: context,
-                              pageBuilder:
-                                  (context, animation, secondaryAnimation) =>
-                                      SearchOverlay(
-                                        mapController: _mapController,
-                                      ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(
-                              AppColors.spaceSM + 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppColors.surfaceDark
-                                  : AppColors.surfaceLight,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.search,
-                              color: isDark
-                                  ? AppColors.secondaryDark
-                                  : AppColors.secondaryLight,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppColors.spaceMD),
-                        // 2. Heatmap
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _showHeatmap = !_showHeatmap;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(
-                              AppColors.spaceSM + 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppColors.surfaceDark
-                                  : AppColors.surfaceLight,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.thermostat,
-                              color: _showHeatmap
-                                  ? AppColors.success
-                                  : (isDark
-                                        ? AppColors.secondaryDark
-                                        : AppColors.secondaryLight),
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppColors.spaceMD),
-                        // 3. Center
-                        GestureDetector(
-                          onTap: _getCurrentLocation,
-                          child: Container(
-                            padding: const EdgeInsets.all(
-                              AppColors.spaceSM + 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppColors.surfaceDark
-                                  : AppColors.surfaceLight,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: _isLoadingLocation
-                                ? SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: isDark
-                                          ? AppColors.textPrimaryDark
-                                          : AppColors.textPrimaryLight,
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.my_location,
-                                    color: isDark
-                                        ? AppColors.secondaryDark
-                                        : AppColors.secondaryLight,
-                                    size: 24,
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(height: AppColors.spaceMD),
-                        // 4. Attribution
-                        GestureDetector(
-                          onTap: () => launchUrl(
-                            Uri.parse('https://openstreetmap.org/copyright'),
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.all(
-                              AppColors.spaceSM + 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? AppColors.surfaceDark.withValues(alpha: 0.8)
-                                  : AppColors.surfaceLight.withValues(
-                                      alpha: 0.8,
-                                    ),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.15),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.info_outline,
-                              color:
-                                  Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? AppColors.textPrimaryDark
-                                  : AppColors.textPrimaryLight,
-                              size: 24,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                child: ReportMapControls(
+                  heatmap: _showHeatmap,
+                  locating: _isLoadingLocation,
+                  onSearch: () => showGeneralDialog(
+                    context: context,
+                    pageBuilder: (_, animation, secondaryAnimation) =>
+                        SearchOverlay(mapController: _mapController),
+                  ),
+                  onHeatmap: () => setState(() => _showHeatmap = !_showHeatmap),
+                  onLocate: _getCurrentLocation,
+                  onInfo: _showMapInfo,
                 ),
               ),
             ),
-          // ── Field Crew Route Card (top of screen) ──────────────────
           if (widget.isFieldCrewMode)
             Positioned(
-              top: 0,
-              left: AppColors.spaceMD,
-              right: AppColors.spaceMD,
+              top: 16,
+              left: 16,
+              right: 16,
               child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: AppColors.spaceSM),
-                  child: Container(
-                    padding: const EdgeInsets.all(AppColors.spaceMD),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceDark : Colors.white,
-                      borderRadius: BorderRadius.circular(AppColors.radiusCard),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── Header row ────────────────────────────────
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.route_rounded,
-                                color: Theme.of(context).colorScheme.primary,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'AI-Optimized Task Route',
-                                    style: AppTypography.body.copyWith(
-                                      color: textPrimary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Traffic: Normal · Weather: Clear · Road works: Avoided',
-                                    style: AppTypography.caption.copyWith(
-                                      color: textSecondary,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        Text(
+                          'Public map preview',
+                          style: Theme.of(context).textTheme.titleSmall,
                         ),
-
-                        const SizedBox(height: 12),
-
-                        // ── Metrics row ───────────────────────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildMetric(
-                              Icons.linear_scale_rounded,
-                              'Distance',
-                              '4.8 km',
-                              textPrimary,
-                              textSecondary,
-                            ),
-                            _buildMetric(
-                              Icons.access_time_rounded,
-                              'Est. Time',
-                              '24 mins',
-                              textPrimary,
-                              textSecondary,
-                            ),
-                            _buildMetric(
-                              Icons.people_alt_rounded,
-                              'Other Crews',
-                              '2 Nearby',
-                              textPrimary,
-                              textSecondary,
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // ── Divider ───────────────────────────────────
-                        Divider(
-                          color: isDark
-                              ? AppColors.dividerDark
-                              : AppColors.dividerLight,
-                          thickness: 1,
-                          height: 1,
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // ── Update Status button ──────────────────────
-                        // TODO: Enable this button when the field crew is
-                        // detected within the required proximity radius of
-                        // the assigned report location. Wire up the
-                        // `_isWithinRadius` flag once proximity detection
-                        // is implemented.
-                        _buildUpdateStatusButton(
-                          isWithinRadius:
-                              false, // placeholder — replace with real proximity check
-                          onUpdateStatus: () {
-                            // TODO: Implement status update call:
-                            // advance report.status to next lifecycle stage
-                          },
-                          textPrimary: textPrimary,
-                          textSecondary: textSecondary,
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Open an assigned task for its route details and report response actions.',
                         ),
                       ],
                     ),
@@ -689,158 +426,41 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  void _showReportPreview(BuildContext context, ReportModel report) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      builder: (context) => Container(
-        margin: EdgeInsets.zero,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppColors.radiusCard),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    report.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                StatusBadge(status: report.status),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              report.issueType ?? 'General Issue',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-            if (report.locationPrecision == 'approximate')
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('Approximate location'),
-              ),
-            const SizedBox(height: 16),
-            Text(
-              report.description ?? 'No description.',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context.push('${ProtectedAppRoutes.reports}/${report.id}');
-                },
-                child: const Text('View Full Details'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<void> _showReportPreview(ReportModel report) async {
+    if (_selectedReportId != null) return;
+    setState(() => _selectedReportId = report.id);
+    bool? open;
+    try {
+      open = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        useRootNavigator: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (_) => ReportMapPreview(report: report),
+      );
+    } finally {
+      if (mounted) setState(() => _selectedReportId = null);
+    }
+    if (mounted && open == true) {
+      context.push(
+        '${ProtectedAppRoutes.reports}/${Uri.encodeComponent(report.id)}',
+      );
+    }
   }
 
-  Widget _buildMetric(
-    IconData icon,
-    String label,
-    String value,
-    Color textPrimary,
-    Color textSecondary,
-  ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: textSecondary),
-        const SizedBox(width: 4),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.5,
-              ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  void _showMapInfo() => showDialog<void>(
+    context: context,
+    builder: (_) => ReportMapInfo(openSource: _openSource),
+  );
 
-  /// Builds the "Update Status" button shown on the assigned task card.
-  ///
-  /// The button is enabled only when [isWithinRadius] is `true` (i.e. the
-  /// field crew is physically within the required proximity of the report
-  /// location). When disabled it shows a muted style with a lock-icon hint
-  /// so the user understands why they cannot tap it yet.
-  Widget _buildUpdateStatusButton({
-    required bool isWithinRadius,
-    required VoidCallback onUpdateStatus,
-    required Color textPrimary,
-    required Color textSecondary,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: isWithinRadius ? onUpdateStatus : null,
-        icon: Icon(
-          isWithinRadius ? Icons.check_circle_outline : Icons.lock_outline,
-          size: 16,
-        ),
-        label: Text(
-          isWithinRadius ? 'Update Status' : 'Update Status (out of range)',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            color: isWithinRadius ? null : textSecondary,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          disabledBackgroundColor: Colors.grey.withValues(alpha: 0.12),
-          disabledForegroundColor: textSecondary,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppColors.radiusButton),
-          ),
-        ),
-      ),
-    );
+  Future<void> _openSource(Uri url) async {
+    try {
+      if (!await launchUrl(url) && mounted) {
+        _notice('This link could not open on your device.');
+      }
+    } catch (_) {
+      if (mounted) _notice('This link could not open on your device.');
+    }
   }
 }

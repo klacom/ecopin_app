@@ -13,6 +13,10 @@ class AppTextField extends StatefulWidget {
   final String? hintText;
   final int? maxLines;
   final FocusNode? focusNode;
+  final String? errorText;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+  final Iterable<String>? autofillHints;
 
   const AppTextField({
     super.key,
@@ -28,6 +32,10 @@ class AppTextField extends StatefulWidget {
     this.hintText = "",
     this.maxLines = 1,
     this.focusNode,
+    this.errorText,
+    this.textInputAction,
+    this.onSubmitted,
+    this.autofillHints,
   });
 
   @override
@@ -39,22 +47,42 @@ class _AppTextFieldState extends State<AppTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: widget.height ?? 0),
+      child: SizedBox(
       width: widget.width,
-      height: widget.height,
       child: TextField(
         controller: widget.controller,
         focusNode: widget.focusNode,
+        enabled: !widget.isLoading,
+        keyboardType: widget.inputType == 'email'
+            ? TextInputType.emailAddress
+            : widget.inputType == 'number'
+            ? TextInputType.number
+            : TextInputType.text,
+        textInputAction: widget.textInputAction,
+        onSubmitted: widget.onSubmitted,
+        autofillHints: widget.autofillHints ?? (widget.inputType == 'email'
+            ? const [AutofillHints.email]
+            : widget.inputType == 'password'
+            ? const [AutofillHints.password]
+                : null),
+        autocorrect:
+            widget.inputType != 'password' && widget.inputType != 'email',
+        enableSuggestions: widget.inputType != 'password',
         obscureText: widget.inputType == 'password' ? _obscureText : false,
         maxLines: widget.maxLines,
         decoration: InputDecoration(
           labelText: widget.labelText,
+          errorText: widget.errorText,
+          errorMaxLines: 3,
           hintText: (widget.hintText != null && widget.hintText!.isNotEmpty)
               ? widget.hintText
               : widget.placeholderText,
           // Inherits border styling from app_theme.dart
           suffixIcon: widget.inputType == 'password'
               ? IconButton(
+                  tooltip: _obscureText ? 'Show password' : 'Hide password',
                   icon: Icon(
                     _obscureText ? Icons.visibility : Icons.visibility_off,
                   ),
@@ -66,6 +94,7 @@ class _AppTextFieldState extends State<AppTextField> {
                 )
               : null,
         ),
+      ),
       ),
     );
   }

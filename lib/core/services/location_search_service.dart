@@ -33,22 +33,25 @@ class LocationSearchService {
   final String _baseUrl = 'https://nominatim.openstreetmap.org/search';
   final Logger locSearchLog = Logger("Location Search Service");
 
-  LocationSearchService()
-    : _dio = Dio(
-        BaseOptions(
-          headers: {
-            'User-Agent':
-                'EcoPin/1.0 (klarenzcobie99@gmail.com)', // TODO: Replace later official email
-          },
-          connectTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 5),
-        ),
-      );
+  LocationSearchService({Dio? client})
+    : _dio =
+          client ??
+          Dio(
+            BaseOptions(
+              headers: {
+                'User-Agent':
+                    'EcoPin/1.0 (klarenzcobie99@gmail.com)', // TODO: Replace later official email
+              },
+              connectTimeout: const Duration(seconds: 5),
+              receiveTimeout: const Duration(seconds: 5),
+            ),
+          );
 
   Future<List<LocationSuggestion>> searchLocations(
     String query, {
     String country = 'Philippines',
     String? city,
+    bool throwOnError = false,
   }) async {
     try {
       // Build query parameters - NOTE: 'q' parameter format is important
@@ -101,14 +104,17 @@ class LocationSearchService {
             .toList();
       }
 
+      if (throwOnError) throw StateError('Location search unavailable');
       return [];
-      
     } catch (e) {
       locSearchLog.severe('Error searching locations: $e');
       if (e is DioException) {
         locSearchLog.info('Request URL: ${e.requestOptions.uri}');
-        locSearchLog.info('Request params: ${e.requestOptions.queryParameters}');
+        locSearchLog.info(
+          'Request params: ${e.requestOptions.queryParameters}',
+        );
       }
+      if (throwOnError) rethrow;
       return [];
     }
   }
@@ -132,7 +138,7 @@ class LocationSearchService {
         final data = response.data is Map
             ? response.data
             : json.decode(response.data as String) as Map<String, dynamic>;
-        
+
         if (data.containsKey('display_name')) {
           return data['display_name'] as String;
         }

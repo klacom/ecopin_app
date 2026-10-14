@@ -1,46 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 
-class SplashScreen extends StatefulWidget {
+// GoRouter owns navigation; this screen adds no delay.
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // No more navigation here - GoRouter handles it via redirect
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              Theme.of(context).brightness == Brightness.light
-                  ? 'assets/logos/Full Logo Light.png'
-                  : 'assets/logos/Full Logo Dark.png',
-              height: 100,
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(body: SafeArea(child: Center(child: Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Image.asset(Theme.of(context).brightness == Brightness.light
+          ? 'assets/logos/Full Logo Light.png' : 'assets/logos/Full Logo Dark.png', height: 48),
+      const SizedBox(height: 32),
+      const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(
+        strokeWidth: 2.5, color: AppColors.accent, semanticsLabel: 'Opening EcoPin')),
+      const SizedBox(height: 16),
+      Text('Opening EcoPin…', style: Theme.of(context).textTheme.bodyMedium),
+    ]),
+  ))));
 }

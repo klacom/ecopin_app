@@ -1,176 +1,139 @@
-import 'package:ecopin_app/core/theme/colors.dart';
+import 'dart:math' as math;
+import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/status_badge.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/validation_badge.dart';
 import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
+import 'package:ecopin_app/shared/widgets/app_state_view.dart';
+import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:ecopin_app/core/constants/app_constants.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
-
   @override
   ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
 }
-
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  final _search = TextEditingController();
+  String _query = '';
   String _selectedFilter = 'All';
+  int _displayLimit = 20;
+  @override
+  void dispose() { _search.dispose(); super.dispose(); }
 
-  // Helper to check if a rejected report is still visible (within 24 hours)
-  bool _isReportVisible(ReportModel report) {
-    if (report.validationStatus.toLowerCase() != 'rejected') {
-      return true;
-    }
-    if (report.rejectedAt == null) {
-      return true;
-    }
-    final now = DateTime.now();
-    final difference = now.difference(report.rejectedAt!);
-    return difference.inHours < 24;
+  // Preserve the existing 24-hour visibility rule for rejected reports.
+  bool _isReportVisible(ReportModel report) => report.validationStatus.toLowerCase() != 'rejected'
+      || report.rejectedAt == null || DateTime.now().difference(report.rejectedAt!).inHours < 24;
+  void _resetFilters() {
+    _search.clear();
+    setState(() { _query = ''; _selectedFilter = 'All'; _displayLimit = 20; });
   }
-
+  Future<void> _refresh() async {
+    ref.invalidate(myReportsProvider);
+    try { await ref.read(myReportsProvider.future); } catch (_) { /* The provider exposes the failure below. */ }
+  }
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(myReportsProvider);
-
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Reports'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(50),
-          child: Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: reportFilters.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
+      appBar: AppBar(title: const Text('My reports')),
+      body: SafeArea(child: Column(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12), child: TextField(
+          controller: _search, textInputAction: TextInputAction.search,
+          onChanged: (value) => setState(() { _query = value.toLowerCase().trim(); _displayLimit = 20; }),
+          decoration: InputDecoration(labelText: 'Search my reports', prefixIcon: const Icon(Icons.search),
+            suffixIcon: _query.isEmpty ? null : IconButton(tooltip: 'Clear search', icon: const Icon(Icons.close),
+              onPressed: () { _search.clear(); setState(() { _query = ''; _displayLimit = 20; }); })),
+        )),
+        SingleChildScrollView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), child: Row(children: [
+          for (final filter in reportFilters) Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(
+            label: Text(reportStatusLabels[filter] ?? filter), selected: _selectedFilter == filter,
+            selectedColor: theme.colorScheme.primary,
+            labelStyle: TextStyle(color: _selectedFilter == filter ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface),
+            onSelected: (selected) { if (selected) setState(() { _selectedFilter = filter; _displayLimit = 20; }); },
+          )),
+        ])),
+        if (reportsAsync.isLoading && reportsAsync.hasValue) const LinearProgressIndicator(semanticsLabel: 'Refreshing your reports'),
+        if (reportsAsync.hasError && reportsAsync.hasValue) Padding(padding: const EdgeInsets.all(16), child: Column(children: [
+          const Text('Reports could not refresh. Previous results are still shown.'),
+          TextButton(onPressed: () => ref.invalidate(myReportsProvider), child: const Text('Try again')),
+        ])),
+        Expanded(child: reportsAsync.when(skipError: true,
+          data: (reports) {
+            final filtered = reports.where(_isReportVisible).where((report) {
+              final stateMatches = _selectedFilter == 'All' || (_selectedFilter == 'rejected'
+                ? report.validationStatus.toLowerCase() == 'rejected' : report.status.toLowerCase() == _selectedFilter);
+              final text = '${report.title} ${report.description ?? ''} ${report.issueType ?? ''}'.toLowerCase();
+              return stateMatches && (_query.isEmpty || _query.split(RegExp(r'\s+')).every(text.contains));
+            }).toList();
+            final visible = math.min(_displayLimit, filtered.length);
+            return RefreshIndicator(onRefresh: _refresh, child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(16),
+              itemCount: filtered.isEmpty ? 1 : visible + 1 + (visible < filtered.length ? 1 : 0),
               itemBuilder: (context, index) {
-                final filter = reportFilters[index];
-                final isSelected = _selectedFilter == filter;
-                // Display a human-readable label; internal filter value stays canonical.
-                final label = reportStatusLabels[filter] ?? filter;
-                final isDark = Theme.of(context).brightness == Brightness.dark;
-                return ChoiceChip(
-                  label: Text(
-                    label,
-                    style: TextStyle(
-                      color: isSelected
-                          ? (isDark ? Colors.black : Colors.white)
-                          : (isDark ? Colors.white : Colors.black),
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                  selected: isSelected,
-                  selectedColor: isDark ? Colors.white : Colors.black,
-                  backgroundColor: isDark
-                      ? AppColors.surfaceDark
-                      : AppColors.surfaceLight,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() => _selectedFilter = filter);
-                    }
-                  },
-                );
+                if (filtered.isEmpty) { return AppStateView(
+                  title: _query.isNotEmpty || _selectedFilter != 'All' ? 'No matching reports' : 'No reports yet',
+                  message: _query.isNotEmpty || _selectedFilter != 'All' ? 'Try another search or clear your filters.' : 'Start from the map to choose a location and report a concern.',
+                  icon: Icons.description_outlined,
+                  actionLabel: _query.isNotEmpty || _selectedFilter != 'All' ? 'Clear filters' : 'Open the map',
+                  onAction: _query.isNotEmpty || _selectedFilter != 'All' ? _resetFilters : () => context.go(ProtectedAppRoutes.maps),
+                ); }
+                if (index == 0) { return Padding(padding: const EdgeInsets.only(bottom: 12), child: Semantics(liveRegion: true,
+                  child: Text('Showing $visible of ${filtered.length} matching reports', style: theme.textTheme.bodySmall))); }
+                if (index > visible) { return TextButton(onPressed: () => setState(() => _displayLimit += 20), child: const Text('Show more reports')); }
+                return _ReportListItem(report: filtered[index - 1]);
               },
-            ),
-          ),
-        ),
-      ),
-      body: reportsAsync.when(
-        data: (reports) {
-          // First filter out rejected reports older than 24 hours
-          final visibleReports = reports.where(_isReportVisible).toList();
-
-          final filteredReports = _selectedFilter == 'All'
-              ? visibleReports
-              : visibleReports.where((r) {
-                  if (_selectedFilter.toLowerCase() == 'rejected') {
-                    return r.validationStatus.toLowerCase() == 'rejected';
-                  }
-                  return r.status.toLowerCase() ==
-                      _selectedFilter.toLowerCase();
-                }).toList();
-
-          if (filteredReports.isEmpty) {
-            return const Center(child: Text('No reports found.'));
-          }
-
-          return RefreshIndicator(
-            onRefresh: () => ref.refresh(myReportsProvider.future),
-            child: ListView.builder(
-              itemCount: filteredReports.length,
-              itemBuilder: (context, index) {
-                final report = filteredReports[index];
-                return _ReportListItem(report: report);
-              },
-            ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => const NoInternetScreen(),
-      ),
+            ));
+          },
+          loading: () => const Center(child: CircularProgressIndicator(semanticsLabel: 'Loading your reports')),
+          error: (error, stack) => NoInternetScreen(onRetry: () => ref.invalidate(myReportsProvider)),
+        )),
+      ])),
     );
   }
 }
 
 class _ReportListItem extends StatelessWidget {
-  final ReportModel report;
-
   const _ReportListItem({required this.report});
-
+  final ReportModel report;
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('MMM dd, yyyy').format(report.createdAt);
-
-    return ListTile(
+    final theme = Theme.of(context);
+    final photo = report.beforePhotoUrl ?? report.afterPhotoUrl;
+    return Card(margin: const EdgeInsets.only(bottom: 16), clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: BorderSide(color: theme.dividerColor)), child: InkWell(
       onTap: () => context.push('${ProtectedAppRoutes.reports}/${report.id}'),
-      title: Text(
-        report.title,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(report.issueType ?? 'General'),
-          Text(
-            dateStr,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          if (report.validationStatus.toLowerCase() == 'rejected' &&
-              report.rejectionReason != null) ...[
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Text(
-                'Rejection Reason: ${report.rejectionReason}',
-                style: TextStyle(fontSize: 12, color: Colors.red.shade700),
-              ),
-            ),
+      child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (photo != null) ...[
+            Semantics(image: true, label: 'Cleanup evidence photo', child: ClipRRect(borderRadius: BorderRadius.circular(12),
+              child: PrivateMediaImage(photo, width: 64, height: 64, fit: BoxFit.cover,
+                errorBuilder: (context, error, stack) => const SizedBox(width: 64, height: 64, child: Icon(Icons.image_not_supported_outlined, semanticLabel: 'Photo unavailable'))))),
+            const SizedBox(width: 12),
           ],
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(report.title, style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            Text('${report.issueType?.replaceAll('_', ' ') ?? 'Environmental concern'} · ${DateFormat('MMM d, yyyy').format(report.createdAt.toLocal())}', style: theme.textTheme.bodySmall),
+          ])),
+          const SizedBox(width: 8), const Icon(Icons.chevron_right, size: 20),
+        ]),
+        const SizedBox(height: 16),
+        Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [Text('Response:', style: theme.textTheme.bodySmall), StatusBadge(status: report.status)]),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [Text('Review:', style: theme.textTheme.bodySmall), ValidationBadge(status: report.validationStatus)]),
+        if (report.validationStatus.toLowerCase() == 'rejected' && report.rejectionReason != null) ...[
+          const SizedBox(height: 12),
+          Text('Review note: ${report.rejectionReason}', style: theme.textTheme.bodySmall?.copyWith(color: theme.extension<AppStatusColors>()?.error)),
         ],
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          StatusBadge(status: report.status),
-          const SizedBox(height: 4),
-          ValidationBadge(status: report.validationStatus),
-        ],
-      ),
-    );
+      ])),
+    ));
   }
 }

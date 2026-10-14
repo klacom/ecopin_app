@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/shared/widgets/app_navigation_bar.dart';
 
 class OfficerMainScreen extends ConsumerStatefulWidget {
   final Widget child;
@@ -14,24 +15,14 @@ class OfficerMainScreen extends ConsumerStatefulWidget {
 }
 
 class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
-  String _getInitials(String? fullName) {
-    if (fullName == null || fullName.isEmpty) return '?';
-    final parts = fullName.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    } else {
-      return parts[0][0].toUpperCase();
-    }
-  }
-
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith(OfficerAppRoutes.dashboard)) return 0;
     if (location.startsWith(OfficerAppRoutes.clusters)) return 1;
     if (location.startsWith(OfficerAppRoutes.cleanupTasks)) return 2;
     if (location.startsWith(OfficerAppRoutes.reports)) return 3;
-    // More menu items don't affect index since they open a menu
-    return 0;
+    // Secondary destinations remain associated with More.
+    return 4;
   }
 
   void _onItemTapped(int index, BuildContext context) {
@@ -55,170 +46,68 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
   }
 
   void _showMoreMenu(BuildContext context) {
-    final profileAsync = ref.read(profileProvider);
-    final fullName = profileAsync.value?['full_name'] as String?;
-    final avatarUrl = profileAsync.value?['avatar_url'] as String?;
-
+    final profile = ref.read(profileProvider).value;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(24),
-        ),
+      useSafeArea: true,
+      builder: (sheetContext) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildMoreMenuItem(
-              icon: Icons.map_outlined,
-              activeIcon: Icons.map,
-              label: 'Map Grid',
-              route: OfficerAppRoutes.maps,
-            ),
-            _buildMoreMenuItem(
-              icon: Icons.radar_outlined,
-              activeIcon: Icons.radar,
-              label: 'Spatial Scan',
-              route: OfficerAppRoutes.spatialScan,
-            ),
-            _buildMoreMenuItem(
-              icon: Icons.analytics_outlined,
-              activeIcon: Icons.analytics,
-              label: 'Metrics',
-              route: OfficerAppRoutes.analytics,
-            ),
-            _buildMoreMenuItem(
-              icon: Icons.route_outlined,
-              activeIcon: Icons.route,
-              label: 'Optimization',
-              route: OfficerAppRoutes.optimization,
-            ),
-            _buildMoreMenuItem(
-              icon: Icons.groups_outlined,
-              activeIcon: Icons.groups,
-              label: 'Crew Management',
-              route: OfficerAppRoutes.crewManagement,
-            ),
-            _buildMoreMenuItem(
-              icon: Icons.history_outlined,
-              activeIcon: Icons.history,
-              label: 'Sys Logs',
-              route: OfficerAppRoutes.responseLogs,
-            ),
-            _buildProfileMoreMenuItem(avatarUrl, fullName),
-          ],
-        ),
-      ),
-      ),
-    );
-  }
-
-  Widget _buildMoreMenuItem({
-    required IconData icon,
-    required IconData activeIcon,
-    required String label,
-    required String route,
-  }) {
-    final currentLocation = GoRouterState.of(context).matchedLocation;
-    final isSelected = currentLocation.startsWith(route);
-    final color = isSelected
-        ? Theme.of(context).colorScheme.primary
-        : Colors.grey;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        context.go(route);
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        margin: const EdgeInsets.only(bottom: 4),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? (isDark ? color.withValues(alpha: 0.1) : color.withValues(alpha: 0.05)) 
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(isSelected ? activeIcon : icon, color: color, size: 24),
-            const SizedBox(width: 16),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            Semantics(
+              header: true,
+              child: Text(
+                'Officer tools',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileMoreMenuItem(String? avatarUrl, String? fullName) {
-    final currentLocation = GoRouterState.of(context).matchedLocation;
-    final isSelected = currentLocation.startsWith(OfficerAppRoutes.profile);
-    final color = isSelected
-        ? Theme.of(context).colorScheme.primary
-        : Colors.grey;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        context.go(OfficerAppRoutes.profile);
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        margin: const EdgeInsets.only(bottom: 4),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? (isDark ? color.withValues(alpha: 0.1) : color.withValues(alpha: 0.05)) 
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircleAvatar(
-                key: ValueKey(avatarUrl),
-                radius: 12,
-                backgroundColor: color,
-                foregroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? NetworkImage(avatarUrl)
-                    : null,
-                child: avatarUrl == null || avatarUrl.isEmpty
-                    ? Text(
-                        _getInitials(fullName),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
-                        ),
-                      )
-                    : null,
+            const SizedBox(height: 16),
+            for (final item in [
+              (Icons.map_outlined, 'Map', OfficerAppRoutes.maps),
+              (Icons.radar, 'Spatial scan', OfficerAppRoutes.spatialScan),
+              (
+                Icons.analytics_outlined,
+                'Analytics',
+                OfficerAppRoutes.analytics,
               ),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              'Profile',
-              style: TextStyle(
-                color: color,
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              (
+                Icons.route_outlined,
+                'Dispatch planning',
+                OfficerAppRoutes.optimization,
               ),
+              (
+                Icons.groups_outlined,
+                'Crew management',
+                OfficerAppRoutes.crewManagement,
+              ),
+              (Icons.history, 'Response logs', OfficerAppRoutes.responseLogs),
+            ])
+              ListTile(
+                leading: Icon(item.$1),
+                title: Text(item.$2),
+                selected: GoRouterState.of(
+                  context,
+                ).matchedLocation.startsWith(item.$3),
+                selectedColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.linkDark
+                    : AppColors.accent,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.go(item.$3);
+                },
+              ),
+            ListTile(
+              leading: AppNavAvatar(source: profile?['avatar_url'] as String?),
+              title: const Text('Account'),
+              subtitle: profile?['full_name'] == null
+                  ? null
+                  : Text(profile!['full_name'].toString()),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.go(OfficerAppRoutes.profile);
+              },
             ),
           ],
         ),
@@ -227,109 +116,34 @@ class _OfficerMainScreenState extends ConsumerState<OfficerMainScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final selectedIndex = _calculateSelectedIndex(context);
-    // unused variable removed
-    // unused variables removed
-
-    return Scaffold(
-      extendBody: true,
-      body: widget.child,
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          height: 72,
-          margin: const EdgeInsets.symmetric(
-            horizontal: AppColors.spaceMD,
-            vertical: AppColors.spaceSM,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(AppColors.radiusCard),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _buildNavItem(
-                  0,
-                  Icons.dashboard_outlined,
-                  Icons.dashboard,
-                  'Command Center',
-                  selectedIndex,
-                ),
-                _buildNavItem(
-                  1,
-                  Icons.group_work_outlined,
-                  Icons.group_work,
-                  'Hotzone Intel',
-                  selectedIndex,
-                ),
-                _buildNavItem(
-                  2,
-                  Icons.task_outlined,
-                  Icons.task,
-                  'Operations',
-                  selectedIndex,
-                ),
-                _buildNavItem(
-                  3,
-                  Icons.report_outlined,
-                  Icons.report,
-                  'Reports',
-                  selectedIndex,
-                ),
-                _buildNavItem(
-                  4,
-                  Icons.menu_outlined,
-                  Icons.menu,
-                  'More',
-                  selectedIndex,
-                ),
-              ],
-            ),
+  Widget build(BuildContext context) => Scaffold(
+    body: widget.child,
+    bottomNavigationBar: AppNavigationBar(
+      selectedIndex: _calculateSelectedIndex(context),
+      onSelected: (index) => _onItemTapped(index, context),
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.dashboard_outlined),
+          selectedIcon: Icon(Icons.dashboard),
+          label: 'Home',
         ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    int index,
-    IconData icon,
-    IconData activeIcon,
-    String label,
-    int selectedIndex,
-  ) {
-    final isSelected = index == selectedIndex;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isSelected
-        ? AppColors.accent
-        : (isDark ? Colors.grey.shade600 : Colors.grey);
-
-    return InkWell(
-      onTap: () => _onItemTapped(index, context),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(isSelected ? activeIcon : icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        NavigationDestination(
+          icon: Icon(Icons.group_work_outlined),
+          selectedIcon: Icon(Icons.group_work),
+          label: 'Clusters',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.task_outlined),
+          selectedIcon: Icon(Icons.task),
+          label: 'Tasks',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.description_outlined),
+          selectedIcon: Icon(Icons.description),
+          label: 'Reports',
+        ),
+        NavigationDestination(icon: Icon(Icons.more_horiz), label: 'More'),
+      ],
+    ),
+  );
 }
-

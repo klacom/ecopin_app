@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:async';
-import 'dart:math';
 import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
 import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
@@ -11,17 +10,34 @@ import 'package:latlong2/latlong.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
 import 'package:ecopin_app/shared/widgets/app_text_field.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/services/location_search_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logging/logging.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/local_media_preview.dart';
 // Note: LoadingDialog import removed since we're using an inline overlay
 
 class CreateReportScreen extends ConsumerStatefulWidget {
   final ReportPrefillData? prefillData;
-  const CreateReportScreen({super.key, this.prefillData});
+  final TileProvider? tileProvider;
+  final LocationSearchService? locationSearchService;
+  final ImagePicker? imagePicker;
+  final LocalVideoControllerFactory? videoControllerFactory;
+  const CreateReportScreen({
+    super.key,
+    this.prefillData,
+    this.tileProvider,
+    this.locationSearchService,
+    this.imagePicker,
+    this.videoControllerFactory,
+  });
 
   @override
   ConsumerState<CreateReportScreen> createState() => _CreateReportScreenState();
@@ -30,9 +46,18 @@ class CreateReportScreen extends ConsumerStatefulWidget {
 class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final Logger _log = Logger('Create Report Screen');
   final PageController _pageController = PageController();
+  final MapController _locationMap = MapController();
+  final ScrollController _mediaScroll = ScrollController();
   int _currentStep = 0;
   static const int _totalSteps = 4;
   bool _isSubmitting = false;
+  String? _submissionError;
+  String? _mediaError;
+  bool _mediaPermissionDenied = false;
+  bool _isSelectingMedia = false;
+  late Future<String?> _addressFuture;
+  bool _locationConfirmed = false;
+  bool _addressRequested = false;
 
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -41,28 +66,37 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   late LatLng _reportLocation;
   File? _selectedImage;
-  final ImagePicker _picker = ImagePicker();
+  late final ImagePicker _picker;
   final List<File> _capturedImages = [];
   final List<File> _capturedVideos = [];
-  final Map<String, int> _videoDurationSeconds = {};
+  final Map<String, Duration> _videoDurations = {};
   bool _onPrivateProperty = false;
   String _selectedScale = 'medium';
   String _selectedObstruction = 'none';
 
-  static const List<String> _validImageExtensions = ['jpeg', 'jpg', 'png', 'webp'];
+  static const List<String> _validImageExtensions = [
+    'jpeg',
+    'jpg',
+    'png',
+    'webp',
+  ];
   static const List<String> _validVideoExtensions = ['mp4', 'mov', 'webm'];
 
   @override
   void initState() {
     super.initState();
+    _picker = widget.imagePicker ?? ImagePicker();
     _reportLocation = widget.prefillData?.location ?? pasigInitialCenter;
+    _locationConfirmed = widget.prefillData?.location != null;
+    _addressRequested = _locationConfirmed;
+    _addressFuture = _locationConfirmed ? _findAddress() : Future.value(null);
     if (widget.prefillData?.title != null) {
       _titleController.text = widget.prefillData!.title!;
     }
     if (widget.prefillData?.description != null) {
       _descriptionController.text = widget.prefillData!.description!;
     }
-    
+
     // Listen to title controller to update step 2 next button state
     _titleController.addListener(() {
       setState(() {});
@@ -72,6 +106,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _locationMap.dispose();
+    _mediaScroll.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _titleFocusNode.dispose();
@@ -80,16 +116,28 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   }
 
   void _nextStep() {
+    if (_isSubmitting) return;
     if (_currentStep < _totalSteps - 1) {
+      if (_currentStep == 0 && !_locationConfirmed) return;
       // Validation per step
       if (_currentStep == 1 && _titleController.text.trim().isEmpty) return;
-      if (_currentStep == 2 && _capturedImages.isEmpty && _selectedImage == null && _capturedVideos.isEmpty) return;
-      
+      if (_currentStep == 2 &&
+          _capturedImages.isEmpty &&
+          _selectedImage == null &&
+          _capturedVideos.isEmpty) {
+        return;
+      }
+
       _titleFocusNode.unfocus();
       _descriptionFocusNode.unfocus();
-      
+
       setState(() => _currentStep++);
-      _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+      _pageController.nextPage(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
@@ -98,12 +146,19 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       _titleFocusNode.unfocus();
       _descriptionFocusNode.unfocus();
       setState(() => _currentStep--);
-      _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+      _pageController.previousPage(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
-  bool _isValidImageExtension(String ext) => _validImageExtensions.contains(ext.toLowerCase());
-  bool _isValidVideoExtension(String ext) => _validVideoExtensions.contains(ext.toLowerCase());
+  bool _isValidImageExtension(String ext) =>
+      _validImageExtensions.contains(ext.toLowerCase());
+  bool _isValidVideoExtension(String ext) =>
+      _validVideoExtensions.contains(ext.toLowerCase());
 
   String _formatDurationSeconds(int seconds) {
     final int mm = seconds ~/ 60;
@@ -111,137 +166,205 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     return '${mm.toString().padLeft(2, '0')}:${ss.toString().padLeft(2, '0')}';
   }
 
-  Future<int?> _readVideoDurationSeconds(File videoFile) async {
+  void _showMediaError(String message, {bool permissionDenied = false}) {
+    if (mounted) {
+      setState(() {
+        _mediaError = message;
+        _mediaPermissionDenied = permissionDenied;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _currentStep == 2 && _mediaScroll.hasClients) {
+          _mediaScroll.animateTo(
+            0,
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  void _handlePickerFailure(Object error) {
+    final code = error is PlatformException ? error.code.toLowerCase() : '';
+    final denied =
+        code.contains('access_denied') ||
+        code.contains('permission_denied') ||
+        code.contains('restricted');
+    _showMediaError(
+      denied
+          ? 'Media access is unavailable. Allow camera, microphone, or photo access in your device’s app settings, then try again. You can also choose a different media source.'
+          : 'The media could not be selected. Try again or choose another file. Your report details and selected media are still here.',
+      permissionDenied: denied,
+    );
+  }
+
+  Future<void> _openMediaSettings() async {
     try {
-      final String ext = videoFile.path.split('.').last.toLowerCase();
-      if (ext == 'json' || ext.isEmpty) return null;
-      if (videoFile.path.split(Platform.pathSeparator).last.endsWith('.json')) return null;
-      final int bytesSync = videoFile.lengthSync();
-      if (bytesSync < 512) return null;
-      const int bytesPerSecondHeuristic = 2 * 1024 * 1024;
-      final int heuristicSeconds = (bytesSync / bytesPerSecondHeuristic).round().clamp(0, 120);
-      if (heuristicSeconds <= 0) return 0;
-      return heuristicSeconds;
-    } catch (e) {
-      return null;
+      if (!await openAppSettings()) {
+        _showMediaError(
+          'Device settings could not be opened. Open EcoPin’s permissions from your device settings, then return to your report.',
+          permissionDenied: true,
+        );
+      }
+    } catch (_) {
+      _showMediaError(
+        'Device settings could not be opened. Open EcoPin’s permissions from your device settings, then return to your report.',
+        permissionDenied: true,
+      );
     }
   }
 
   Future<void> _pickImage(ImageSource source) async {
+    if (_isSelectingMedia) return;
+    setState(() {
+      _isSelectingMedia = true;
+      _mediaError = null;
+      _mediaPermissionDenied = false;
+    });
     try {
+      final List<XFile> images;
       if (source == ImageSource.gallery) {
-        final List<XFile> images = await _picker.pickMultiImage();
-        if (images.isEmpty) return;
-        for (final XFile xFile in images) {
-          final ext = xFile.path.split('.').last;
-          if (!_isValidImageExtension(ext)) {
-            if (mounted) SnackbarHelper.showError('Unsupported file type "${ext.toUpperCase()}".');
-            continue;
-          }
-          final File file = File(xFile.path);
-          if (_capturedImages.any((img) => img.path == file.path)) continue;
-          if (_capturedImages.length >= reportMaxPhotos) {
-            if (mounted) SnackbarHelper.showError('Maximum $reportMaxPhotos photos allowed');
-            break;
-          }
-          final currentTotalSize = _capturedImages.fold<int>(0, (sum, img) => sum + img.lengthSync());
-          final newFileSize = await file.length();
-          if (currentTotalSize + newFileSize > reportTotalPhotosSize) {
-            if (mounted) SnackbarHelper.showError('Total photo size exceeds 10 MB limit');
-            break;
-          }
-          if (mounted) setState(() => _capturedImages.add(file));
-        }
+        images = await _picker.pickMultiImage();
       } else {
-        final XFile? image = await _picker.pickImage(source: source);
-        if (image == null) return;
-        final ext = image.path.split('.').last;
-        if (!_isValidImageExtension(ext)) {
-          if (mounted) SnackbarHelper.showError('Unsupported file type "${ext.toUpperCase()}".');
-          return;
-        }
-        final File file = File(image.path);
-        if (_capturedImages.any((img) => img.path == file.path)) return;
-        if (_capturedImages.length >= reportMaxPhotos) {
-          if (mounted) SnackbarHelper.showError('Maximum $reportMaxPhotos photos allowed');
-          return;
-        }
-        final currentTotalSize = _capturedImages.fold<int>(0, (sum, img) => sum + img.lengthSync());
-        final newFileSize = await file.length();
-        if (currentTotalSize + newFileSize > reportTotalPhotosSize) {
-          if (mounted) SnackbarHelper.showError('Total photo size exceeds limit');
-          return;
-        }
-        if (mounted) {
-          setState(() {
-            _selectedImage = file;
-            _capturedImages.add(file);
-          });
-        }
+        final image = await _picker.pickImage(source: source);
+        images = image == null ? [] : [image];
       }
-    } on Exception catch (e) {
-      _log.warning('Image pick failed: $e');
-      if (mounted) SnackbarHelper.showError('Failed to select image.');
+      if (!mounted) return;
+      for (final xFile in images) {
+        final ext = xFile.path.split('.').last;
+        if (!_isValidImageExtension(ext)) {
+          _showMediaError('Unsupported photo type. Use JPG, PNG, or WEBP.');
+          continue;
+        }
+        final file = File(xFile.path);
+        if (_capturedImages.any((image) => image.path == file.path)) continue;
+        if (_capturedImages.length >= reportMaxPhotos) {
+          _showMediaError(
+            'You can attach up to $reportMaxPhotos photos. Remove one before adding another.',
+          );
+          break;
+        }
+        final currentSize = _capturedImages.fold<int>(
+          0,
+          (total, image) => total + image.lengthSync(),
+        );
+        final newSize = await file.length();
+        if (!mounted) return;
+        if (currentSize + newSize > reportTotalPhotosSize) {
+          _showMediaError(
+            'Your photos exceed the ${reportTotalPhotosSize ~/ (1024 * 1024)} MB combined limit. Remove a photo or choose a smaller file.',
+          );
+          continue;
+        }
+        setState(() {
+          _capturedImages.add(file);
+          if (source == ImageSource.camera) _selectedImage = file;
+        });
+      }
+    } catch (error) {
+      _log.warning('Image selection failed', error);
+      _handlePickerFailure(error);
+    } finally {
+      if (mounted) setState(() => _isSelectingMedia = false);
     }
   }
 
   Future<void> _pickVideo(ImageSource source) async {
+    if (_isSelectingMedia) return;
+    setState(() {
+      _isSelectingMedia = true;
+      _mediaError = null;
+      _mediaPermissionDenied = false;
+    });
     try {
       if (_capturedVideos.length >= reportMaxVideos) {
-        if (mounted) SnackbarHelper.showError('Maximum $reportMaxVideos video allowed');
+        _showMediaError('Remove the selected video before choosing another.');
         return;
       }
-      final XFile? picked = await _picker.pickVideo(
+      final picked = await _picker.pickVideo(
         source: source,
         maxDuration: const Duration(seconds: reportMaxVideoDuration),
       );
-      if (picked == null) return;
+      if (picked == null || !mounted) return;
       final ext = picked.path.split('.').last;
       if (!_isValidVideoExtension(ext)) {
-        if (mounted) SnackbarHelper.showError('Unsupported file type "${ext.toUpperCase()}".');
+        _showMediaError('Unsupported video type. Use MP4, MOV, or WEBM.');
         return;
       }
-      final File videoFile = File(picked.path);
-      final int? durationSec = await _readVideoDurationSeconds(videoFile);
-      if (durationSec == null) {
-        if (mounted) SnackbarHelper.showError('Could not read video duration.');
+      final file = File(picked.path);
+      final duration = await readLocalVideoDuration(
+        file,
+        createController: widget.videoControllerFactory,
+      );
+      if (!mounted) return;
+      if (duration == null) {
+        _showMediaError(
+          'This video’s duration could not be read. Try another video or attach photos instead. Your report details are still here.',
+        );
         return;
       }
-      if (durationSec < reportMinVideoDuration) {
-        if (mounted) SnackbarHelper.showError('Video is too short (${_formatDurationSeconds(durationSec)}).');
+      if (duration < const Duration(seconds: reportMinVideoDuration) ||
+          duration > const Duration(seconds: reportMaxVideoDuration)) {
+        _showMediaError(
+          'Choose a video between $reportMinVideoDuration and $reportMaxVideoDuration seconds long. This video is ${duration.inMilliseconds / 1000} seconds.',
+        );
         return;
       }
-      if (durationSec > reportMaxVideoDuration) {
-        if (mounted) SnackbarHelper.showError('Video is too long (${_formatDurationSeconds(durationSec)}).');
-        return;
-      }
-      if (mounted) {
-        setState(() {
-          if (_capturedVideos.length >= reportMaxVideos) {
-            _capturedVideos.clear();
-            _videoDurationSeconds.clear();
-          }
-          _capturedVideos.add(videoFile);
-          _videoDurationSeconds[videoFile.path] = durationSec;
-        });
-      }
-    } on Exception catch (e) {
-      _log.severe('Failed to pick video: $e');
-      if (mounted) SnackbarHelper.showError('Failed to select video.');
+      setState(() {
+        _capturedVideos.add(file);
+        _videoDurations[file.path] = duration;
+      });
+    } catch (error) {
+      _log.warning('Video selection failed', error);
+      _handlePickerFailure(error);
+    } finally {
+      if (mounted) setState(() => _isSelectingMedia = false);
     }
   }
 
+  void _previewPhoto(int index) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LocalPhotoPreview(
+          photos: List.of(_capturedImages),
+          initialIndex: index,
+        ),
+      ),
+    );
+  }
+
+  void _previewVideo() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LocalVideoPreview(
+          file: _capturedVideos.first,
+          createController: widget.videoControllerFactory,
+        ),
+      ),
+    );
+  }
+
   Future<void> _submitReport() async {
-    setState(() => _isSubmitting = true);
+    if (_isSubmitting) return;
+    setState(() {
+      _isSubmitting = true;
+      _submissionError = null;
+    });
     try {
       final apiClient = ref.read(apiClientProvider);
-      final mainVideo = _capturedVideos.isNotEmpty ? _capturedVideos.first : null;
-      await apiClient.createReport(
+      final mainVideo = _capturedVideos.isNotEmpty
+          ? _capturedVideos.first
+          : null;
+      final result = await apiClient.createReport(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         latitude: _reportLocation.latitude,
         longitude: _reportLocation.longitude,
-        imagePaths: _capturedImages.isNotEmpty ? _capturedImages.map((img) => img.path).toList() : null,
+        imagePaths: _capturedImages.isNotEmpty
+            ? _capturedImages.map((img) => img.path).toList()
+            : null,
         videoPath: mainVideo?.path,
         onPrivateProperty: _onPrivateProperty,
         scaleLevel: _selectedScale,
@@ -249,23 +372,85 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       );
       if (mounted) {
         ref.invalidate(myReportsProvider);
-        SnackbarHelper.showMessage('Report submitted! AI validation is in progress.');
+        final savedLocally =
+            result.data is Map && result.data['saved_locally'] == true;
+        SnackbarHelper.showMessage(
+          savedLocally
+              ? 'Saved on this device. Your report still needs to be sent when a connection is available.'
+              : 'Report sent. You can follow its review and response in My reports.',
+        );
         context.pop(); // Pop back to dashboard
       }
     } on DioException catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
-        String message = e.response?.data?['message'] ?? 'Failed to submit report.';
+        String message =
+            e.response?.data?['message'] ?? 'Failed to submit report.';
         if (e.response?.statusCode == 413) message = 'File is too large.';
+        setState(() => _submissionError = message);
         SnackbarHelper.showError(message);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
+        setState(
+          () => _submissionError =
+              'The report could not be sent. Your entries are still here. Please try again.',
+        );
         SnackbarHelper.showError('An unexpected error occurred.');
       }
     }
   }
+
+  Future<String?> _findAddress() =>
+      (widget.locationSearchService ?? LocationSearchService())
+          .getAddressFromCoordinates(
+            _reportLocation.latitude,
+            _reportLocation.longitude,
+          );
+
+  Widget _addressSummary() => FutureBuilder<String?>(
+    future: _addressFuture,
+    builder: (context, snapshot) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          !_locationConfirmed
+              ? 'Choose the concern’s location on the map. The initial view is Pasig, not your detected location.'
+              : !_addressRequested
+              ? 'Location selected. Find the street address to check this pin.'
+              : snapshot.connectionState == ConnectionState.waiting
+              ? 'Finding the street address…'
+              : snapshot.data ??
+                    'Street address unavailable. Confirm the map pin before continuing.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${_reportLocation.latitude.toStringAsFixed(6)}, ${_reportLocation.longitude.toStringAsFixed(6)}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        if (_locationConfirmed &&
+            (!_addressRequested ||
+                (snapshot.connectionState != ConnectionState.waiting &&
+                    snapshot.data == null)))
+          TextButton(
+            onPressed: () => setState(() {
+              _addressRequested = true;
+              _addressFuture = _findAddress();
+            }),
+            child: const Text('Find street address'),
+          ),
+      ],
+    ),
+  );
+
+  void _chooseLocation(LatLng location) => setState(() {
+    _reportLocation = location;
+    _locationConfirmed = true;
+    _addressRequested = false;
+    _addressFuture = Future.value(null);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -276,9 +461,16 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       children: [
         Scaffold(
           appBar: AppBar(
-            title: Text(isPrefilled ? 'Resubmit Report' : 'Create Report'),
+            toolbarHeight:
+                MediaQuery.textScalerOf(
+                      context,
+                    ).clamp(maxScaleFactor: 1.3).scale(24) *
+                    2 +
+                16,
+            title: Text(isPrefilled ? 'Resubmit report' : 'Report a concern'),
             leading: _currentStep > 0
                 ? IconButton(
+                    tooltip: 'Previous step',
                     icon: const Icon(Icons.arrow_back),
                     onPressed: _prevStep,
                   )
@@ -287,10 +479,24 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           body: Column(
             children: [
               LinearProgressIndicator(
+                semanticsLabel: 'Step ${_currentStep + 1} of $_totalSteps',
                 value: (_currentStep + 1) / _totalSteps,
                 backgroundColor: colorScheme.surfaceContainerHighest,
-                color: const Color(0xFFCCFF00), // Neon Lime
+                color: AppColors.accent, // Civic blue
                 minHeight: 4,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Step ${_currentStep + 1} of $_totalSteps · ${['Location', 'Details', 'Photos and video', 'Review'][_currentStep]}',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ),
               ),
               Expanded(
                 child: PageView(
@@ -307,7 +513,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ],
           ),
         ),
-        
+
         if (_isSubmitting)
           Positioned.fill(
             child: Material(
@@ -317,27 +523,24 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const CircularProgressIndicator(color: Color(0xFFCCFF00)),
+                      const CircularProgressIndicator(color: AppColors.accent),
                       const SizedBox(height: 32),
-                      Text(
-                        'Analyzing & Submitting...',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          'Sending your report…',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.lightbulb_outline, color: Theme.of(context).brightness == Brightness.light ? Colors.black : Theme.of(context).colorScheme.primary, size: 18),
-                          const SizedBox(width: 8),
-                          const Text('Fun Fact:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
                       Text(
-                        funFacts[Random().nextInt(funFacts.length)],
+                        'Keep this screen open while your report is sent. You can track it after it is accepted.',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ).padding(const EdgeInsets.symmetric(horizontal: 40)),
                     ],
@@ -362,34 +565,63 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Verify the GPS coordinates of the issue.',
-            style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+            'Tap the map to place the pin, or move the map and use its center.',
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
           const SizedBox(height: 24),
-          
+
           // Map FIRST
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: SizedBox(
               height: 250,
               child: FlutterMap(
+                mapController: _locationMap,
                 options: MapOptions(
                   initialCenter: _reportLocation,
                   initialZoom: 15.0,
-                  interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                  onTap: (position, point) => _chooseLocation(point),
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
+                    tileProvider: widget.tileProvider,
+                    urlTemplate: Theme.of(context).brightness == Brightness.dark
+                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
+                        : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                    subdomains: const ['a', 'b', 'c'],
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: _reportLocation,
-                        width: 40,
-                        height: 40,
-                        child: const Icon(Icons.location_pin, color: Color(0xFFCCFF00), size: 40),
+                    markers: _locationConfirmed
+                        ? [
+                            Marker(
+                              point: _reportLocation,
+                              width: 40,
+                              height: 40,
+                              child: const Icon(
+                                Icons.location_pin,
+                                color: AppColors.accent,
+                                size: 40,
+                              ),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution(
+                        'OpenStreetMap contributors',
+                        onTap: () => launchUrl(
+                          Uri.parse('https://www.openstreetmap.org/copyright'),
+                        ),
+                      ),
+                      TextSourceAttribution(
+                        'CARTO',
+                        onTap: () => launchUrl(
+                          Uri.parse('https://carto.com/attributions'),
+                        ),
                       ),
                     ],
                   ),
@@ -398,7 +630,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          
+          AppButton(
+            text: 'Use this map center',
+            variant: ButtonVariant.secondary,
+            onPressed: () => _chooseLocation(_locationMap.camera.center),
+          ),
+          const SizedBox(height: 16),
+
           // Location text BELOW map
           Container(
             padding: const EdgeInsets.all(16),
@@ -410,17 +648,15 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               children: [
                 Icon(Icons.gps_fixed, color: colorScheme.primary, size: 20),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    '${_reportLocation.latitude.toStringAsFixed(6)}, ${_reportLocation.longitude.toStringAsFixed(6)}',
-                    style: const TextStyle(fontSize: 16, fontFamily: 'Outfit', fontWeight: FontWeight.w500),
-                  ),
-                ),
+                Expanded(child: _addressSummary()),
               ],
             ),
           ),
           const SizedBox(height: 48),
-          AppButton(text: 'Next: Details', onPressed: _nextStep),
+          AppButton(
+            text: 'Next: Details',
+            onPressed: _locationConfirmed ? _nextStep : null,
+          ),
         ],
       ),
     );
@@ -442,7 +678,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             controller: _titleController,
             focusNode: _titleFocusNode,
             labelText: 'Report Title *',
+            textInputAction: TextInputAction.next,
             hintText: 'Brief summary of the issue',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Required. Give the concern a short title to continue.',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 24),
           AppTextField(
@@ -454,8 +696,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           ),
           const SizedBox(height: 24),
           SwitchListTile(
-            title: const Text('On Private Property', style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: const Text('Check this if the issue is located on private property.'),
+            title: const Text(
+              'On Private Property',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: const Text(
+              'Check this if the issue is located on private property.',
+            ),
             value: _onPrivateProperty,
             contentPadding: EdgeInsets.zero,
             onChanged: (value) => setState(() => _onPrivateProperty = value),
@@ -464,31 +711,65 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           DropdownButtonFormField<String>(
             initialValue: _selectedScale,
             isExpanded: true,
+            itemHeight: null,
+            menuMaxHeight: 360,
+            selectedItemBuilder: (_) => const [
+              Text('Small'),
+              Text('Medium'),
+              Text('Large'),
+            ],
             decoration: const InputDecoration(
               labelText: 'Estimated Scale',
               border: OutlineInputBorder(),
             ),
             items: const [
-              DropdownMenuItem(value: 'small', child: Text('Small (e.g., localized litter, minor puddle)')),
-              DropdownMenuItem(value: 'medium', child: Text('Medium (e.g., standard pile of waste)')),
-              DropdownMenuItem(value: 'large', child: Text('Large (e.g., illegal dumpsite, extensive)')),
+              DropdownMenuItem(
+                value: 'small',
+                child: Text('Small (e.g., localized litter, minor puddle)'),
+              ),
+              DropdownMenuItem(
+                value: 'medium',
+                child: Text('Medium (e.g., standard pile of waste)'),
+              ),
+              DropdownMenuItem(
+                value: 'large',
+                child: Text('Large (e.g., illegal dumpsite, extensive)'),
+              ),
             ],
-            onChanged: (val) => setState(() => _selectedScale = val ?? 'medium'),
+            onChanged: (val) =>
+                setState(() => _selectedScale = val ?? 'medium'),
           ),
           const SizedBox(height: 24),
           DropdownButtonFormField<String>(
             initialValue: _selectedObstruction,
             isExpanded: true,
+            itemHeight: null,
+            menuMaxHeight: 360,
+            selectedItemBuilder: (_) => const [
+              Text('None'),
+              Text('Partial'),
+              Text('Complete'),
+            ],
             decoration: const InputDecoration(
               labelText: 'Obstruction Level',
               border: OutlineInputBorder(),
             ),
             items: const [
-              DropdownMenuItem(value: 'none', child: Text('None (No interference with public ways)')),
-              DropdownMenuItem(value: 'partial', child: Text('Partial (Partially blocking sidewalk/road)')),
-              DropdownMenuItem(value: 'complete', child: Text('Complete (Fully blocking access)')),
+              DropdownMenuItem(
+                value: 'none',
+                child: Text('None (No interference with public ways)'),
+              ),
+              DropdownMenuItem(
+                value: 'partial',
+                child: Text('Partial (Partially blocking sidewalk/road)'),
+              ),
+              DropdownMenuItem(
+                value: 'complete',
+                child: Text('Complete (Fully blocking access)'),
+              ),
             ],
-            onChanged: (val) => setState(() => _selectedObstruction = val ?? 'none'),
+            onChanged: (val) =>
+                setState(() => _selectedObstruction = val ?? 'none'),
           ),
           const SizedBox(height: 48),
           AppButton(
@@ -503,6 +784,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   Widget _buildStep3Media(ColorScheme colorScheme) {
     final hasMedia = _capturedImages.isNotEmpty || _capturedVideos.isNotEmpty;
     return SingleChildScrollView(
+      controller: _mediaScroll,
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -514,11 +796,46 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           const SizedBox(height: 8),
           Text(
             'Add photos or a video. At least one is required.',
-            style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
           const SizedBox(height: 24),
-          
-          const Text('Photos (Max 5)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+
+          if (_mediaError != null) ...[
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _mediaError!,
+                style: TextStyle(color: colorScheme.error),
+              ),
+            ),
+            if (_mediaPermissionDenied)
+              AppButton(
+                text: 'Open app settings',
+                variant: ButtonVariant.link,
+                onPressed: _openMediaSettings,
+              ),
+            const SizedBox(height: 16),
+          ],
+          if (_isSelectingMedia) ...[
+            const LinearProgressIndicator(
+              semanticsLabel: 'Checking selected media',
+            ),
+            const SizedBox(height: 8),
+            Semantics(
+              liveRegion: true,
+              child: const Text('Checking selected media…'),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Text(
+            'Photos · Up to $reportMaxPhotos',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            '${reportTotalPhotosSize ~/ (1024 * 1024)} MB combined · JPG, PNG, WEBP. Tap a photo to inspect it. Remove a photo and use Camera to retake it.',
+          ),
           const SizedBox(height: 12),
           if (_capturedImages.isNotEmpty) ...[
             SizedBox(
@@ -532,18 +849,48 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(_capturedImages[index], width: 120, height: 120, fit: BoxFit.cover),
+                        child: Semantics(
+                          button: true,
+                          label: 'Preview selected photo ${index + 1}',
+                          excludeSemantics: true,
+                          child: InkWell(
+                            onTap: () => _previewPhoto(index),
+                            child: Image.file(
+                              _capturedImages[index],
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stack) =>
+                                  const SizedBox(
+                                    width: 120,
+                                    height: 120,
+                                    child: Center(
+                                      child: Text(
+                                        'Photo unavailable',
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                            ),
+                          ),
+                        ),
                       ),
                       Positioned(
                         top: 8,
                         right: 8,
-                        child: GestureDetector(
-                          onTap: () => setState(() => _capturedImages.removeAt(index)),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                            child: const Icon(Icons.close, size: 16, color: Colors.white),
+                        child: IconButton(
+                          tooltip: 'Remove photo ${index + 1}',
+                          onPressed: () => setState(() {
+                            final removed = _capturedImages.removeAt(index);
+                            if (_selectedImage?.path == removed.path) {
+                              _selectedImage = null;
+                            }
+                          }),
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.error,
+                            foregroundColor: Colors.white,
                           ),
+                          icon: const Icon(Icons.close, size: 20),
                         ),
                       ),
                     ],
@@ -573,8 +920,14 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ],
           ),
           const SizedBox(height: 32),
-          
-          const Text('Video (Max 1)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+
+          Text(
+            'Video · Up to $reportMaxVideos',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const Text(
+            '$reportMinVideoDuration–$reportMaxVideoDuration seconds · MP4, MOV, WEBM',
+          ),
           const SizedBox(height: 12),
           if (_capturedVideos.isNotEmpty) ...[
             Container(
@@ -588,7 +941,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                   Container(
                     width: 48,
                     height: 48,
-                    decoration: BoxDecoration(color: colorScheme.primaryContainer, borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: const Icon(Icons.videocam, size: 24),
                   ),
                   const SizedBox(width: 12),
@@ -596,20 +952,36 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Selected Video', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        Text('Duration: ${_formatDurationSeconds(_videoDurationSeconds[_capturedVideos.first.path] ?? 0)}', style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withValues(alpha: 0.6))),
+                        Text(
+                          'Selected Video',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Duration: ${_formatDurationSeconds((_videoDurations[_capturedVideos.first.path] ?? Duration.zero).inSeconds)}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Remove selected video',
                     icon: const Icon(Icons.close, color: Colors.red),
                     onPressed: () => setState(() {
                       final removed = _capturedVideos.removeAt(0);
-                      _videoDurationSeconds.remove(removed.path);
+                      _videoDurations.remove(removed.path);
                     }),
                   ),
                 ],
               ),
+            ),
+            AppButton(
+              text: 'Preview selected video',
+              icon: Icons.play_arrow,
+              variant: ButtonVariant.link,
+              onPressed: _previewVideo,
             ),
             const SizedBox(height: 16),
           ],
@@ -619,7 +991,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 child: _buildMediaOption(
                   icon: Icons.videocam,
                   label: 'Record Video',
-                  onTap: _capturedVideos.isEmpty ? () => _pickVideo(ImageSource.camera) : null,
+                  onTap: _capturedVideos.isEmpty
+                      ? () => _pickVideo(ImageSource.camera)
+                      : null,
                 ),
               ),
               const SizedBox(width: 16),
@@ -627,7 +1001,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 child: _buildMediaOption(
                   icon: Icons.video_library,
                   label: 'Select Video',
-                  onTap: _capturedVideos.isEmpty ? () => _pickVideo(ImageSource.gallery) : null,
+                  onTap: _capturedVideos.isEmpty
+                      ? () => _pickVideo(ImageSource.gallery)
+                      : null,
                 ),
               ),
             ],
@@ -635,7 +1011,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           const SizedBox(height: 48),
           AppButton(
             text: 'Next: Review',
-            onPressed: hasMedia ? _nextStep : null,
+            onPressed: hasMedia && !_isSelectingMedia ? _nextStep : null,
           ),
         ],
       ),
@@ -654,8 +1030,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Almost done. Review your report before AI submission.',
-            style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+            'Review the details before sending your report.',
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
           const SizedBox(height: 24),
           Container(
@@ -667,50 +1045,140 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Title', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12)),
+                Text(
+                  'Title',
+                  style: TextStyle(
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(_titleController.text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  _titleController.text,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 16),
-                
-                Text('Location', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12)),
+
+                Text(
+                  'Location',
+                  style: TextStyle(
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('${_reportLocation.latitude.toStringAsFixed(4)}, ${_reportLocation.longitude.toStringAsFixed(4)}', style: const TextStyle(fontSize: 16)),
+                _addressSummary(),
                 const SizedBox(height: 16),
-                
-                Text('Media', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6), fontSize: 12)),
+                Text(
+                  'Description',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
                 const SizedBox(height: 4),
-                Text('${_capturedImages.length} Photo(s), ${_capturedVideos.length} Video(s)', style: const TextStyle(fontSize: 16)),
+                Text(
+                  _descriptionController.text.isEmpty
+                      ? 'No description added'
+                      : _descriptionController.text,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Property and access',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _onPrivateProperty
+                      ? 'On private property'
+                      : 'Not marked as private property',
+                ),
+                Text(
+                  'Scale: $_selectedScale · Obstruction: $_selectedObstruction',
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  'Media',
+                  style: TextStyle(
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_capturedImages.length} Photo(s), ${_capturedVideos.length} Video(s)',
+                  style: const TextStyle(fontSize: 16),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 48),
+          if (_submissionError != null) ...[
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                _submissionError!,
+                style: TextStyle(color: colorScheme.error),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           AppButton(
             text: 'Submit Report',
-            onPressed: _submitReport,
+            isLoading: _isSubmitting,
+            onPressed: _isSubmitting ? null : _submitReport,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMediaOption({required IconData icon, required String label, required VoidCallback? onTap}) {
-    final isDisabled = onTap == null;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        height: 100,
-        decoration: BoxDecoration(
-          color: isDisabled ? Theme.of(context).colorScheme.surface : Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: isDisabled ? Colors.grey.shade600 : Theme.of(context).colorScheme.onSurface),
-            const SizedBox(height: 8),
-            Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDisabled ? Colors.grey.shade600 : Theme.of(context).colorScheme.onSurface)),
-          ],
+  Widget _buildMediaOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+  }) {
+    final isDisabled = onTap == null || _isSelectingMedia;
+    return Semantics(
+      button: true,
+      enabled: !isDisabled,
+      label: label,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: isDisabled ? null : onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 100),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDisabled
+                ? Theme.of(context).colorScheme.surface
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 32,
+                color: isDisabled
+                    ? Colors.grey.shade600
+                    : Theme.of(context).colorScheme.onSurface,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

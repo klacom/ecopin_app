@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 
 class PasswordRequirement {
   final bool isMet;
@@ -67,17 +68,17 @@ class PasswordStrengthMeter extends StatelessWidget {
                 Icon(
                   req.isMet ? Icons.check_circle : Icons.radio_button_unchecked,
                   size: 16,
-                  color: req.isMet ? AppColors.success : Colors.grey,
+                  color: req.isMet ? Theme.of(context).extension<AppStatusColors>()?.success : Theme.of(context).colorScheme.onSurface,
                 ),
                 const SizedBox(width: 8),
-                Text(
+                Expanded(child: Text(
                   req.text,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: req.isMet 
                         ? (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight)
-                        : Colors.grey,
+                        : Theme.of(context).colorScheme.onSurface,
                   ),
-                ),
+                )),
               ],
             ),
           );

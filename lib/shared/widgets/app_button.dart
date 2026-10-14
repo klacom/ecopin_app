@@ -51,57 +51,74 @@ class AppButton extends StatelessWidget {
       case ButtonVariant.secondary:
         return isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
       case ButtonVariant.link:
-        return AppColors.accent;
+        return isDark ? AppColors.linkDark : AppColors.accent;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final disabled = onPressed == null || isLoading;
+    final disabledForeground = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.textSecondaryDark
+        : AppColors.textSecondaryLight;
+    final disabledBackground = variant == ButtonVariant.link
+        ? Colors.transparent
+        : Theme.of(context).colorScheme.surfaceContainerHighest;
 
-    return SizedBox(
-      width: width,
-      height: height,
-      child: TextButton(
-        onPressed: disabled ? null : onPressed,
-        style: TextButton.styleFrom(
-          backgroundColor: disabled
-              ? _backgroundColor(context).withValues(alpha: 0.5)
-              : _backgroundColor(context),
-          foregroundColor: _textColor(context),
-          side: variant == ButtonVariant.secondary 
-              ? BorderSide(color: Theme.of(context).brightness == Brightness.light ? Colors.black26 : Colors.white24, width: 1.5)
-              : BorderSide.none,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(
-              Radius.circular(AppColors.radiusButton),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppColors.spaceLG,
-            vertical: AppColors.spaceMD,
-          ),
-          textStyle: Theme.of(context).textTheme.labelLarge,
-        ),
-        child: isLoading
-            ? SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: _textColor(context),
+    return Semantics(
+      label: isLoading ? '$text, in progress' : null,
+      liveRegion: isLoading,
+      child: SizedBox(
+        width: width,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: height < 48 ? 48 : height),
+          child: TextButton(
+            onPressed: disabled ? null : onPressed,
+            style: TextButton.styleFrom(
+              backgroundColor: _backgroundColor(context),
+              disabledBackgroundColor: disabledBackground,
+              foregroundColor: _textColor(context),
+              disabledForegroundColor: disabledForeground,
+              side: variant == ButtonVariant.secondary
+                  ? BorderSide(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.black26
+                          : Colors.white24,
+                      width: 1.5,
+                    )
+                  : BorderSide.none,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(
+                  Radius.circular(AppColors.radiusButton),
                 ),
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 20),
-                    const SizedBox(width: AppColors.spaceSM),
-                  ],
-                  Text(text),
-                ],
               ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppColors.spaceLG,
+                vertical: AppColors.spaceMD,
+              ),
+              textStyle: Theme.of(context).textTheme.labelLarge,
+            ),
+            child: isLoading
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: disabledForeground,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (icon != null) ...[
+                        Icon(icon, size: 20),
+                        const SizedBox(width: AppColors.spaceSM),
+                      ],
+                      Flexible(child: Text(text, textAlign: TextAlign.center)),
+                    ],
+                  ),
+          ),
+        ),
       ),
     );
   }

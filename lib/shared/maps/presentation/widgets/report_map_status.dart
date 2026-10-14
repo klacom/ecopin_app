@@ -21,15 +21,22 @@ class ReportMapStatus extends StatelessWidget {
       loading: () => 'Loading reports in this area…',
       error: (error, stack) => 'Reports could not load.',
     );
+    final displayMessage = value.hasError && value.hasValue
+        ? '$message Showing the last loaded reports.'
+        : message;
     return Semantics(
       liveRegion: true,
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Row(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Flexible(child: Text(message)),
+              Text(
+                displayMessage,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               if (value.hasError)
                 TextButton(onPressed: onRetry, child: const Text('Try again')),
             ],

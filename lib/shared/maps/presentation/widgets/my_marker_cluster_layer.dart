@@ -1,56 +1,122 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 
-class MyMarkerClusterLayer extends StatefulWidget {
-  final List<Marker> markers;
-
+class MyMarkerClusterLayer extends StatelessWidget {
   const MyMarkerClusterLayer({super.key, required this.markers});
-
+  final List<Marker> markers;
   @override
-  State<MyMarkerClusterLayer> createState() => MyMarkerClusterLayerState();
-}
-
-class MyMarkerClusterLayerState extends State<MyMarkerClusterLayer> {
-  @override
-  Widget build(BuildContext context) {
-    return MarkerClusterLayerWidget(
-      options: MarkerClusterLayerOptions(
-        polygonOptions: const PolygonOptions(
-          borderColor: Colors.transparent,
-          color: Colors.transparent,
-          borderStrokeWidth: 0,
-        ),
-        markers: widget.markers,
-        builder: (context, markers) {
-          return Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.accent,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.accent.withValues(alpha: 0.4),
-                  blurRadius: 12,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                markers.length.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ),
+  Widget build(BuildContext context) => MarkerClusterLayerWidget(
+    options: MarkerClusterLayerOptions(
+      size: const Size(48, 48),
+      polygonOptions: const PolygonOptions(
+        borderColor: Colors.transparent,
+        color: Colors.transparent,
+        borderStrokeWidth: 0,
+      ),
+      animationsOptions: MediaQuery.disableAnimationsOf(context)
+          ? const AnimationsOptions(
+              zoom: Duration.zero,
+              fitBound: Duration.zero,
+              centerMarker: Duration.zero,
+              spiderfy: Duration.zero,
+            )
+          : const AnimationsOptions(),
+      markers: markers,
+      builder: (_, markers) => Builder(
+        builder: (clusterContext) {
+          // The installed SDK wraps this child in a public GestureDetector. Reuse
+          // its action for keyboard activation, preserving zoom and spiderfying.
+          final activate = clusterContext
+              .findAncestorWidgetOfExactType<GestureDetector>()
+              ?.onTap;
+          return ReportClusterBadge(
+            count: markers.length,
+            onActivate: activate,
           );
         },
       ),
-    );
+    ),
+  );
+}
+
+class ReportClusterBadge extends StatefulWidget {
+  const ReportClusterBadge({
+    super.key,
+    required this.count,
+    required this.onActivate,
+  });
+  final int count;
+  final VoidCallback? onActivate;
+  @override
+  State<ReportClusterBadge> createState() => _ReportClusterBadgeState();
+}
+
+class _ReportClusterBadgeState extends State<ReportClusterBadge> {
+  final _focus = FocusNode();
+  bool _focused = false;
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'View ${widget.count} nearby reports',
+    button: widget.onActivate != null,
+    onTap: widget.onActivate,
+    excludeSemantics: true,
+    child: FocusableActionDetector(
+      focusNode: _focus,
+      enabled: widget.onActivate != null,
+      onShowFocusHighlight: (value) => setState(() => _focused = value),
+      shortcuts: const {
+        SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+        SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+      },
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onActivate?.call();
+            return null;
+          },
+        ),
+      },
+      child: Container(
+        width: 48,
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.accent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: _focused
+                ? AppColors.linkDark
+                : Theme.of(context).colorScheme.surface,
+            width: _focused ? 3 : 2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x26000000),
+              blurRadius: 3,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: Text(
+            widget.count > 999 ? '999+' : '${widget.count}',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }

@@ -49,15 +49,20 @@ class ApiClient {
             );
           }
 
-          final session = Supabase.instance.client.auth.currentSession;
-          final token = session?.accessToken;
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
+          // Pending password changes use their own in-memory login token. They
+          // must not borrow or refresh a different persisted account session.
+          if (options.extra['pendingPasswordChange'] != true) {
+            final session = Supabase.instance.client.auth.currentSession;
+            final token = session?.accessToken;
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
           }
           return handler.next(options);
         },
         onError: (error, handler) async {
-          if (error.response?.statusCode == 401) {
+          if (error.response?.statusCode == 401 &&
+              error.requestOptions.extra['pendingPasswordChange'] != true) {
             // Try to refresh the session
             try {
               await Supabase.instance.client.auth.refreshSession();
@@ -132,6 +137,23 @@ class ApiClient {
     return _dio.get(ApiConstants.me);
   }
 
+  Future<dio.Response> forceChangePassword({
+    required String newPassword,
+    required String accessToken,
+  }) async {
+    if (accessToken.isEmpty || newPassword.isEmpty) {
+      throw ArgumentError('Password change requires pending sign-in credentials');
+    }
+    return _dio.post(
+      ApiConstants.forceChangePassword,
+      data: {'new_password': newPassword},
+      options: dio.Options(
+        headers: {'Authorization': 'Bearer $accessToken'},
+        extra: {'pendingPasswordChange': true},
+      ),
+    );
+  }
+
   Future<dio.Response> logout() async {
     return _dio.post(ApiConstants.logout);
   }
@@ -190,7 +212,7 @@ class ApiClient {
       return dio.Response(
         requestOptions: dio.RequestOptions(),
         statusCode: 201,
-        data: {'message': 'You are offline. Your report has been saved locally and will be synced when you reconnect.', 'report': {}},
+        data: {'message': 'You are offline. Your report has been saved locally and will be synced when you reconnect.', 'report': {}, 'saved_locally': true},
       );
     }
 

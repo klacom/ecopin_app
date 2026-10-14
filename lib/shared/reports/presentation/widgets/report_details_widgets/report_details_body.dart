@@ -1,4 +1,3 @@
-import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 
 import 'package:ecopin_app/routes/app_routes.dart';
@@ -29,6 +28,7 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
   final bool isLoadingCleanupTask;
   final VoidCallback? onFetchCleanupTask;
   final bool isOfficerUser;
+  final TileProvider? tileProvider;
 
   const ReportDetailsBody({
     super.key,
@@ -39,6 +39,7 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
     required this.isLoadingCleanupTask,
     this.onFetchCleanupTask,
     this.isOfficerUser = false,
+    this.tileProvider,
   });
 
   @override
@@ -46,61 +47,6 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
 }
 
 class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
-  bool _isUpdatingStatus = false;
-
-  Future<void> _handleOfficerStatusUpdate(String newStatus) async {
-    if (newStatus == 'resolved') {
-      final issueType = widget.report.issueType?.toLowerCase() ?? '';
-      final isScouting = issueType == 'scouting' || issueType == 'acknowledge_only';
-      final hasBefore = widget.report.beforePhotoUrl != null &&
-          widget.report.beforePhotoUrl!.isNotEmpty;
-      final hasAfter = widget.report.afterPhotoUrl != null &&
-          widget.report.afterPhotoUrl!.isNotEmpty;
-
-      if (!isScouting && (!hasBefore || !hasAfter)) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Before and after photos are required before marking as resolved.',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-    }
-
-    setState(() => _isUpdatingStatus = true);
-    try {
-      final apiClient = ref.read(apiClientProvider);
-      await apiClient.updateReportStatus(widget.report.id, newStatus);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Report marked as ${newStatus == "resolved" ? "Resolved" : "In Progress"}',
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop(true);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update status: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isUpdatingStatus = false);
-      }
-    }
-  }
 
   Color _getSeverityColor(String level) {
     switch (level.toLowerCase()) {
@@ -413,6 +359,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 ),
                 children: [
                   TileLayer(
+                    tileProvider: widget.tileProvider,
                     urlTemplate:
                         'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
@@ -756,76 +703,19 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             const SizedBox(height: 16),
           ],
           const SizedBox(height: 100),
-          // Officer-specific actions
+          // Shared details link to the authorized officer tools instead of no-op actions.
           if (widget.isOfficerUser) ...[
             const SizedBox(height: 24),
-            const Text(
-              'Officer Actions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            if (widget.report.status.toLowerCase() == 'unresolved' ||
-                widget.report.status.toLowerCase() == 'in_progress')
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isUpdatingStatus
-                      ? null
-                      : () => _handleOfficerStatusUpdate('resolved'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.green,
-                  ),
-                  child: _isUpdatingStatus
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Mark as Resolved',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              ),
+            Text('Officer tools', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
-            if (widget.report.status.toLowerCase() == 'unresolved')
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isUpdatingStatus
-                      ? null
-                      : () => _handleOfficerStatusUpdate('in_progress'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.orange,
-                  ),
-                  child: _isUpdatingStatus
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Mark as In Progress',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
+            const Text('Review and update this report in your officer workspace.'),
+            const SizedBox(height: 16),
+            AppButton(
+              text: 'Open officer report tools',
+              onPressed: () => context.push(
+                OfficerAppRoutes.reportDetails.replaceFirst(':id', widget.report.id),
               ),
+            ),
           ],
         ],
       ),

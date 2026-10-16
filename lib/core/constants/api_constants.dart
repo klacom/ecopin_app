@@ -7,6 +7,7 @@ class ApiConstants {
   static const String me = '/api/auth/me';
   static const String logout = '/api/auth/logout';
   static const String createReport = '/api/reports';
+  static const String validateImage = '/api/reports/validate-image';
   static const String getMyReports = '/api/reports/my';
   static const String getPublicReports = '/api/reports/public';
   static const String statsCompletedCleanups = '/api/stats/completed-cleanups';

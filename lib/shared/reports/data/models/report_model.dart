@@ -37,6 +37,8 @@ class ReportModel {
   final String? slaBreachDuration;
   final int fcVersion;
   final int reportClaimGeneration;
+  final String? locationVerificationStatus;
+  final double? photoDistanceMeters;
 
   ReportModel({
     required this.id,
@@ -73,6 +75,8 @@ class ReportModel {
     this.slaBreachDuration,
     this.fcVersion = 0,
     this.reportClaimGeneration = 0,
+    this.locationVerificationStatus,
+    this.photoDistanceMeters,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -152,11 +156,12 @@ class ReportModel {
           : null,
       isOverdue: json['is_overdue'] ?? false,
       beforePhotoUrl: json['before_photo_url']?.toString(),
-      afterPhotoUrl: json['after_photo_url']?.toString(),
-      rejectionReason: json['rejection_reason']?.toString(),
+      rejectionReason: json['rejection_reason']?.toString() ?? json['notes']?.toString(),
       rejectedAt: json['rejected_at'] != null
           ? DateTime.tryParse(json['rejected_at']?.toString() ?? '')
-          : null,
+          : (json['validation_status'] == 'rejected'
+              ? DateTime.tryParse(json['updated_at']?.toString() ?? '')
+              : null),
       scaleLevel: json['scale_level']?.toString() ?? 'medium',
       obstructionLevel: json['obstruction_level']?.toString() ?? 'none',
       severityScore: json['severity_score'] as int?,
@@ -168,6 +173,8 @@ class ReportModel {
       slaBreachDuration: json['sla_breach_duration']?.toString(),
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
       reportClaimGeneration: int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,
+      locationVerificationStatus: json['location_verification_status']?.toString(),
+      photoDistanceMeters: (json['photo_distance_meters'] as num?)?.toDouble(),
     );
   }
 

@@ -342,6 +342,13 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 '${widget.report.location.latitude.toStringAsFixed(6)}, ${widget.report.location.longitude.toStringAsFixed(6)}',
           ),
           InfoRow(icon: Icons.calendar_today, text: dateStr),
+          if (widget.report.locationVerificationStatus != null) ...[
+            const SizedBox(height: 8),
+            _buildLocationVerificationBadge(
+              widget.report.locationVerificationStatus!,
+              widget.report.photoDistanceMeters,
+            ),
+          ],
           const SizedBox(height: 12),
           // Static, non-interactive map showing the report location.
           ClipRRect(
@@ -717,6 +724,78 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationVerificationBadge(String status, double? distanceMeters) {
+    Color bg;
+    Color border;
+    Color text;
+    IconData icon;
+    String label;
+
+    switch (status.toLowerCase()) {
+      case 'verified_on_site':
+        bg = const Color(0xFFECFDF5);
+        border = const Color(0xFFA7F3D0);
+        text = const Color(0xFF065F46);
+        icon = Icons.verified;
+        label = distanceMeters != null
+            ? 'Verified On-Site (${distanceMeters.toStringAsFixed(0)}m)'
+            : 'Verified On-Site';
+        break;
+      case 'nearby_approximate':
+        bg = const Color(0xFFFFFBEB);
+        border = const Color(0xFFFDE68A);
+        text = const Color(0xFF92400E);
+        icon = Icons.near_me_outlined;
+        label = distanceMeters != null
+            ? 'Nearby (~${distanceMeters.toStringAsFixed(0)}m)'
+            : 'Nearby Location';
+        break;
+      case 'location_mismatch':
+        bg = const Color(0xFFFEF2F2);
+        border = const Color(0xFFFECACA);
+        text = const Color(0xFF991B1B);
+        icon = Icons.warning_amber_rounded;
+        label = distanceMeters != null
+            ? 'Location Mismatch (${distanceMeters.toStringAsFixed(0)}m away)'
+            : 'Location Discrepancy';
+        break;
+      case 'unverified_gallery':
+      default:
+        bg = const Color(0xFFF8FAFC);
+        border = const Color(0xFFE2E8F0);
+        text = const Color(0xFF475569);
+        icon = Icons.photo_library_outlined;
+        label = 'Gallery Upload';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: text),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: text,
+              ),
+            ),
+          ),
         ],
       ),
     );

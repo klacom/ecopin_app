@@ -22,6 +22,7 @@ import 'package:logging/logging.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/local_media_preview.dart';
+import 'package:ecopin_app/core/services/photo_verification_service.dart';
 // Note: LoadingDialog import removed since we're using an inline overlay
 
 class CreateReportScreen extends ConsumerStatefulWidget {
@@ -68,11 +69,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   File? _selectedImage;
   late final ImagePicker _picker;
   final List<File> _capturedImages = [];
+  final List<File> _cleanImages = [];
   final List<File> _capturedVideos = [];
   final Map<String, Duration> _videoDurations = {};
   bool _onPrivateProperty = false;
   String _selectedScale = 'medium';
   String _selectedObstruction = 'none';
+  PhotoVerificationResult? _photoVerificationResult;
 
   static const List<String> _validImageExtensions = [
     'jpeg',
@@ -238,14 +241,50 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           _showMediaError('Unsupported photo type. Use JPG, PNG, or WEBP.');
           continue;
         }
-        final file = File(xFile.path);
-        if (_capturedImages.any((image) => image.path == file.path)) continue;
+        final rawFile = File(xFile.path);
+        if (_capturedImages.any((image) => image.path == rawFile.path)) continue;
         if (_capturedImages.length >= reportMaxPhotos) {
           _showMediaError(
             'You can attach up to $reportMaxPhotos photos. Remove one before adding another.',
           );
           break;
         }
+
+        // 1. Validate clean photo with ML classifier first before burning watermark
+        try {
+          final apiClient = ref.read(apiClientProvider);
+          final validationRes = await apiClient.validateImage(rawFile.path);
+          final data = validationRes.data;
+          if (data is Map && data['is_valid'] == false) {
+            final category = data['predicted_category'] ?? 'non-hazard';
+            final conf = ((data['confidence'] as num?)?.toDouble() ?? 0.0) * 100;
+            _showMediaError(
+              'Photo could not be verified as an environmental concern ($category, ${conf.toStringAsFixed(0)}% confidence). Please take a clearer photo of the issue.',
+            );
+            continue;
+          }
+        } catch (e) {
+          // If offline or ML service is unreachable, continue gracefully without blocking
+          _log.warning('Pre-validation skipped or failed: $e');
+        }
+
+        // 2. Photo verified valid: apply TimeMark-style watermark and extract GPS telemetry
+        String? currentAddress;
+        if (_locationConfirmed) {
+          try {
+            currentAddress = await _addressFuture;
+          } catch (_) {}
+        }
+        final processed = await PhotoVerificationService.processPhoto(
+          originalFile: rawFile,
+          source: source == ImageSource.camera ? 'camera' : 'gallery',
+          knownAddress: currentAddress,
+          fallbackLat: _locationConfirmed ? _reportLocation.latitude : null,
+          fallbackLng: _locationConfirmed ? _reportLocation.longitude : null,
+          qrPayload: dotenv.env['WEB_BASE_URL'] ?? 'https://ecopin-web.vercel.app',
+        );
+        _photoVerificationResult = processed;
+        final file = processed.file;
         final currentSize = _capturedImages.fold<int>(
           0,
           (total, image) => total + image.lengthSync(),
@@ -260,6 +299,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         }
         setState(() {
           _capturedImages.add(file);
+          _cleanImages.add(rawFile);
           if (source == ImageSource.camera) _selectedImage = file;
         });
       }
@@ -365,10 +405,19 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         imagePaths: _capturedImages.isNotEmpty
             ? _capturedImages.map((img) => img.path).toList()
             : null,
+        cleanImagePaths: _cleanImages.isNotEmpty
+            ? _cleanImages.map((img) => img.path).toList()
+            : null,
         videoPath: mainVideo?.path,
         onPrivateProperty: _onPrivateProperty,
         scaleLevel: _selectedScale,
         obstructionLevel: _selectedObstruction,
+        photoLat: _photoVerificationResult?.latitude,
+        photoLng: _photoVerificationResult?.longitude,
+        photoAccuracy: _photoVerificationResult?.accuracy,
+        photoCapturedAt: _photoVerificationResult?.capturedAt,
+        photoSource: _photoVerificationResult?.source,
+        isMocked: _photoVerificationResult?.isMocked,
       );
       if (mounted) {
         ref.invalidate(myReportsProvider);
@@ -882,6 +931,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           tooltip: 'Remove photo ${index + 1}',
                           onPressed: () => setState(() {
                             final removed = _capturedImages.removeAt(index);
+                            if (_cleanImages.length > index) {
+                              _cleanImages.removeAt(index);
+                            }
                             if (_selectedImage?.path == removed.path) {
                               _selectedImage = null;
                             }

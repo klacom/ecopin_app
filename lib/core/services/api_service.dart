@@ -166,10 +166,17 @@ class ApiClient {
     required double latitude,
     required double longitude,
     List<String>? imagePaths,
+    List<String>? cleanImagePaths,
     String? videoPath,
     bool onPrivateProperty = false,
     String scaleLevel = 'medium',
     String obstructionLevel = 'none',
+    double? photoLat,
+    double? photoLng,
+    double? photoAccuracy,
+    DateTime? photoCapturedAt,
+    String? photoSource,
+    bool? isMocked,
   }) async {
     // Require at least one media type
     if ((imagePaths == null || imagePaths.isEmpty) && videoPath == null) {
@@ -226,11 +233,25 @@ class ApiClient {
     );
     formData.fields.add(MapEntry('scale_level', scaleLevel));
     formData.fields.add(MapEntry('obstruction_level', obstructionLevel));
+    if (photoLat != null) formData.fields.add(MapEntry('photo_lat', photoLat.toString()));
+    if (photoLng != null) formData.fields.add(MapEntry('photo_lng', photoLng.toString()));
+    if (photoAccuracy != null) formData.fields.add(MapEntry('photo_accuracy', photoAccuracy.toString()));
+    if (photoCapturedAt != null) formData.fields.add(MapEntry('photo_captured_at', photoCapturedAt.toIso8601String()));
+    if (photoSource != null) formData.fields.add(MapEntry('photo_source', photoSource));
+    if (isMocked != null) formData.fields.add(MapEntry('is_mocked', isMocked.toString()));
 
     if (imagePaths != null && imagePaths.isNotEmpty) {
       for (final imagePath in imagePaths) {
         formData.files.add(
           MapEntry('image', await dio.MultipartFile.fromFile(imagePath)),
+        );
+      }
+    }
+
+    if (cleanImagePaths != null && cleanImagePaths.isNotEmpty) {
+      for (final cleanPath in cleanImagePaths) {
+        formData.files.add(
+          MapEntry('clean_image', await dio.MultipartFile.fromFile(cleanPath)),
         );
       }
     }
@@ -242,6 +263,14 @@ class ApiClient {
     }
 
     return _dio.post(ApiConstants.createReport, data: formData);
+  }
+
+  Future<dio.Response> validateImage(String imagePath) async {
+    final formData = dio.FormData();
+    formData.files.add(
+      MapEntry('image', await dio.MultipartFile.fromFile(imagePath)),
+    );
+    return _dio.post(ApiConstants.validateImage, data: formData);
   }
 
   Future<dio.Response> syncReportMedia(

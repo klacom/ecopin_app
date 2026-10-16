@@ -3,6 +3,7 @@ import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/shared/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_details_body.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_share_helper.dart';
 import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:flutter/material.dart';
@@ -101,7 +102,33 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
     final isOfficerUser = authState.state.role == UserRole.officer;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Report Details')),
+      appBar: AppBar(
+        title: const Text('Report Details'),
+        actions: [
+          reportAsync.maybeWhen(
+            data: (report) {
+              final isRejected = report.status.toLowerCase() == 'rejected' ||
+                  report.validationStatus.toLowerCase() == 'rejected';
+              if (isRejected) {
+                return const SizedBox.shrink();
+              }
+              final photoUrl = report.beforePhotoUrl ??
+                  (_evidence.isNotEmpty
+                      ? _evidence.first['url'] ?? _evidence.first['file_url']
+                      : null);
+              return IconButton(
+                icon: const Icon(Icons.share_rounded),
+                tooltip: 'Share Stamped Photo',
+                onPressed: () => ReportShareHelper.shareReportPhoto(
+                  report: report,
+                  photoUrl: photoUrl,
+                ),
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
+      ),
       body: pull_refresh.SmartRefresher(
         controller: _refreshController,
         onRefresh: _onRefresh,

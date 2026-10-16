@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/field_crew/providers/cleanup_tasks_provider.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_list_tile.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_shimmer_list.dart';
@@ -26,14 +25,18 @@ class _FieldCrewTasksScreenState extends ConsumerState<FieldCrewTasksScreen> {
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(allCleanupTasksProvider);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: Text(
           'Cleanup Tasks',
-          style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark),
+          style: AppTypography.h5.copyWith(color: textColor, fontWeight: FontWeight.bold),
         ),
       ),
       body: Column(
@@ -72,7 +75,7 @@ class _FieldCrewTasksScreenState extends ConsumerState<FieldCrewTasksScreen> {
                   await ref.read(allCleanupTasksProvider.future);
                 },
                 color: AppColors.primaryDark,
-                backgroundColor: AppColors.surfaceDark,
+                backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                 child: tasksAsync.when(
                   data: (tasks) {
                     final currentUserId = Supabase.instance.client.auth.currentUser?.id;

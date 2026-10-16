@@ -13,6 +13,10 @@ class FcReportListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
     final validationColor = _getValidationColor(report.validationStatus);
 
     return InkWell(
@@ -21,9 +25,17 @@ class FcReportListTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppColors.spaceLG),
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark,
+          color: cardColor,
           borderRadius: BorderRadius.circular(AppColors.radiusCard),
-          border: Border.all(color: AppColors.dividerDark),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+          ],
+          border: Border.all(color: borderColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,7 +46,7 @@ class FcReportListTile extends StatelessWidget {
                 Expanded(
                   child: Text(
                     report.title,
-                    style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark),
+                    style: AppTypography.h5.copyWith(color: textColor),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),

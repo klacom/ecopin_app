@@ -15,31 +15,37 @@ class FcRouteSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return Container(
       padding: const EdgeInsets.all(AppColors.spaceMD),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        border: Border.all(color: AppColors.dividerDark),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.dividerDark,
-            offset: Offset(2, 2),
-            blurRadius: 0,
-          ),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Route Summary', style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark)),
+          Text('Route Summary', style: AppTypography.h5.copyWith(color: textColor)),
           const SizedBox(height: AppColors.spaceSM),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStat('STOPS', taskStopsCount.toString()),
-              _buildStat('ETA', _formatDuration(route.totalDurationMin)),
-              _buildStat('DIST', _formatDistance(route.totalDistanceMeters)),
+              _buildStat('STOPS', taskStopsCount.toString(), textColor),
+              _buildStat('ETA', _formatDuration(route.totalDurationMin), textColor),
+              _buildStat('DIST', _formatDistance(route.totalDistanceMeters), textColor),
             ],
           ),
         ],
@@ -47,7 +53,7 @@ class FcRouteSummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStat(String label, String value) {
+  Widget _buildStat(String label, String value, Color textColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -63,7 +69,7 @@ class FcRouteSummaryCard extends StatelessWidget {
         Text(
           value,
           style: AppTypography.body.copyWith(
-            color: AppColors.textPrimaryDark,
+            color: textColor,
             fontWeight: FontWeight.bold,
           ),
         ),

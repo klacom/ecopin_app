@@ -11,12 +11,25 @@ class FcTaskSidebarCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return Container(
       padding: const EdgeInsets.all(AppColors.spaceLG),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        border: Border.all(color: AppColors.dividerDark),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -29,7 +42,7 @@ class FcTaskSidebarCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(task.title, style: AppTypography.h4.copyWith(color: AppColors.textPrimaryDark)),
+                    Text(task.title, style: AppTypography.h4.copyWith(color: textColor)),
                     if (task.dispatchKind == 'sweeper')
                       Container(
                         margin: const EdgeInsets.only(top: 4),
@@ -68,9 +81,9 @@ class FcTaskSidebarCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppColors.spaceMD),
-          Text(task.description, style: AppTypography.body.copyWith(color: AppColors.textPrimaryDark)),
+          Text(task.description, style: AppTypography.body.copyWith(color: textColor)),
           const SizedBox(height: AppColors.spaceLG),
-          Text('Assigned Crew (${task.assignedCrewIds.length})', style: AppTypography.h6.copyWith(color: AppColors.textPrimaryDark)),
+          Text('Assigned Crew (${task.assignedCrewIds.length})', style: AppTypography.h6.copyWith(color: textColor)),
           const SizedBox(height: AppColors.spaceSM),
           if (task.assignedCrewIds.isEmpty)
             Text('No crew assigned.', style: AppTypography.body.copyWith(color: Colors.grey))

@@ -18,6 +18,9 @@ class FcRouteTimelinePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dividerLineColor = isDark ? Colors.white10 : Colors.grey.shade300;
+
     return ListView.builder(
       padding: EdgeInsets.zero,
       itemCount: route.waypoints.length,
@@ -41,12 +44,12 @@ class FcRouteTimelinePanel extends StatelessWidget {
                         bottom: -24,
                         child: Container(
                           width: 2,
-                          color: AppColors.dividerDark,
+                          color: dividerLineColor,
                         ),
                       ),
                     Positioned(
                       top: 0,
-                      child: _buildWaypointMarker(wp),
+                      child: _buildWaypointMarker(context, wp),
                     ),
                   ],
                 ),
@@ -66,15 +69,19 @@ class FcRouteTimelinePanel extends StatelessWidget {
     );
   }
 
-  Widget _buildWaypointMarker(WaypointModel wp) {
+  Widget _buildWaypointMarker(BuildContext context, WaypointModel wp) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final depotBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final markerBorderColor = isDark ? Colors.white10 : Colors.grey.shade300;
+
     if (wp.waypointType == 'depot_start' || wp.waypointType == 'depot_end') {
       return Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark,
+          color: depotBg,
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.dividerDark, width: 2),
+          border: Border.all(color: markerBorderColor, width: 2),
         ),
         child: const Center(child: Text('🏢', style: TextStyle(fontSize: 16))),
       );
@@ -100,7 +107,7 @@ class FcRouteTimelinePanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.surfaceDark, width: 2),
+        border: Border.all(color: markerBorderColor, width: 2),
       ),
       child: Center(
         child: Text(
@@ -116,13 +123,18 @@ class FcRouteTimelinePanel extends StatelessWidget {
   }
 
   Widget _buildWaypointContent(BuildContext context, WaypointModel wp) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade200;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     if (wp.waypointType == 'depot_start' || wp.waypointType == 'depot_end') {
       return Padding(
         padding: const EdgeInsets.only(top: 8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('SWMO Depot', style: AppTypography.body.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimaryDark)),
+            Text('SWMO Depot', style: AppTypography.body.copyWith(fontWeight: FontWeight.bold, color: textColor)),
             Text(wp.waypointType == 'depot_start' ? 'Start shift' : 'End shift', style: AppTypography.caption.copyWith(color: Colors.grey)),
           ],
         ),
@@ -136,11 +148,27 @@ class FcRouteTimelinePanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppColors.spaceMD),
       decoration: BoxDecoration(
-        color: isCompleted ? AppColors.success.withValues(alpha: 0.05) : (inProgress ? AppColors.warning.withValues(alpha: 0.05) : AppColors.surfaceDark),
+        color: isCompleted
+            ? AppColors.success.withValues(alpha: 0.05)
+            : (inProgress
+                ? AppColors.warning.withValues(alpha: 0.05)
+                : cardColor),
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
+        boxShadow: [
+          if (!isDark && !isCompleted && !inProgress)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
         border: Border.all(
-          color: isCompleted ? AppColors.success.withValues(alpha: 0.3) : (inProgress ? AppColors.warning.withValues(alpha: 0.5) : AppColors.dividerDark),
-          width: 2,
+          color: isCompleted
+              ? AppColors.success.withValues(alpha: 0.3)
+              : (inProgress
+                  ? AppColors.warning.withValues(alpha: 0.5)
+                  : borderColor),
+          width: (isCompleted || inProgress) ? 2 : 1,
         ),
       ),
       child: Column(
@@ -148,7 +176,7 @@ class FcRouteTimelinePanel extends StatelessWidget {
         children: [
           Text(
             taskInfo?.title ?? 'Task #${wp.sequenceOrder}',
-            style: AppTypography.body.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimaryDark),
+            style: AppTypography.body.copyWith(fontWeight: FontWeight.bold, color: textColor),
           ),
           const SizedBox(height: AppColors.spaceSM),
           Row(
@@ -165,20 +193,20 @@ class FcRouteTimelinePanel extends StatelessWidget {
           const SizedBox(height: AppColors.spaceMD),
           if (taskInfo?.reports != null && taskInfo!.reports!.isNotEmpty) ...[
             const SizedBox(height: AppColors.spaceSM),
-            const Divider(color: AppColors.dividerDark),
+            Divider(color: borderColor),
             const SizedBox(height: AppColors.spaceSM),
             Text('MICRO-ROUTE SEQUENCE', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: AppColors.spaceSM),
-            ..._buildMicroRouteSequence(taskInfo, wp.sequenceOrder),
+            ..._buildMicroRouteSequence(taskInfo, wp.sequenceOrder, textColor),
             const SizedBox(height: AppColors.spaceMD),
           ],
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: isCompleted ? AppColors.surfaceDark : AppColors.backgroundDark,
+                backgroundColor: isCompleted ? (isDark ? AppColors.surfaceDark : Colors.grey.shade200) : AppColors.primaryDark,
                 foregroundColor: isCompleted ? Colors.grey : Colors.white,
-                side: BorderSide(color: isCompleted ? AppColors.dividerDark : Colors.transparent),
+                side: BorderSide(color: isCompleted ? borderColor : Colors.transparent),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
               ),
@@ -207,7 +235,7 @@ class FcRouteTimelinePanel extends StatelessWidget {
     }
   }
 
-  List<Widget> _buildMicroRouteSequence(CleanupTask task, int sequenceOrder) {
+  List<Widget> _buildMicroRouteSequence(CleanupTask task, int sequenceOrder, Color textColor) {
     if (task.reports == null) return [];
     
     // Sort reports according to reportSequence
@@ -250,7 +278,7 @@ class FcRouteTimelinePanel extends StatelessWidget {
                   Text(
                     (report.issueType ?? '').replaceAll('_', ' ').toUpperCase(),
                     style: TextStyle(
-                      color: isResolved ? Colors.grey : AppColors.textPrimaryDark,
+                      color: isResolved ? Colors.grey : textColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                       decoration: isResolved ? TextDecoration.lineThrough : null,

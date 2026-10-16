@@ -412,7 +412,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
     });
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: routeAsync.when(
         data: (route) {
           if (route == null) {
@@ -643,10 +643,23 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                 right: 16,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceDark.withValues(alpha: 0.95),
+                    color: (Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF1E1E1E)
+                            : Colors.white)
+                        .withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.dividerDark),
-                    boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 12, offset: Offset(0, 6))],
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white10
+                          : Colors.grey.shade200,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.45 : 0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -690,8 +703,12 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                       if (!_isNavigating)
                         Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
-                          decoration: const BoxDecoration(
-                            border: Border(top: BorderSide(color: AppColors.dividerDark)),
+                          decoration: BoxDecoration(
+                            border: Border(top: BorderSide(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white10
+                                  : Colors.grey.shade200,
+                            )),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -715,10 +732,23 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceDark.withValues(alpha: 0.95),
+                    color: (Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF1E1E1E)
+                            : Colors.white)
+                        .withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.dividerDark),
-                    boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 12, offset: Offset(0, 4))],
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white10
+                          : Colors.grey.shade200,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.45 : 0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: _isNavigating
                       ? SizedBox(
@@ -818,7 +848,9 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                     if (_isNavigating) ...[
                       FloatingActionButton(
                         heroTag: 'tts_mute_toggle',
-                        backgroundColor: AppColors.surfaceDark,
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF1E1E1E)
+                            : Colors.white,
                         mini: true,
                         child: Icon(
                           _isTtsMuted ? Icons.volume_off : Icons.volume_up,
@@ -837,7 +869,9 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                     ],
                     FloatingActionButton(
                       heroTag: 'recenter_map',
-                      backgroundColor: AppColors.surfaceDark,
+                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF1E1E1E)
+                          : Colors.white,
                       child: const Icon(Icons.my_location, color: AppColors.primaryDark),
                       onPressed: () {
                         if (_currentLocation != null) {
@@ -900,6 +934,13 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
   }
 
   void _showTaskPreview(BuildContext context, CleanupTask task, bool isCompleted) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modalBg = Theme.of(context).scaffoldBackgroundColor;
+    final handleColor = isDark ? Colors.white24 : Colors.grey.shade300;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade200;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -910,11 +951,11 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
         margin: EdgeInsets.zero,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.backgroundDark,
+          color: modalBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
+              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -930,7 +971,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.dividerDark,
+                  color: handleColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -941,7 +982,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                 Expanded(
                   child: Text(
                     task.title,
-                    style: AppTypography.h4.copyWith(color: AppColors.textPrimaryDark, fontWeight: FontWeight.bold),
+                    style: AppTypography.h4.copyWith(color: textColor, fontWeight: FontWeight.bold),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1000,7 +1041,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
             if (task.reports != null && task.reports!.isNotEmpty) ...[
               Text(
                 'Reports in Task (${task.reports!.length})',
-                style: AppTypography.h5.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                style: AppTypography.h5.copyWith(color: textColor, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               ...task.reports!.take(3).map((r) => Padding(
@@ -1008,9 +1049,9 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceDark,
+                        color: cardColor,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.dividerDark),
+                        border: Border.all(color: borderColor),
                       ),
                       child: Row(
                         children: [
@@ -1023,7 +1064,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                           Expanded(
                             child: Text(
                               r.title,
-                              style: AppTypography.body.copyWith(color: Colors.white),
+                              style: AppTypography.body.copyWith(color: textColor),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1095,6 +1136,11 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
   }
 
   void _showReportPreview(BuildContext context, ReportModel report) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modalBg = Theme.of(context).scaffoldBackgroundColor;
+    final handleColor = isDark ? Colors.white24 : Colors.grey.shade300;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1105,11 +1151,11 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
         margin: EdgeInsets.zero,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.backgroundDark,
+          color: modalBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
+              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -1125,7 +1171,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.dividerDark,
+                  color: handleColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1136,7 +1182,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                 Expanded(
                   child: Text(
                     report.title,
-                    style: AppTypography.h4.copyWith(color: AppColors.textPrimaryDark, fontWeight: FontWeight.bold),
+                    style: AppTypography.h4.copyWith(color: textColor, fontWeight: FontWeight.bold),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1216,15 +1262,18 @@ class _MapSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final skeletonBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+
     return Column(
       children: [
         const Expanded(child: FcShimmerCard(height: double.infinity)),
         Container(
           height: 300,
           padding: const EdgeInsets.all(AppColors.spaceLG),
-          decoration: const BoxDecoration(
-            color: AppColors.backgroundDark,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: skeletonBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: const Column(
             children: [

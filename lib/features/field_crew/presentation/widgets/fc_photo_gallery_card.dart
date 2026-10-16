@@ -13,15 +13,27 @@ class FcPhotoGalleryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<String> beforePhotos = reports.map((r) => r.beforePhotoUrl).whereType<String>().toList();
     final List<String> afterPhotos = reports.map((r) => r.afterPhotoUrl).whereType<String>().toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
 
     if (beforePhotos.isEmpty && afterPhotos.isEmpty) {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(AppColors.spaceLG),
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark,
+          color: cardColor,
           borderRadius: BorderRadius.circular(AppColors.radiusCard),
-          border: Border.all(color: AppColors.dividerDark),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+          ],
+          border: Border.all(color: borderColor),
         ),
         child: Center(
           child: Text('No photos uploaded yet.', style: AppTypography.body.copyWith(color: Colors.grey)),
@@ -32,14 +44,22 @@ class FcPhotoGalleryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppColors.spaceLG),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        border: Border.all(color: AppColors.dividerDark),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Task Gallery', style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark)),
+          Text('Task Gallery', style: AppTypography.h5.copyWith(color: textColor)),
           const SizedBox(height: AppColors.spaceMD),
           if (beforePhotos.isNotEmpty) ...[
             Text('Before', style: AppTypography.label.copyWith(color: Colors.grey)),

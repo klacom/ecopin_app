@@ -11,13 +11,27 @@ class FcActivityLog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+    final dividerColor = isDark ? Colors.white10 : Colors.grey.shade200;
+
     if (responses.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(AppColors.spaceLG),
         decoration: BoxDecoration(
-          color: AppColors.surfaceDark,
+          color: cardColor,
           borderRadius: BorderRadius.circular(AppColors.radiusCard),
-          border: Border.all(color: AppColors.dividerDark),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+          ],
+          border: Border.all(color: borderColor),
         ),
         child: Center(
           child: Text('No activity logged yet.', style: AppTypography.body.copyWith(color: Colors.grey)),
@@ -28,23 +42,31 @@ class FcActivityLog extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppColors.spaceLG),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        border: Border.all(color: AppColors.dividerDark),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Activity Log', style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark)),
+          Text('Activity Log', style: AppTypography.h5.copyWith(color: textColor)),
           const SizedBox(height: AppColors.spaceLG),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: responses.length,
-            separatorBuilder: (context, index) => const Divider(color: AppColors.dividerDark, height: 24),
+            separatorBuilder: (context, index) => Divider(color: dividerColor, height: 24),
             itemBuilder: (context, index) {
               final response = responses[index];
-              return _buildLogItem(response);
+              return _buildLogItem(response, textColor);
             },
           ),
         ],
@@ -52,7 +74,7 @@ class FcActivityLog extends StatelessWidget {
     );
   }
 
-  Widget _buildLogItem(AgencyResponse res) {
+  Widget _buildLogItem(AgencyResponse res, Color textColor) {
     IconData icon;
     Color iconColor;
     switch (res.actionType) {
@@ -87,7 +109,7 @@ class FcActivityLog extends StatelessWidget {
                 children: [
                   Text(
                     'User ${res.userId.substring(0, 5)}', // Fallback display for userId
-                    style: AppTypography.label.copyWith(color: AppColors.textPrimaryDark),
+                    style: AppTypography.label.copyWith(color: textColor),
                   ),
                   Text(
                     DateFormat.yMMMd().add_jm().format(res.createdAt),
@@ -104,7 +126,7 @@ class FcActivityLog extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   res.actionDetails!,
-                  style: AppTypography.body.copyWith(color: AppColors.textPrimaryDark),
+                  style: AppTypography.body.copyWith(color: textColor),
                 ),
               ],
             ],

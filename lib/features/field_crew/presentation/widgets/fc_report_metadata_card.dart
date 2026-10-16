@@ -12,12 +12,26 @@ class FcReportMetadataCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+    final dividerColor = isDark ? Colors.white10 : Colors.grey.shade200;
+
     return Container(
       padding: const EdgeInsets.all(AppColors.spaceLG),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        border: Border.all(color: AppColors.dividerDark),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -29,7 +43,7 @@ class FcReportMetadataCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   report.title,
-                  style: AppTypography.h4.copyWith(color: AppColors.textPrimaryDark),
+                  style: AppTypography.h4.copyWith(color: textColor),
                 ),
               ),
               const SizedBox(width: AppColors.spaceSM),
@@ -37,28 +51,28 @@ class FcReportMetadataCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppColors.spaceMD),
-          _buildInfoRow('Description', report.description ?? 'N/A'),
-          const Divider(color: AppColors.dividerDark, height: 24),
+          _buildInfoRow('Description', report.description ?? 'N/A', textColor),
+          Divider(color: dividerColor, height: 24),
           Row(
             children: [
-              Expanded(child: _buildInfoRow('Issue Type', report.issueType ?? 'General')),
-              Expanded(child: _buildInfoRow('Severity', report.severityLevel ?? 'Unrated')),
+              Expanded(child: _buildInfoRow('Issue Type', report.issueType ?? 'General', textColor)),
+              Expanded(child: _buildInfoRow('Severity', report.severityLevel ?? 'Unrated', textColor)),
             ],
           ),
           const SizedBox(height: AppColors.spaceMD),
           Row(
             children: [
-              Expanded(child: _buildInfoRow('Validation', report.validationStatus.replaceAll('_', ' '))),
-              Expanded(child: _buildInfoRow('Reporter', report.userFullName ?? 'Anonymous Citizen')),
+              Expanded(child: _buildInfoRow('Validation', report.validationStatus.replaceAll('_', ' '), textColor)),
+              Expanded(child: _buildInfoRow('Reporter', report.userFullName ?? 'Anonymous Citizen', textColor)),
             ],
           ),
-          const Divider(color: AppColors.dividerDark, height: 24),
-          _buildInfoRow('Coordinates', '${report.location.latitude.toStringAsFixed(5)}, ${report.location.longitude.toStringAsFixed(5)}'),
+          Divider(color: dividerColor, height: 24),
+          _buildInfoRow('Coordinates', '${report.location.latitude.toStringAsFixed(5)}, ${report.location.longitude.toStringAsFixed(5)}', textColor),
           const SizedBox(height: AppColors.spaceMD),
           Row(
             children: [
-              Expanded(child: _buildInfoRow('Submitted', DateFormat.yMMMd().add_jm().format(report.createdAt))),
-              Expanded(child: _buildInfoRow('Updated', DateFormat.yMMMd().add_jm().format(report.updatedAt))),
+              Expanded(child: _buildInfoRow('Submitted', DateFormat.yMMMd().add_jm().format(report.createdAt), textColor)),
+              Expanded(child: _buildInfoRow('Updated', DateFormat.yMMMd().add_jm().format(report.updatedAt), textColor)),
             ],
           ),
         ],
@@ -66,7 +80,7 @@ class FcReportMetadataCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, Color textColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -74,7 +88,7 @@ class FcReportMetadataCard extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: AppTypography.body.copyWith(color: AppColors.textPrimaryDark),
+          style: AppTypography.body.copyWith(color: textColor),
         ),
       ],
     );

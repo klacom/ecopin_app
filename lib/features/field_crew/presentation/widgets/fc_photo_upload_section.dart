@@ -174,9 +174,13 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   }
 
   Future<ImageSource?> _showSourcePicker(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -189,7 +193,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade600,
+                color: Colors.grey.shade400,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -198,7 +202,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
               leading: const Icon(Icons.camera_alt, color: AppColors.primaryDark),
               title: Text('Take a photo',
                   style: AppTypography.body
-                      .copyWith(color: AppColors.textPrimaryDark)),
+                      .copyWith(color: textColor)),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
@@ -206,7 +210,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
                   const Icon(Icons.photo_library, color: AppColors.primaryDark),
               title: Text('Choose from gallery',
                   style: AppTypography.body
-                      .copyWith(color: AppColors.textPrimaryDark)),
+                      .copyWith(color: textColor)),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
             const SizedBox(height: 8),
@@ -219,18 +223,22 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   // ── Delete confirmation ───────────────────────────────────────────────────
 
   void _confirmDelete(BuildContext context, FcPhotoSlot slot, String type) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: cardColor,
         title: Text(
           'Delete Photo?',
-          style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark),
+          style: AppTypography.h5.copyWith(color: textColor),
         ),
         content: Text(
           'Are you sure you want to delete this $type photo? '
           'This action cannot be undone.',
-          style: AppTypography.body.copyWith(color: AppColors.textPrimaryDark),
+          style: AppTypography.body.copyWith(color: textColor),
         ),
         actions: [
           TextButton(
@@ -263,26 +271,40 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+    final dividerColor = isDark ? Colors.white10 : Colors.grey.shade200;
+
     return Container(
       padding: const EdgeInsets.all(AppColors.spaceLG),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        border: Border.all(color: AppColors.dividerDark),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Evidence & Documentation',
-            style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark),
+            style: AppTypography.h5.copyWith(color: textColor),
           ),
           const SizedBox(height: AppColors.spaceLG),
 
           _buildCitizenEvidence(),
 
-          const Divider(
-              color: AppColors.dividerDark, height: AppColors.spaceXL * 2),
+          Divider(
+              color: dividerColor, height: AppColors.spaceXL * 2),
 
           _buildFieldCrewPhotoSection(
             context,
@@ -306,6 +328,10 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   // ── Citizen evidence section ──────────────────────────────────────────────
 
   Widget _buildCitizenEvidence() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final slotFill = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade200;
+
     if (widget.evidencePhotos.isNotEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,7 +365,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
                     decoration: BoxDecoration(
                       borderRadius:
                           BorderRadius.circular(AppColors.radiusCard),
-                      color: AppColors.backgroundDark,
+                      color: slotFill,
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: PrivateMediaImage(
@@ -381,9 +407,9 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: AppColors.spaceMD),
           decoration: BoxDecoration(
-            color: AppColors.backgroundDark,
+            color: slotFill,
             borderRadius: BorderRadius.circular(AppColors.radiusCard),
-            border: Border.all(color: AppColors.dividerDark),
+            border: Border.all(color: borderColor),
           ),
           child: Center(
             child: Text(
@@ -478,7 +504,9 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
               height: 120,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppColors.radiusCard),
-                color: AppColors.backgroundDark,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.surfaceDark
+                    : Colors.grey.shade100,
               ),
               clipBehavior: Clip.antiAlias,
               child: _buildImageWidget(slot),
@@ -587,6 +615,10 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   // ── Add button ────────────────────────────────────────────────────────────
 
   Widget _buildAddButton(BuildContext context, String type) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final slotFill = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade300;
+
     return InkWell(
       onTap: () => _pickImage(context, type),
       borderRadius: BorderRadius.circular(AppColors.radiusCard),
@@ -594,9 +626,9 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
         width: 120,
         height: 120,
         decoration: BoxDecoration(
-          color: AppColors.backgroundDark,
+          color: slotFill,
           borderRadius: BorderRadius.circular(AppColors.radiusCard),
-          border: Border.all(color: AppColors.dividerDark),
+          border: Border.all(color: borderColor),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -615,13 +647,17 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   }
 
   Widget _buildUploadingIndicator() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final slotFill = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade300;
+
     return Container(
       width: 120,
       height: 120,
       decoration: BoxDecoration(
-        color: AppColors.backgroundDark,
+        color: slotFill,
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        border: Border.all(color: AppColors.dividerDark),
+        border: Border.all(color: borderColor),
       ),
       child: const Center(
         child: SizedBox(

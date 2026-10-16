@@ -27,8 +27,8 @@ class _OfficerCreateCustomCleanupTaskScreenState
   final _descriptionController = TextEditingController();
   final Set<String> _selectedReportIds = {};
   List<ReportModel> _reports = [];
-  List<Map<String, dynamic>> _availableCrew = [];
-  final List<String> _selectedCrewIds = [];
+  List<Map<String, dynamic>> _fieldCrews = [];
+  String? _selectedFieldCrewId;
   bool _isLoading = true;
   bool _isSubmitting = false;
   final MapController _mapController = MapController();
@@ -37,22 +37,22 @@ class _OfficerCreateCustomCleanupTaskScreenState
   void initState() {
     super.initState();
     _loadReports();
-    _loadAvailableCrew();
+    _loadFieldCrews();
   }
 
-  Future<void> _loadAvailableCrew() async {
+  Future<void> _loadFieldCrews() async {
     try {
       final apiClient = ref.read(apiClientProvider);
-      final response = await apiClient.getAvailableCrew();
+      final response = await apiClient.getFieldCrews();
       if (response.data is List) {
         if (mounted) {
           setState(() {
-            _availableCrew = List<Map<String, dynamic>>.from(response.data);
+            _fieldCrews = List<Map<String, dynamic>>.from(response.data);
           });
         }
       }
     } catch (e) {
-      debugPrint('Failed to load available crew: $e');
+      debugPrint('Failed to load field crews: $e');
     }
   }
 
@@ -116,10 +116,10 @@ class _OfficerCreateCustomCleanupTaskScreenState
       }
       return;
     }
-    if (_selectedCrewIds.isEmpty) {
+    if (_selectedFieldCrewId == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please assign at least one field crew member')),
+          const SnackBar(content: Text('Please select a field crew to assign')),
         );
       }
       return;
@@ -128,11 +128,26 @@ class _OfficerCreateCustomCleanupTaskScreenState
     setState(() => _isSubmitting = true);
     try {
       final apiClient = ref.read(apiClientProvider);
+      final selectedCrew = _fieldCrews.firstWhere(
+        (c) => c['id']?.toString() == _selectedFieldCrewId,
+        orElse: () => {},
+      );
+      final rawMemberIds = [
+        if (selectedCrew['member_profile_ids'] is List)
+          ...(selectedCrew['member_profile_ids'] as List).map((e) => e.toString()),
+        if (selectedCrew['team_lead_profile_id'] != null)
+          selectedCrew['team_lead_profile_id'].toString(),
+      ];
+      final memberIds = rawMemberIds.toSet().toList();
+
       await apiClient.createCustomCleanupTask(
         reportIds: _selectedReportIds.toList(),
         title: _titleController.text,
-        description: _descriptionController.text,
-        assignedCrewIds: _selectedCrewIds,
+        description: _descriptionController.text.isNotEmpty
+            ? _descriptionController.text
+            : null,
+        fieldCrewId: _selectedFieldCrewId,
+        assignedCrewIds: memberIds.isNotEmpty ? memberIds : null,
       );
       if (!mounted) return;
       // Refresh tasks list before navigating back
@@ -295,34 +310,58 @@ class _OfficerCreateCustomCleanupTaskScreenState
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              if (_availableCrew.isEmpty)
-                const Text('No field crew members available', style: TextStyle(color: Colors.grey))
+              if (_fieldCrews.isEmpty)
+                const Text('No field crews available', style: TextStyle(color: Colors.grey))
               else
                 Container(
-                  constraints: const BoxConstraints(maxHeight: 200),
+                  constraints: const BoxConstraints(maxHeight: 260),
                   decoration: BoxDecoration(
                     border: Border.all(color: Theme.of(context).dividerColor),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: ListView.builder(
+                  child: ListView.separated(
                     shrinkWrap: true,
-                    itemCount: _availableCrew.length,
+                    itemCount: _fieldCrews.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
-                      final crew = _availableCrew[index];
-                      final isSelected = _selectedCrewIds.contains(crew['id']);
-                      return CheckboxListTile(
-                        value: isSelected,
-                        title: Text(crew['full_name'] ?? 'Unknown'),
-                        secondary: crew['avatar_url'] != null
-                            ? CircleAvatar(backgroundImage: NetworkImage(crew['avatar_url']))
-                            : CircleAvatar(child: Text((crew['full_name'] ?? 'U')[0].toUpperCase())),
-                        onChanged: (bool? checked) {
+                      final crew = _fieldCrews[index];
+                      final crewId = crew['id']?.toString() ?? '';
+                      final crewName = crew['name']?.toString() ?? 'Unnamed Crew';
+                      final members = crew['members'] as List? ?? [];
+                      final memberCount = (crew['member_profile_ids'] as List?)?.length ?? members.length;
+                      final isSelected = _selectedFieldCrewId == crewId;
+
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                          foregroundColor: isSelected ? Colors.white : null,
+                          child: const Icon(Icons.groups, size: 20),
+                        ),
+                        title: Text(
+                          crewName,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '$memberCount member${memberCount == 1 ? '' : 's'}${crew['shift_start'] != null ? ' · Shift: ${crew['shift_start']}' : ''}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: Radio<String>(
+                          value: crewId,
+                          groupValue: _selectedFieldCrewId,
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedFieldCrewId = val;
+                            });
+                          },
+                        ),
+                        selected: isSelected,
+                        onTap: () {
                           setState(() {
-                            if (checked == true) {
-                              _selectedCrewIds.add(crew['id']);
-                            } else {
-                              _selectedCrewIds.remove(crew['id']);
-                            }
+                            _selectedFieldCrewId = crewId;
                           });
                         },
                       );
@@ -355,7 +394,12 @@ class _OfficerCreateCustomCleanupTaskScreenState
                       children: [
                         const Text('Crew Assigned'),
                         Text(
-                          '${_selectedCrewIds.length}',
+                          _selectedFieldCrewId != null
+                              ? (_fieldCrews.firstWhere(
+                                  (c) => c['id']?.toString() == _selectedFieldCrewId,
+                                  orElse: () => {'name': '1 crew'},
+                                )['name'] ?? '1 crew')
+                              : 'None',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],

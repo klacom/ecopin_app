@@ -31,18 +31,22 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
     final state = ref.watch(fcTaskDetailNotifierProvider(taskId));
     final notifier = ref.read(fcTaskDetailNotifierProvider(taskId).notifier);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimaryDark),
+          icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Task Details',
-          style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark),
+          style: AppTypography.h5.copyWith(color: textColor, fontWeight: FontWeight.bold),
         ),
         actions: [if (state.task != null) _PendingSyncBadge(taskId: taskId)],
       ),
@@ -118,10 +122,15 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
       }
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return RefreshIndicator(
       onRefresh: notifier.refresh,
       color: AppColors.primaryDark,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: cardColor,
       child: CustomScrollView(
         slivers: [
           SliverPadding(
@@ -144,9 +153,17 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(AppColors.spaceLG),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceDark,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(AppColors.radiusCard),
-                      border: Border.all(color: AppColors.dividerDark),
+                      boxShadow: [
+                        if (!isDark)
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                      ],
+                      border: Border.all(color: borderColor),
                     ),
                     child: FcProgressBar(
                       current: resolvedCount,
@@ -207,7 +224,7 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                         ? 'Optimized Route Waypoints'
                         : 'Reports in this Task',
                     style: AppTypography.h4.copyWith(
-                      color: AppColors.textPrimaryDark,
+                      color: textColor,
                     ),
                   ),
                   const SizedBox(height: AppColors.spaceMD),

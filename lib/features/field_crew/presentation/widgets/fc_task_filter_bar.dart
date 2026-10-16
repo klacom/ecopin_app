@@ -24,6 +24,11 @@ class FcTaskFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -32,13 +37,13 @@ class FcTaskFilterBar extends StatelessWidget {
             Expanded(
               child: TextField(
                 onChanged: onSearchChanged,
-                style: AppTypography.body.copyWith(color: AppColors.textPrimaryDark),
+                style: AppTypography.body.copyWith(color: textColor),
                 decoration: InputDecoration(
                   hintText: 'Search tasks...',
                   hintStyle: AppTypography.body.copyWith(color: Colors.grey),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   filled: true,
-                  fillColor: AppColors.surfaceDark,
+                  fillColor: fillColor,
                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppColors.radiusInput),
@@ -52,9 +57,9 @@ class FcTaskFilterBar extends StatelessWidget {
               onPressed: () {
                 _showFilterBottomSheet(context);
               },
-              icon: const Icon(Icons.filter_list, color: AppColors.primaryDark),
+              icon: Icon(Icons.filter_list, color: officerColor),
               style: IconButton.styleFrom(
-                backgroundColor: AppColors.surfaceDark,
+                backgroundColor: fillColor,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusInput)),
                 padding: const EdgeInsets.all(12),
               ),
@@ -70,8 +75,8 @@ class FcTaskFilterBar extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: ActionChip(
-                    label: const Text('Reset', style: TextStyle(color: AppColors.backgroundDark)),
-                    backgroundColor: AppColors.primaryDark,
+                    label: const Text('Reset', style: TextStyle(color: Colors.white)),
+                    backgroundColor: officerColor,
                     onPressed: onReset,
                   ),
                 ),
@@ -79,22 +84,22 @@ class FcTaskFilterBar extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Chip(
-                    label: Text(statusFilter, style: const TextStyle(color: AppColors.textPrimaryDark)),
-                    backgroundColor: AppColors.surfaceDark,
-                    side: const BorderSide(color: AppColors.primaryDark),
+                    label: Text(statusFilter, style: TextStyle(color: textColor)),
+                    backgroundColor: fillColor,
+                    side: BorderSide(color: officerColor),
                     onDeleted: () => onStatusChanged('All'),
-                    deleteIconColor: AppColors.primaryDark,
+                    deleteIconColor: officerColor,
                   ),
                 ),
               if (assignedToMeOnly)
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Chip(
-                    label: const Text('Assigned to Me', style: TextStyle(color: AppColors.textPrimaryDark)),
-                    backgroundColor: AppColors.surfaceDark,
-                    side: const BorderSide(color: AppColors.primaryDark),
+                    label: Text('Assigned to Me', style: TextStyle(color: textColor)),
+                    backgroundColor: fillColor,
+                    side: BorderSide(color: officerColor),
                     onDeleted: () => onAssignmentChanged(false),
-                    deleteIconColor: AppColors.primaryDark,
+                    deleteIconColor: officerColor,
                   ),
                 ),
             ],
@@ -107,12 +112,16 @@ class FcTaskFilterBar extends StatelessWidget {
   void _showFilterBottomSheet(BuildContext context) {
     String tempStatus = statusFilter;
     bool tempAssigned = assignedToMeOnly;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
 
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
       useSafeArea: true,
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusDialog)),
       ),
@@ -125,7 +134,7 @@ class FcTaskFilterBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Filters', style: AppTypography.h4.copyWith(color: AppColors.textPrimaryDark)),
+                  Text('Filters', style: AppTypography.h4.copyWith(color: textColor)),
                   const SizedBox(height: AppColors.spaceLG),
                   Text('Status', style: AppTypography.label.copyWith(color: Colors.grey)),
                   const SizedBox(height: AppColors.spaceSM),
@@ -134,10 +143,13 @@ class FcTaskFilterBar extends StatelessWidget {
                     children: ['All', 'Pending', 'In Progress', 'Completed'].map((status) {
                       final isSelected = tempStatus == status;
                       return ChoiceChip(
-                        label: Text(status, style: TextStyle(color: isSelected ? AppColors.backgroundDark : AppColors.textPrimaryDark)),
+                        label: Text(
+                          status,
+                          style: TextStyle(color: isSelected ? Colors.white : textColor),
+                        ),
                         selected: isSelected,
-                        selectedColor: AppColors.primaryDark,
-                        backgroundColor: AppColors.surfaceDark,
+                        selectedColor: officerColor,
+                        backgroundColor: fillColor,
                         onSelected: (val) {
                           if (val) {
                             setModalState(() {
@@ -152,10 +164,10 @@ class FcTaskFilterBar extends StatelessWidget {
                   Text('Assignment', style: AppTypography.label.copyWith(color: Colors.grey)),
                   const SizedBox(height: AppColors.spaceSM),
                   SwitchListTile(
-                    title: Text('Assigned to Me Only', style: AppTypography.body.copyWith(color: AppColors.textPrimaryDark)),
+                    title: Text('Assigned to Me Only', style: AppTypography.body.copyWith(color: textColor)),
                     value: tempAssigned,
-                    activeTrackColor: AppColors.primaryDark.withValues(alpha: 0.5),
-                    activeThumbColor: AppColors.primaryDark,
+                    activeTrackColor: officerColor.withValues(alpha: 0.5),
+                    activeThumbColor: officerColor,
                     contentPadding: EdgeInsets.zero,
                     onChanged: (val) {
                       setModalState(() {
@@ -173,12 +185,12 @@ class FcTaskFilterBar extends StatelessWidget {
                         Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryDark,
-                        foregroundColor: AppColors.backgroundDark,
+                        backgroundColor: officerColor,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
                       ),
-                      child: Text('Apply Filters', style: AppTypography.button.copyWith(color: AppColors.backgroundDark)),
+                      child: Text('Apply Filters', style: AppTypography.button.copyWith(color: Colors.white)),
                     ),
                   )
                 ],

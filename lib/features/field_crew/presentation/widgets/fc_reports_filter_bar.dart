@@ -30,6 +30,11 @@ class FcReportsFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -38,13 +43,13 @@ class FcReportsFilterBar extends StatelessWidget {
             Expanded(
               child: TextField(
                 onChanged: onSearchChanged,
-                style: AppTypography.body.copyWith(color: AppColors.textPrimaryDark),
+                style: AppTypography.body.copyWith(color: textColor),
                 decoration: InputDecoration(
                   hintText: 'Search reports...',
                   hintStyle: AppTypography.body.copyWith(color: Colors.grey),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   filled: true,
-                  fillColor: AppColors.surfaceDark,
+                  fillColor: fillColor,
                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppColors.radiusInput),
@@ -58,9 +63,9 @@ class FcReportsFilterBar extends StatelessWidget {
               onPressed: () {
                 _showFilterBottomSheet(context);
               },
-              icon: const Icon(Icons.filter_list, color: AppColors.primaryDark),
+              icon: Icon(Icons.filter_list, color: officerColor),
               style: IconButton.styleFrom(
-                backgroundColor: AppColors.surfaceDark,
+                backgroundColor: fillColor,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusInput)),
                 padding: const EdgeInsets.all(12),
               ),
@@ -76,8 +81,8 @@ class FcReportsFilterBar extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: ActionChip(
-                    label: const Text('Reset', style: TextStyle(color: AppColors.backgroundDark)),
-                    backgroundColor: AppColors.primaryDark,
+                    label: const Text('Reset', style: TextStyle(color: Colors.white)),
+                    backgroundColor: officerColor,
                     onPressed: onReset,
                   ),
                 ),
@@ -85,33 +90,33 @@ class FcReportsFilterBar extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Chip(
-                    label: Text(_formatDisplay(selectedStatus), style: const TextStyle(color: AppColors.textPrimaryDark)),
-                    backgroundColor: AppColors.surfaceDark,
-                    side: const BorderSide(color: AppColors.primaryDark),
+                    label: Text(_formatDisplay(selectedStatus), style: TextStyle(color: textColor)),
+                    backgroundColor: fillColor,
+                    side: BorderSide(color: officerColor),
                     onDeleted: () => onStatusChanged('All Status'),
-                    deleteIconColor: AppColors.primaryDark,
+                    deleteIconColor: officerColor,
                   ),
                 ),
               if (selectedType != 'All Types')
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Chip(
-                    label: Text(selectedType, style: const TextStyle(color: AppColors.textPrimaryDark)),
-                    backgroundColor: AppColors.surfaceDark,
-                    side: const BorderSide(color: AppColors.primaryDark),
+                    label: Text(selectedType, style: TextStyle(color: textColor)),
+                    backgroundColor: fillColor,
+                    side: BorderSide(color: officerColor),
                     onDeleted: () => onTypeChanged('All Types'),
-                    deleteIconColor: AppColors.primaryDark,
+                    deleteIconColor: officerColor,
                   ),
                 ),
               if (selectedValidation != 'All Validation')
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Chip(
-                    label: Text(_formatDisplay(selectedValidation), style: const TextStyle(color: AppColors.textPrimaryDark)),
-                    backgroundColor: AppColors.surfaceDark,
-                    side: const BorderSide(color: AppColors.primaryDark),
+                    label: Text(_formatDisplay(selectedValidation), style: TextStyle(color: textColor)),
+                    backgroundColor: fillColor,
+                    side: BorderSide(color: officerColor),
                     onDeleted: () => onValidationChanged('All Validation'),
-                    deleteIconColor: AppColors.primaryDark,
+                    deleteIconColor: officerColor,
                   ),
                 ),
             ],
@@ -125,6 +130,10 @@ class FcReportsFilterBar extends StatelessWidget {
     String tempStatus = selectedStatus;
     String tempType = selectedType;
     String tempValidation = selectedValidation;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final officerColor = AppColors.primaryDark;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
 
     final statusOptions = [
       'All Status', 'unresolved', 'in_progress', 'resolved', 'closed', 'pending_owner_consent', 'waiting_for_feedback'
@@ -138,7 +147,7 @@ class FcReportsFilterBar extends StatelessWidget {
       context: context,
       useRootNavigator: true,
       useSafeArea: true,
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusDialog)),
@@ -158,7 +167,7 @@ class FcReportsFilterBar extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Filters', style: AppTypography.h4.copyWith(color: AppColors.textPrimaryDark)),
+                      Text('Filters', style: AppTypography.h4.copyWith(color: textColor)),
                       const SizedBox(height: AppColors.spaceLG),
                       Expanded(
                         child: ListView(
@@ -172,10 +181,13 @@ class FcReportsFilterBar extends StatelessWidget {
                               children: statusOptions.map((status) {
                                 final isSelected = tempStatus == status;
                                 return ChoiceChip(
-                                  label: Text(_formatDisplay(status), style: TextStyle(color: isSelected ? AppColors.backgroundDark : AppColors.textPrimaryDark)),
+                                  label: Text(
+                                    _formatDisplay(status),
+                                    style: TextStyle(color: isSelected ? Colors.white : textColor),
+                                  ),
                                   selected: isSelected,
-                                  selectedColor: AppColors.primaryDark,
-                                  backgroundColor: AppColors.surfaceDark,
+                                  selectedColor: officerColor,
+                                  backgroundColor: fillColor,
                                   onSelected: (val) {
                                     if (val) setModalState(() => tempStatus = status);
                                   },
@@ -191,10 +203,13 @@ class FcReportsFilterBar extends StatelessWidget {
                               children: ['All Types', ...availableTypes].map((type) {
                                 final isSelected = tempType == type;
                                 return ChoiceChip(
-                                  label: Text(type, style: TextStyle(color: isSelected ? AppColors.backgroundDark : AppColors.textPrimaryDark)),
+                                  label: Text(
+                                    type,
+                                    style: TextStyle(color: isSelected ? Colors.white : textColor),
+                                  ),
                                   selected: isSelected,
-                                  selectedColor: AppColors.primaryDark,
-                                  backgroundColor: AppColors.surfaceDark,
+                                  selectedColor: officerColor,
+                                  backgroundColor: fillColor,
                                   onSelected: (val) {
                                     if (val) setModalState(() => tempType = type);
                                   },
@@ -210,10 +225,13 @@ class FcReportsFilterBar extends StatelessWidget {
                               children: validationOptions.map((valOpt) {
                                 final isSelected = tempValidation == valOpt;
                                 return ChoiceChip(
-                                  label: Text(_formatDisplay(valOpt), style: TextStyle(color: isSelected ? AppColors.backgroundDark : AppColors.textPrimaryDark)),
+                                  label: Text(
+                                    _formatDisplay(valOpt),
+                                    style: TextStyle(color: isSelected ? Colors.white : textColor),
+                                  ),
                                   selected: isSelected,
-                                  selectedColor: AppColors.primaryDark,
-                                  backgroundColor: AppColors.surfaceDark,
+                                  selectedColor: officerColor,
+                                  backgroundColor: fillColor,
                                   onSelected: (val) {
                                     if (val) setModalState(() => tempValidation = valOpt);
                                   },
@@ -234,12 +252,12 @@ class FcReportsFilterBar extends StatelessWidget {
                             Navigator.pop(ctx);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryDark,
-                            foregroundColor: AppColors.backgroundDark,
+                            backgroundColor: officerColor,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
                           ),
-                          child: Text('Apply Filters', style: AppTypography.button.copyWith(color: AppColors.backgroundDark)),
+                          child: Text('Apply Filters', style: AppTypography.button.copyWith(color: Colors.white)),
                         ),
                       )
                     ],

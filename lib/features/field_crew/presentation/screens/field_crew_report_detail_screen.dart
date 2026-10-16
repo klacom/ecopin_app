@@ -32,18 +32,23 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
     final taskAsync =
         taskId != null ? ref.watch(cleanupTaskDetailProvider(taskId!)) : null;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimaryDark),
+          icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => context.pop(),
         ),
-        title: Text('Report Details',
-            style:
-                AppTypography.h5.copyWith(color: AppColors.textPrimaryDark)),
+        title: Text(
+          'Report Details',
+          style: AppTypography.h5.copyWith(color: textColor, fontWeight: FontWeight.bold),
+        ),
         actions: [
           if (detailState.report != null)
             _PendingSyncBadge(reportId: reportId),
@@ -133,10 +138,13 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
     final notifier =
         ref.read(fcReportDetailNotifierProvider(reportId).notifier);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+
     return RefreshIndicator(
       onRefresh: () async => notifier.refresh(),
       color: AppColors.primaryDark,
-      backgroundColor: AppColors.surfaceDark,
+      backgroundColor: cardColor,
       child: CustomScrollView(
         slivers: [
           SliverPadding(

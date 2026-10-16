@@ -417,16 +417,20 @@ class ApiClient {
     required List<String> reportIds,
     required String title,
     String? description,
+    String? fieldCrewId,
     List<String>? assignedCrewIds,
   }) async {
+    final payload = <String, dynamic>{
+      'report_ids': reportIds,
+      'title': title,
+    };
+    if (description != null) payload['description'] = description;
+    if (fieldCrewId != null) payload['field_crew_id'] = fieldCrewId;
+    if (assignedCrewIds != null) payload['assigned_crew_ids'] = assignedCrewIds;
+
     return _dio.post(
       ApiConstants.createCustomCleanupTask,
-      data: {
-        'report_ids': reportIds,
-        'title': title,
-        'description': description,
-        'assigned_crew_ids': ?assignedCrewIds,
-      },
+      data: payload,
     );
   }
 

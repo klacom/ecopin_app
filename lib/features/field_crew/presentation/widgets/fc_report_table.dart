@@ -32,6 +32,11 @@ class FcReportTable extends StatelessWidget {
       );
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
         final report = reports[index];
@@ -39,9 +44,17 @@ class FcReportTable extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: AppColors.spaceMD),
           padding: const EdgeInsets.all(AppColors.spaceLG),
           decoration: BoxDecoration(
-            color: AppColors.surfaceDark,
+            color: cardColor,
             borderRadius: BorderRadius.circular(AppColors.radiusCard),
-            border: Border.all(color: AppColors.dividerDark),
+            boxShadow: [
+              if (!isDark)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+            ],
+            border: Border.all(color: borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,7 +66,7 @@ class FcReportTable extends StatelessWidget {
                     child: Text(
                       report.title,
                       style: AppTypography.h6.copyWith(
-                        color: AppColors.textPrimaryDark,
+                        color: textColor,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -102,7 +115,7 @@ class FcReportTable extends StatelessWidget {
               Text(
                 report.description ?? 'No description provided.',
                 style: AppTypography.body.copyWith(
-                  color: AppColors.textPrimaryDark,
+                  color: textColor,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

@@ -57,6 +57,9 @@ class FcReportActionButtons extends StatelessWidget {
       enabled = false;
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final disabledBg = isDark ? AppColors.surfaceDark : Colors.grey.shade200;
+
     return Column(
       children: [
         SizedBox(
@@ -65,8 +68,8 @@ class FcReportActionButtons extends StatelessWidget {
             onPressed: enabled && nextStatus != null ? () => onStatusChange(nextStatus!) : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryDark,
-              foregroundColor: AppColors.backgroundDark,
-              disabledBackgroundColor: AppColors.surfaceDark,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: disabledBg,
               disabledForegroundColor: Colors.grey,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),

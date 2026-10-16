@@ -26,6 +26,9 @@ class FcMarkCompleteButton extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surfaceDark : Colors.grey.shade200;
+
     if (task.status == 'completed') {
       return SizedBox(
         width: double.infinity,
@@ -34,10 +37,10 @@ class FcMarkCompleteButton extends StatelessWidget {
           icon: const Icon(Icons.check_circle, color: AppColors.success),
           label: Text('Task Completed', style: AppTypography.button.copyWith(color: AppColors.success)),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.surfaceDark,
+            backgroundColor: surfaceColor,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
-            disabledBackgroundColor: AppColors.surfaceDark,
+            disabledBackgroundColor: surfaceColor,
           ),
         ),
       );
@@ -73,8 +76,8 @@ class FcMarkCompleteButton extends StatelessWidget {
         onPressed: canComplete ? onComplete : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryDark,
-          foregroundColor: AppColors.backgroundDark,
-          disabledBackgroundColor: AppColors.surfaceDark,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: surfaceColor,
           disabledForegroundColor: Colors.grey,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),

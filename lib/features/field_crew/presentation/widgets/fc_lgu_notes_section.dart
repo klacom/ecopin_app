@@ -38,36 +38,51 @@ class _FcLguNotesSectionState extends State<FcLguNotesSection> {
   Widget build(BuildContext context) {
     if (!widget.isAssigned) return const SizedBox.shrink();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
+    final inputBorderColor = isDark ? Colors.white10 : Colors.grey.shade300;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+    final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
+
     return Container(
       padding: const EdgeInsets.all(AppColors.spaceLG),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        border: Border.all(color: AppColors.dividerDark),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+        ],
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Add Operational Note', style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark)),
+          Text('Add Operational Note', style: AppTypography.h5.copyWith(color: textColor)),
           const SizedBox(height: AppColors.spaceSM),
           Text('This note will be visible to officers and other crew members.', style: AppTypography.caption.copyWith(color: Colors.grey)),
           const SizedBox(height: AppColors.spaceLG),
           TextField(
             controller: _controller,
             maxLines: 3,
-            style: AppTypography.body.copyWith(color: AppColors.textPrimaryDark),
+            style: AppTypography.body.copyWith(color: textColor),
             decoration: InputDecoration(
               hintText: 'Enter your notes here...',
               hintStyle: AppTypography.body.copyWith(color: Colors.grey),
               filled: true,
-              fillColor: AppColors.backgroundDark,
+              fillColor: fillColor,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppColors.radiusInput),
-                borderSide: const BorderSide(color: AppColors.dividerDark),
+                borderSide: BorderSide(color: inputBorderColor),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppColors.radiusInput),
-                borderSide: const BorderSide(color: AppColors.dividerDark),
+                borderSide: BorderSide(color: inputBorderColor),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppColors.radiusInput),
@@ -82,13 +97,13 @@ class _FcLguNotesSectionState extends State<FcLguNotesSection> {
               onPressed: _isSubmitting ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryDark,
-                foregroundColor: AppColors.backgroundDark,
-                disabledBackgroundColor: AppColors.surfaceDark,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: fillColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
               ),
               child: _isSubmitting
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.backgroundDark))
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('Add Note', style: AppTypography.button),
             ),
           ),

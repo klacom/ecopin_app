@@ -17,6 +17,9 @@ class FcProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double progress = total == 0 ? 0 : current / total;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
+    final trackColor = isDark ? AppColors.surfaceDark : Colors.grey.shade200;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -24,7 +27,7 @@ class FcProgressBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: AppTypography.caption.copyWith(color: AppColors.textPrimaryDark)),
+            Text(label, style: AppTypography.caption.copyWith(color: textColor)),
             Text('$current/$total', style: AppTypography.caption.copyWith(color: AppColors.primaryDark)),
           ],
         ),
@@ -34,7 +37,7 @@ class FcProgressBar extends StatelessWidget {
             Container(
               height: 8,
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark,
+                color: trackColor,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),

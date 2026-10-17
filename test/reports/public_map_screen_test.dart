@@ -362,11 +362,10 @@ void main() {
           await mount(tester, dark: dark, scale: 2);
           reports.requests.first.$2.complete(page(1));
           await tester.pumpAndSettle();
-          final credit = find.text('© OpenStreetMap contributors');
-          expect(tester.getRect(credit).top, greaterThanOrEqualTo(0));
-          expect(tester.getRect(credit).bottom, lessThanOrEqualTo(size.height));
           final info = tester.getRect(find.byTooltip('Map legend and credits'));
-          expect(tester.getRect(credit).overlaps(info), isFalse);
+          expect(info.top, greaterThanOrEqualTo(0));
+          expect(info.bottom, lessThanOrEqualTo(size.height));
+          expect(find.text('© OpenStreetMap contributors'), findsNothing);
           expect(tester.takeException(), isNull);
           final output = Platform.environment['ECOPIN_SCREENSHOT_DIR'];
           if (output != null) {

@@ -22,7 +22,6 @@ import 'package:ecopin_app/shared/maps/presentation/widgets/search_overlay.dart'
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_preview.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_controls.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_info.dart';
-import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_credits.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/map_privacy_consent_dialog.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -366,11 +365,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         }
                       },
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 64),
-                    child: ReportMapCredits(openSource: _openSource),
                   ),
                 ],
               ),

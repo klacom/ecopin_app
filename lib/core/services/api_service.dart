@@ -52,11 +52,13 @@ class ApiClient {
           // Pending password changes use their own in-memory login token. They
           // must not borrow or refresh a different persisted account session.
           if (options.extra['pendingPasswordChange'] != true) {
-            final session = Supabase.instance.client.auth.currentSession;
-            final token = session?.accessToken;
-            if (token != null) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
+            try {
+              final session = Supabase.instance.client.auth.currentSession;
+              final token = session?.accessToken;
+              if (token != null) {
+                options.headers['Authorization'] = 'Bearer $token';
+              }
+            } catch (_) {}
           }
           return handler.next(options);
         },

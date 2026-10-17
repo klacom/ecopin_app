@@ -61,3 +61,8 @@ PLAN.md
 .agent/
 # Generated local patch dump
 /diff.txt
+
+# Gradle caches
+.gradle/
+**/.gradle/
+

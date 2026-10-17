@@ -32,7 +32,22 @@ class NotificationBadgeAction extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final unread = ref.watch(unreadNotificationsCountProvider);
     final unreadCount = unread.value ?? 0;
-    final destinationRole = role ?? ref.watch(authNotifierProvider).state.role;
+    
+    // Determine destination role:
+    // 1. Explicit role passed in widget constructor
+    // 2. Auth state role
+    // 3. Fallback based on current route location (e.g. /officer/* -> officer)
+    UserRole? resolvedRole = role ?? ref.watch(authNotifierProvider).state.role;
+    if (resolvedRole == null || resolvedRole == UserRole.citizen) {
+      final location = GoRouterState.of(context).matchedLocation;
+      if (location.startsWith('/officer')) {
+        resolvedRole = UserRole.officer;
+      } else if (location.startsWith('/admin')) {
+        resolvedRole = UserRole.admin;
+      } else if (location.startsWith('/field-crew')) {
+        resolvedRole = UserRole.fieldCrew;
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.only(right: 16.0),
@@ -44,7 +59,7 @@ class NotificationBadgeAction extends ConsumerWidget {
             : 'Notifications, $unreadCount unread',
         constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         onPressed: () {
-          context.push(_notificationsRouteForRole(destinationRole));
+          context.push(_notificationsRouteForRole(resolvedRole));
         },
         icon: Badge(
           isLabelVisible: unreadCount > 0,

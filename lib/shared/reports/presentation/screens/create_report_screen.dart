@@ -73,8 +73,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final List<File> _capturedVideos = [];
   final Map<String, Duration> _videoDurations = {};
   bool _onPrivateProperty = false;
-  String _selectedScale = 'medium';
-  String _selectedObstruction = 'none';
+  static const String _defaultScale = 'medium';
+  static const String _defaultObstruction = 'none';
   PhotoVerificationResult? _photoVerificationResult;
 
   static const List<String> _validImageExtensions = [
@@ -410,8 +410,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             : null,
         videoPath: mainVideo?.path,
         onPrivateProperty: _onPrivateProperty,
-        scaleLevel: _selectedScale,
-        obstructionLevel: _selectedObstruction,
+        scaleLevel: _defaultScale,
+        obstructionLevel: _defaultObstruction,
         photoLat: _photoVerificationResult?.latitude,
         photoLng: _photoVerificationResult?.longitude,
         photoAccuracy: _photoVerificationResult?.accuracy,
@@ -756,70 +756,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             contentPadding: EdgeInsets.zero,
             onChanged: (value) => setState(() => _onPrivateProperty = value),
           ),
-          const SizedBox(height: 24),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedScale,
-            isExpanded: true,
-            itemHeight: null,
-            menuMaxHeight: 360,
-            selectedItemBuilder: (_) => const [
-              Text('Small'),
-              Text('Medium'),
-              Text('Large'),
-            ],
-            decoration: const InputDecoration(
-              labelText: 'Estimated Scale',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: 'small',
-                child: Text('Small (e.g., localized litter, minor puddle)'),
-              ),
-              DropdownMenuItem(
-                value: 'medium',
-                child: Text('Medium (e.g., standard pile of waste)'),
-              ),
-              DropdownMenuItem(
-                value: 'large',
-                child: Text('Large (e.g., illegal dumpsite, extensive)'),
-              ),
-            ],
-            onChanged: (val) =>
-                setState(() => _selectedScale = val ?? 'medium'),
-          ),
-          const SizedBox(height: 24),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedObstruction,
-            isExpanded: true,
-            itemHeight: null,
-            menuMaxHeight: 360,
-            selectedItemBuilder: (_) => const [
-              Text('None'),
-              Text('Partial'),
-              Text('Complete'),
-            ],
-            decoration: const InputDecoration(
-              labelText: 'Obstruction Level',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: 'none',
-                child: Text('None (No interference with public ways)'),
-              ),
-              DropdownMenuItem(
-                value: 'partial',
-                child: Text('Partial (Partially blocking sidewalk/road)'),
-              ),
-              DropdownMenuItem(
-                value: 'complete',
-                child: Text('Complete (Fully blocking access)'),
-              ),
-            ],
-            onChanged: (val) =>
-                setState(() => _selectedObstruction = val ?? 'none'),
-          ),
           const SizedBox(height: 48),
           AppButton(
             text: 'Next: Attach Media',
@@ -1146,7 +1082,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       : 'Not marked as private property',
                 ),
                 Text(
-                  'Scale: $_selectedScale · Obstruction: $_selectedObstruction',
+                  'Scale & Obstruction: Automated via AI verification',
                 ),
                 const SizedBox(height: 16),
 

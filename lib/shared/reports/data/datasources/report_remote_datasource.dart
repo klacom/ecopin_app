@@ -18,15 +18,16 @@ class ReportDataSource {
 
   Future<List<ReportModel>> getMyReports() async {
     final response = await _apiClient.getMyReports();
-    final List data = response.data;
-    return data.map((json) => ReportModel.fromJson(json)).toList();
+    final dynamic rawData = response.data;
+    final List data = rawData is List ? rawData : [];
+    return data.map((json) => ReportModel.fromJson(json as Map<String, dynamic>)).toList();
   }
 
   Future<List<ReportModel>> getPublicReports() async {
     final response = await _apiClient.getPublicReports();
-    final List data = response.data;
-    // log.info('data: $data');
-    return data.map((json) => ReportModel.fromJson(json)).toList();
+    final dynamic rawData = response.data;
+    final List data = rawData is List ? rawData : [];
+    return data.map((json) => ReportModel.fromJson(json as Map<String, dynamic>)).toList();
   }
 
   Future<ReportModel> getReportById(String id) async {

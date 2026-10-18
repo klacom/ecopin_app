@@ -66,7 +66,7 @@ class CameraService {
       'path': image.path,
       'name': image.name,
       'location': locationData,
-      'capturedAt': DateTime.now().toIso8601String(),
+      'capturedAt': DateTime.now().toUtc().toIso8601String(),
     };
   }
 }

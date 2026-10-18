@@ -111,7 +111,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
   Widget build(BuildContext context) {
     final dateStr = DateFormat(
       'MMMM dd, yyyy - hh:mm a',
-    ).format(widget.report.createdAt);
+    ).format(widget.report.createdAt.toLocal());
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -223,7 +223,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                   if (widget.report.rejectedAt != null) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Rejected on: ${DateFormat('MMMM dd, yyyy - hh:mm a').format(widget.report.rejectedAt!)}',
+                      'Rejected on: ${DateFormat('MMMM dd, yyyy - hh:mm a').format(widget.report.rejectedAt!.toLocal())}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.red.shade600,
@@ -367,8 +367,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 children: [
                   TileLayer(
                     tileProvider: widget.tileProvider,
-                    urlTemplate:
-                        'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
+                    urlTemplate: Theme.of(context).brightness == Brightness.dark
+                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
+                        : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                    subdomains: const ['a', 'b', 'c'],
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
                   MarkerLayer(

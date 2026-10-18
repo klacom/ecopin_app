@@ -138,10 +138,10 @@ class ReportModel {
       status: json['status']?.toString() ?? 'unresolved',
       clusterId: json['cluster_id']?.toString(),
       createdAt:
-          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.tryParse(json['created_at']?.toString() ?? '')?.toLocal() ??
           DateTime.now(),
       updatedAt:
-          DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+          DateTime.tryParse(json['updated_at']?.toString() ?? '')?.toLocal() ??
           DateTime.now(),
       userFullName: json['profiles']?['full_name']?.toString(),
       onPrivateProperty: json['on_private_property'] ?? false,
@@ -149,18 +149,18 @@ class ReportModel {
           json['property_owner_consent_status']?.toString() ?? 'not_required',
       satisfactionRating: json['satisfaction_rating'] as int?,
       lguResolvedAt: json['lgu_resolved_at'] != null
-          ? DateTime.tryParse(json['lgu_resolved_at']?.toString() ?? '')
+          ? DateTime.tryParse(json['lgu_resolved_at']?.toString() ?? '')?.toLocal()
           : null,
       citizenClosedAt: json['citizen_closed_at'] != null
-          ? DateTime.tryParse(json['citizen_closed_at']?.toString() ?? '')
+          ? DateTime.tryParse(json['citizen_closed_at']?.toString() ?? '')?.toLocal()
           : null,
       isOverdue: json['is_overdue'] ?? false,
       beforePhotoUrl: json['before_photo_url']?.toString(),
       rejectionReason: json['rejection_reason']?.toString() ?? json['notes']?.toString(),
       rejectedAt: json['rejected_at'] != null
-          ? DateTime.tryParse(json['rejected_at']?.toString() ?? '')
+          ? DateTime.tryParse(json['rejected_at']?.toString() ?? '')?.toLocal()
           : (json['validation_status'] == 'rejected'
-              ? DateTime.tryParse(json['updated_at']?.toString() ?? '')
+              ? DateTime.tryParse(json['updated_at']?.toString() ?? '')?.toLocal()
               : null),
       scaleLevel: json['scale_level']?.toString() ?? 'medium',
       obstructionLevel: json['obstruction_level']?.toString() ?? 'none',
@@ -169,7 +169,7 @@ class ReportModel {
       severityFactors: json['severity_factors'] as Map<String, dynamic>?,
       lifecycleStage: (json['stage'] ?? json['lifecycle_stage'])?.toString(),
       lifecycleState: json['lifecycle_state']?.toString(),
-      breachedAt: DateTime.tryParse(json['breached_at']?.toString() ?? ''),
+      breachedAt: DateTime.tryParse(json['breached_at']?.toString() ?? '')?.toLocal(),
       slaBreachDuration: json['sla_breach_duration']?.toString(),
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
       reportClaimGeneration: int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,

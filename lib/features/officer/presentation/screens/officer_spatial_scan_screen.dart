@@ -170,8 +170,9 @@ class _OfficerSpatialScanScreenState extends ConsumerState<OfficerSpatialScanScr
       children: [
         TileLayer(
           urlTemplate: Theme.of(context).brightness == Brightness.dark
-              ? 'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}'
-              : 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${dotenv.env['MAPTILER_API_KEY'] ?? ''}',
+              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
+              : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+          subdomains: const ['a', 'b', 'c'],
           userAgentPackageName: 'dev.ecopinas.ecopin_app',
         ),
         MarkerLayer(markers: markers),

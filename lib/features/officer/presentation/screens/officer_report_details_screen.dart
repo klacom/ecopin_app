@@ -1285,12 +1285,14 @@ class _OfficerReportDetailsScreenState
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'N/A';
-    return '${date.day}/${date.month}/${date.year}';
+    final local = date.toLocal();
+    return '${local.day}/${local.month}/${local.year}';
   }
 
   String _formatDateTime(DateTime? dateTime) {
     if (dateTime == null) return 'N/A';
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    final local = dateTime.toLocal();
+    return '${local.day}/${local.month}/${local.year} ${local.hour}:${local.minute.toString().padLeft(2, '0')}';
   }
 }
 

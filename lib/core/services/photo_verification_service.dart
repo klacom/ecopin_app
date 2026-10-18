@@ -31,7 +31,7 @@ class PhotoVerificationResult {
       'photo_lat': latitude?.toString(),
       'photo_lng': longitude?.toString(),
       'photo_accuracy': accuracy?.toString(),
-      'photo_captured_at': capturedAt.toIso8601String(),
+      'photo_captured_at': capturedAt.toUtc().toIso8601String(),
       'photo_source': source,
       'is_mocked': isMocked.toString(),
     };

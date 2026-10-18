@@ -238,7 +238,7 @@ class ApiClient {
     if (photoLat != null) formData.fields.add(MapEntry('photo_lat', photoLat.toString()));
     if (photoLng != null) formData.fields.add(MapEntry('photo_lng', photoLng.toString()));
     if (photoAccuracy != null) formData.fields.add(MapEntry('photo_accuracy', photoAccuracy.toString()));
-    if (photoCapturedAt != null) formData.fields.add(MapEntry('photo_captured_at', photoCapturedAt.toIso8601String()));
+    if (photoCapturedAt != null) formData.fields.add(MapEntry('photo_captured_at', photoCapturedAt.toUtc().toIso8601String()));
     if (photoSource != null) formData.fields.add(MapEntry('photo_source', photoSource));
     if (isMocked != null) formData.fields.add(MapEntry('is_mocked', isMocked.toString()));
 

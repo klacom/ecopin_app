@@ -40,6 +40,7 @@ class SyncService {
       'on_private_property': r.onPrivateProperty,
       'scale_level': r.scaleLevel,
       'obstruction_level': r.obstructionLevel,
+      'created_at': r.createdAt.toUtc().toIso8601String(),
     }).toList();
 
     for (var report in pendingReports) {

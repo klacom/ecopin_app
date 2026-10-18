@@ -180,7 +180,7 @@ class ReportShareHelper {
       color: img.ColorRgba8(255, 255, 255, 255),
     );
 
-    final dateStr = DateFormat('MMMM d, yyyy • hh:mm a').format(report.createdAt);
+    final dateStr = DateFormat('MMMM d, yyyy • hh:mm a').format(report.createdAt.toLocal());
     img.drawString(
       card,
       'Pasig City  •  $dateStr',

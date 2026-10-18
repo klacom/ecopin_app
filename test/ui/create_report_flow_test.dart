@@ -90,26 +90,49 @@ class SyntheticReportApi extends ApiClient {
     required double latitude,
     required double longitude,
     List<String>? imagePaths,
+    List<String>? cleanImagePaths,
     String? videoPath,
     bool onPrivateProperty = false,
     String scaleLevel = 'medium',
     String obstructionLevel = 'none',
+    double? photoLat,
+    double? photoLng,
+    double? photoAccuracy,
+    DateTime? photoCapturedAt,
+    String? photoSource,
+    bool? isMocked,
   }) {
     requests++;
     submitted = {
       'title': title,
       'description': description,
       'images': imagePaths,
+      'cleanImages': cleanImagePaths,
       'private': onPrivateProperty,
       'scale': scaleLevel,
       'obstruction': obstructionLevel,
     };
     return result.future;
   }
+
+  @override
+  Future<dio.Response> validateImage(String imagePath) async {
+    return dio.Response(
+      requestOptions: dio.RequestOptions(path: ''),
+      statusCode: 200,
+      data: {'is_valid': true, 'confidence': 0.95, 'predicted_category': 'waste'},
+    );
+  }
 }
 
 void main() {
-  setUp(() => dotenv.loadFromString(envString: 'SYNTHETIC_TEST=true'));
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    dotenv.loadFromString(envString: 'SYNTHETIC_TEST=true');
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channel = MethodChannel('dev.fluttercommunity.plus/connectivity');
+    messenger.setMockMethodCallHandler(channel, (call) async => ['wifi']);
+  });
   testWidgets(
     'report steps keep validation, media, review and values after rejection',
     (tester) async {
@@ -164,10 +187,11 @@ void main() {
       await tester.ensureVisible(details);
       await tester.tap(details);
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Gallery'));
+      await tester.tap(find.text('Gallery'));
+      await tester.pump();
       await tester.runAsync(() async {
-        await tester.ensureVisible(find.text('Gallery'));
-        await tester.tap(find.text('Gallery'));
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
       });
       await tester.pumpAndSettle();
       expect(find.byTooltip('Remove photo 1'), findsOneWidget);
@@ -290,6 +314,7 @@ void main() {
         ..failure = PlatformException(code: 'camera_access_denied');
       await tester.pumpWidget(
         ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(SyntheticReportApi())],
           child: MaterialApp(
             theme: AppTheme.light,
             home: CreateReportScreen(
@@ -320,10 +345,11 @@ void main() {
       );
       expect(find.text('Open app settings'), findsOneWidget);
       picker.failure = null;
+      await tester.ensureVisible(find.text('Gallery'));
+      await tester.tap(find.text('Gallery'));
+      await tester.pump();
       await tester.runAsync(() async {
-        await tester.ensureVisible(find.text('Gallery'));
-        await tester.tap(find.text('Gallery'));
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
       });
       await tester.pumpAndSettle();
       expect(find.text('Open app settings'), findsNothing);

@@ -311,12 +311,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   marker: DefaultLocationMarker(
                     child: Icon(Icons.navigation, color: colorScheme.surface),
                   ),
-                  markerSize: Size(40, 40),
+                  markerSize: const Size(40, 40),
                   markerDirection: MarkerDirection.heading,
-                  accuracyCircleColor: Colors.blue,
-                  headingSectorColor: Colors.blue,
+                  accuracyCircleColor: const Color(0x182196F3),
+                  headingSectorColor: const Color(0xCC2196F3),
                   headingSectorRadius: 60,
                   showAccuracyCircle: true,
+                  showHeadingSector: true,
                 ),
               ),
               if (widget.showOptimizedRoute)

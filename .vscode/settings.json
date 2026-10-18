@@ -2,5 +2,6 @@
     "editor.detectIndentation": false,
     "editor.formatOnPaste": true,
     "editor.defaultFormatter": null,
-    "postman.settings.dotenv-detection-notification-visibility": false
+    "postman.settings.dotenv-detection-notification-visibility": false,
+    "python.terminal.useEnvFile": true
 }

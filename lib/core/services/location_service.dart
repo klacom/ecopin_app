@@ -31,16 +31,39 @@ class LocationService {
       return null;
     }
 
+    // 1. Try high accuracy with a 10s timeout
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 5),
+          timeLimit: Duration(seconds: 10),
         ),
       );
       return LatLng(position.latitude, position.longitude);
     } catch (e) {
-      locServiceLog.severe("Location not found. Location Service might have been disabled/denied.");
+      locServiceLog.warning("High accuracy position timed out or failed: $e. Trying fallback...");
+    }
+
+    // 2. Fallback to last known position
+    try {
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        locServiceLog.info("Using last known position");
+        return LatLng(lastKnown.latitude, lastKnown.longitude);
+      }
+    } catch (_) {}
+
+    // 3. Fallback to medium accuracy with a 6s timeout
+    try {
+      final fallbackPosition = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 6),
+        ),
+      );
+      return LatLng(fallbackPosition.latitude, fallbackPosition.longitude);
+    } catch (e) {
+      locServiceLog.severe("All location attempts failed: $e");
       return null;
     }
   }

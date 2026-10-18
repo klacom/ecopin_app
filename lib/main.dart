@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:ecopin_app/shared/notifications/services/notification_service.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
-import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
@@ -35,8 +34,12 @@ Future<void> main() async {
 
   // Catch "No URL and anonKey available" error
   await Supabase.initialize(
-    url: dotenv.env['NEXT_PUBLIC_SUPABASE_URL'] ?? '',
-    publishableKey: dotenv.env['NEXT_PUBLIC_PUBLISHABLE_KEY'] ?? '',
+    url: dotenv.env['NEXT_PUBLIC_SUPABASE_URL'] ?? dotenv.env['SUPABASE_URL'] ?? '',
+    publishableKey: dotenv.env['SUPABASE_PUBLISHABLE_KEY'] ??
+        dotenv.env['NEXT_PUBLIC_PUBLISHABLE_KEY'] ??
+        dotenv.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] ??
+        dotenv.env['SUPABASE_ANON_KEY'] ??
+        '',
   );
 
   // Handle deep links

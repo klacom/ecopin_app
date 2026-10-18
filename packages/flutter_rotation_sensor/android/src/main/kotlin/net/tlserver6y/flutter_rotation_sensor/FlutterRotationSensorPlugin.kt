@@ -23,9 +23,18 @@ class FlutterRotationSensorPlugin : FlutterPlugin, MethodCallHandler, StreamHand
   private var sensorEventListener: SensorEventListener? = null
   private var samplingPeriod = 200000
 
+  private fun getSensor(): Sensor? {
+    if (sensor == null) {
+      sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        ?: sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR)
+    }
+    return sensor
+  }
+
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     val context = flutterPluginBinding.applicationContext
     sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    getSensor()
     setupMethodChannel(flutterPluginBinding.binaryMessenger)
     setupEventChannel(flutterPluginBinding.binaryMessenger)
   }
@@ -57,19 +66,18 @@ class FlutterRotationSensorPlugin : FlutterPlugin, MethodCallHandler, StreamHand
   override fun onMethodCall(call: MethodCall, result: Result) {
     when (call.method) {
       "getOrientationStream" -> {
-        if (sensor == null) {
-          sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-        }
+        val s = getSensor()
         if (call.hasArgument("samplingPeriod")) {
           val samplingPeriod = call.argument<Int?>("samplingPeriod")
           if (
             samplingPeriod != null &&
             samplingPeriod != this.samplingPeriod &&
-            sensorEventListener != null
+            sensorEventListener != null &&
+            s != null
           ) {
             this.samplingPeriod = samplingPeriod
             sensorManager.unregisterListener(sensorEventListener)
-            sensorManager.registerListener(sensorEventListener, sensor, samplingPeriod)
+            sensorManager.registerListener(sensorEventListener, s, samplingPeriod)
           }
         }
         result.success(null);
@@ -81,9 +89,10 @@ class FlutterRotationSensorPlugin : FlutterPlugin, MethodCallHandler, StreamHand
   }
 
   override fun onListen(arguments: Any?, events: EventSink) {
-    if (sensor != null) {
+    val s = getSensor()
+    if (s != null) {
       sensorEventListener = createSensorEventListener(events)
-      sensorManager.registerListener(sensorEventListener, sensor, samplingPeriod)
+      sensorManager.registerListener(sensorEventListener, s, samplingPeriod)
     } else {
       events.error(
         "NO_SENSOR",
@@ -94,11 +103,9 @@ class FlutterRotationSensorPlugin : FlutterPlugin, MethodCallHandler, StreamHand
   }
 
   override fun onCancel(arguments: Any?) {
-    if (sensor != null) {
-      sensorEventListener?.let {
-        sensorManager.unregisterListener(it)
-        sensorEventListener = null
-      }
+    sensorEventListener?.let {
+      sensorManager.unregisterListener(it)
+      sensorEventListener = null
     }
   }
 

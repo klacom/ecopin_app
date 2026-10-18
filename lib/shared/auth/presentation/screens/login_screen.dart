@@ -148,26 +148,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         }
       } else {
-        _showError('Login failed: Invalid session data');
+        _showError('Unable to complete sign in. Invalid session received.');
       }
     } on DioException catch (e) {
-      if (e.response?.data != null &&
-          e.response?.data['code'] == 'EMAIL_NOT_VERIFIED') {
+      final data = e.response?.data;
+      if (data is Map && data['code'] == 'EMAIL_NOT_VERIFIED') {
         if (mounted) {
           context.go('/email-verification?email=${Uri.encodeComponent(email)}');
         }
         return;
       }
 
-      String errorMessage = 'Login failed';
-      if (e.response?.data != null && e.response?.data['message'] != null) {
-        errorMessage = e.response?.data['message'];
+      String errorMessage = 'Invalid email or password. Please try again.';
+      if (data is Map) {
+        if (data['message'] != null && data['message'] != 'Login failed') {
+          errorMessage = data['message'].toString();
+        } else if (data['error'] != null) {
+          final err = data['error'].toString();
+          if (err.toLowerCase().contains('invalid login credentials') ||
+              err.toLowerCase().contains('invalid_grant')) {
+            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+          } else {
+            errorMessage = err;
+          }
+        }
+      } else if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        errorMessage = 'Connection timed out. Please check your network and try again.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        errorMessage = 'Unable to connect to server. Please check your internet connection.';
       }
       _log.severe(e);
       _showError(errorMessage);
     } catch (e, stackTrace) {
       _log.severe(e, stackTrace);
-      _showError('We could not sign you in. Please try again.');
+      _showError('We could not sign you in. Please check your connection and try again.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

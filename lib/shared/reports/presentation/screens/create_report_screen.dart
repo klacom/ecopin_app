@@ -118,43 +118,48 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     super.dispose();
   }
 
-  void _nextStep() {
-    if (_isSubmitting) return;
-    if (_currentStep < _totalSteps - 1) {
-      if (_currentStep == 0 && !_locationConfirmed) return;
-      // Validation per step
-      if (_currentStep == 1 && _titleController.text.trim().isEmpty) return;
-      if (_currentStep == 2 &&
-          _capturedImages.isEmpty &&
-          _selectedImage == null &&
-          _capturedVideos.isEmpty) {
-        return;
-      }
+  bool _canNavigateToStep(int targetStep) {
+    if (_isSubmitting) return false;
+    if (targetStep < 0 || targetStep >= _totalSteps) return false;
+    if (targetStep <= _currentStep) return true;
 
-      _titleFocusNode.unfocus();
-      _descriptionFocusNode.unfocus();
+    // Advancing forward requires earlier steps to meet validation
+    if (targetStep >= 1 && !_locationConfirmed) return false;
+    if (targetStep >= 2 && _titleController.text.trim().isEmpty) return false;
+    if (targetStep >= 3 &&
+        _capturedImages.isEmpty &&
+        _selectedImage == null &&
+        _capturedVideos.isEmpty) {
+      return false;
+    }
+    return true;
+  }
 
-      setState(() => _currentStep++);
-      _pageController.nextPage(
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 300),
+  void _jumpToStep(int targetStep) {
+    if (!_canNavigateToStep(targetStep) || targetStep == _currentStep) return;
+    _titleFocusNode.unfocus();
+    _descriptionFocusNode.unfocus();
+    setState(() => _currentStep = targetStep);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pageController.jumpToPage(targetStep);
+    } else {
+      _pageController.animateToPage(
+        targetStep,
+        duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
     }
   }
 
+  void _nextStep() {
+    if (_currentStep < _totalSteps - 1) {
+      _jumpToStep(_currentStep + 1);
+    }
+  }
+
   void _prevStep() {
     if (_currentStep > 0) {
-      _titleFocusNode.unfocus();
-      _descriptionFocusNode.unfocus();
-      setState(() => _currentStep--);
-      _pageController.previousPage(
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+      _jumpToStep(_currentStep - 1);
     }
   }
 
@@ -506,62 +511,71 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final bool isPrefilled = widget.prefillData?.title != null;
 
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            toolbarHeight:
-                MediaQuery.textScalerOf(
-                      context,
-                    ).clamp(maxScaleFactor: 1.3).scale(24) *
-                    2 +
-                16,
-            title: Text(isPrefilled ? 'Resubmit report' : 'Report a concern'),
-            leading: _currentStep > 0
-                ? IconButton(
-                    tooltip: 'Previous step',
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: _prevStep,
-                  )
-                : const BackButton(),
-          ),
-          body: Column(
-            children: [
-              LinearProgressIndicator(
-                semanticsLabel: 'Step ${_currentStep + 1} of $_totalSteps',
-                value: (_currentStep + 1) / _totalSteps,
-                backgroundColor: colorScheme.surfaceContainerHighest,
-                color: AppColors.accent, // Civic blue
-                minHeight: 4,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+    return PopScope(
+      canPop: _currentStep == 0 && !_isSubmitting,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_currentStep > 0 && !_isSubmitting) {
+          _prevStep();
+        }
+      },
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              toolbarHeight:
+                  MediaQuery.textScalerOf(
+                        context,
+                      ).clamp(maxScaleFactor: 1.3).scale(24) *
+                      2 +
+                  16,
+              title: Text(isPrefilled ? 'Resubmit report' : 'Report a concern'),
+              leading: _currentStep > 0
+                  ? IconButton(
+                      tooltip: 'Previous step',
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: _prevStep,
+                    )
+                  : const BackButton(),
+            ),
+            body: Column(
+              children: [
+                LinearProgressIndicator(
+                  semanticsLabel: 'Step ${_currentStep + 1} of $_totalSteps',
+                  value: (_currentStep + 1) / _totalSteps,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                  color: AppColors.accent, // Civic blue
+                  minHeight: 4,
                 ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Step ${_currentStep + 1} of $_totalSteps · ${['Location', 'Details', 'Photos and video', 'Review'][_currentStep]}',
-                    style: Theme.of(context).textTheme.labelMedium,
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Step ${_currentStep + 1} of $_totalSteps · ${['Location', 'Details', 'Photos and video', 'Review'][_currentStep]}',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildStep1Location(colorScheme),
-                    _buildStep2Details(),
-                    _buildStep3Media(colorScheme),
-                    _buildStep4Review(colorScheme),
-                  ],
+                _buildStepNavHeader(colorScheme),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _buildStep1Location(colorScheme),
+                      _buildStep2Details(),
+                      _buildStep3Media(colorScheme),
+                      _buildStep4Review(colorScheme),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
 
         if (_isSubmitting)
           Positioned.fill(
@@ -598,7 +612,139 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               ),
             ),
           ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepNavHeader(ColorScheme colorScheme) {
+    const stepTitles = ['Location', 'Details', 'Media', 'Review'];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: List.generate(_totalSteps, (index) {
+            final isCurrent = index == _currentStep;
+            final canJump = _canNavigateToStep(index);
+            final isCompleted = index < _currentStep ||
+                (index == 0 && _locationConfirmed) ||
+                (index == 1 && _titleController.text.trim().isNotEmpty) ||
+                (index == 2 &&
+                    (_capturedImages.isNotEmpty || _capturedVideos.isNotEmpty));
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Semantics(
+                button: true,
+                enabled: canJump && !isCurrent,
+                label:
+                    'Step ${index + 1}: ${stepTitles[index]}${isCurrent ? ', current step' : (canJump ? '' : ', locked')}',
+                child: ActionChip(
+                  avatar: CircleAvatar(
+                    radius: 9,
+                    backgroundColor: isCurrent
+                        ? AppColors.accent
+                        : (isCompleted
+                            ? AppColors.success
+                            : colorScheme.outline.withValues(alpha: 0.3)),
+                    child: Icon(
+                      isCompleted && !isCurrent ? Icons.check : null,
+                      size: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                  label: Text(
+                    '${index + 1}. ${stepTitles[index]}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                      color: isCurrent
+                          ? AppColors.accent
+                          : (canJump
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurface.withValues(alpha: 0.4)),
+                    ),
+                  ),
+                  backgroundColor: isCurrent
+                      ? AppColors.accent.withValues(alpha: 0.12)
+                      : (canJump
+                          ? colorScheme.surfaceContainerLow
+                          : colorScheme.surfaceContainerLowest),
+                  side: BorderSide(
+                    color: isCurrent
+                        ? AppColors.accent
+                        : (canJump
+                            ? colorScheme.outlineVariant
+                            : colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                  ),
+                  onPressed:
+                      canJump && !isCurrent ? () => _jumpToStep(index) : null,
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepBottomButtons({
+    required String nextText,
+    required VoidCallback? onNext,
+    VoidCallback? onPrev,
+    bool isLoading = false,
+  }) {
+    if (onPrev == null) {
+      return AppButton(
+        text: nextText,
+        isLoading: isLoading,
+        onPressed: onNext,
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+        final shouldStack = constraints.maxWidth < 280 || textScale > 1.3;
+        if (shouldStack) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppButton(
+                text: nextText,
+                isLoading: isLoading,
+                onPressed: onNext,
+              ),
+              const SizedBox(height: 12),
+              AppButton(
+                text: 'Back',
+                variant: ButtonVariant.secondary,
+                onPressed: isLoading ? null : onPrev,
+              ),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: AppButton(
+                text: 'Back',
+                variant: ButtonVariant.secondary,
+                onPressed: isLoading ? null : onPrev,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: AppButton(
+                text: nextText,
+                isLoading: isLoading,
+                onPressed: onNext,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -702,9 +848,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ),
           ),
           const SizedBox(height: 48),
-          AppButton(
-            text: 'Next: Details',
-            onPressed: _locationConfirmed ? _nextStep : null,
+          _buildStepBottomButtons(
+            nextText: 'Next: Details',
+            onNext: _locationConfirmed ? _nextStep : null,
           ),
         ],
       ),
@@ -757,9 +903,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             onChanged: (value) => setState(() => _onPrivateProperty = value),
           ),
           const SizedBox(height: 48),
-          AppButton(
-            text: 'Next: Attach Media',
-            onPressed: canProceed ? _nextStep : null,
+          _buildStepBottomButtons(
+            nextText: 'Next: Attach Media',
+            onNext: canProceed ? _nextStep : null,
+            onPrev: _prevStep,
           ),
         ],
       ),
@@ -997,9 +1144,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ],
           ),
           const SizedBox(height: 48),
-          AppButton(
-            text: 'Next: Review',
-            onPressed: hasMedia && !_isSelectingMedia ? _nextStep : null,
+          _buildStepBottomButtons(
+            nextText: 'Next: Review',
+            onNext: hasMedia && !_isSelectingMedia ? _nextStep : null,
+            onPrev: _prevStep,
           ),
         ],
       ),
@@ -1033,12 +1181,28 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Title',
-                  style: TextStyle(
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    fontSize: 12,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Title',
+                      style: TextStyle(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontSize: 12,
+                      ),
+                    ),
+                    TextButton.icon(
+                      key: const ValueKey('edit-details-button'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(48, 24),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => _jumpToStep(1),
+                      icon: const Icon(Icons.edit, size: 14),
+                      label: const Text('Edit', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1050,12 +1214,28 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                Text(
-                  'Location',
-                  style: TextStyle(
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    fontSize: 12,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Location',
+                      style: TextStyle(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontSize: 12,
+                      ),
+                    ),
+                    TextButton.icon(
+                      key: const ValueKey('edit-location-button'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(48, 24),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => _jumpToStep(0),
+                      icon: const Icon(Icons.edit, size: 14),
+                      label: const Text('Edit', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 _addressSummary(),
@@ -1086,12 +1266,28 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                Text(
-                  'Media',
-                  style: TextStyle(
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    fontSize: 12,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Media',
+                      style: TextStyle(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontSize: 12,
+                      ),
+                    ),
+                    TextButton.icon(
+                      key: const ValueKey('edit-media-button'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(48, 24),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => _jumpToStep(2),
+                      icon: const Icon(Icons.edit, size: 14),
+                      label: const Text('Edit', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1112,10 +1308,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          AppButton(
-            text: 'Submit Report',
+          _buildStepBottomButtons(
+            nextText: 'Submit Report',
             isLoading: _isSubmitting,
-            onPressed: _isSubmitting ? null : _submitReport,
+            onNext: _isSubmitting ? null : _submitReport,
+            onPrev: _isSubmitting ? null : _prevStep,
           ),
         ],
       ),

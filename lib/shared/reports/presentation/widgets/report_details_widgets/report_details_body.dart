@@ -29,6 +29,7 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
   final VoidCallback? onFetchCleanupTask;
   final bool isOfficerUser;
   final TileProvider? tileProvider;
+  final VoidCallback? onWithdraw;
 
   const ReportDetailsBody({
     super.key,
@@ -40,6 +41,7 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
     this.onFetchCleanupTask,
     this.isOfficerUser = false,
     this.tileProvider,
+    this.onWithdraw,
   });
 
   @override
@@ -707,6 +709,48 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (!widget.isOfficerUser &&
+              widget.onWithdraw != null &&
+              widget.report.canBeWithdrawn) ...[
+            const SizedBox(height: 16),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Withdraw report',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'You can withdraw this report before it is triaged or dispatched for cleanup.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                        side: BorderSide(color: Theme.of(context).colorScheme.error),
+                      ),
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('Withdraw Report'),
+                      onPressed: widget.onWithdraw,
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),

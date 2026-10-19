@@ -40,6 +40,10 @@ class ApiConstants {
     return '/api/reports/$reportId/close';
   }
 
+  static String deleteReport(String reportId) {
+    return '/api/reports/$reportId';
+  }
+
   static const String profile = '/api/profile';
   static const String avatar = '/api/profile/avatar';
 

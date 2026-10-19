@@ -503,6 +503,10 @@ class ApiClient {
     );
   }
 
+  Future<dio.Response> withdrawReport(String reportId) async {
+    return _dio.delete(ApiConstants.deleteReport(reportId));
+  }
+
   // LGU methods
 
   Future<dio.Response> getSystemStats() async {

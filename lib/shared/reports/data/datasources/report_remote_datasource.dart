@@ -34,4 +34,8 @@ class ReportDataSource {
     final response = await _apiClient.getReportById(id);
     return ReportModel.fromJson(response.data);
   }
+
+  Future<void> withdrawReport(String id) async {
+    await _apiClient.withdrawReport(id);
+  }
 }

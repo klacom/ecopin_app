@@ -39,6 +39,7 @@ class ReportModel {
   final int reportClaimGeneration;
   final String? locationVerificationStatus;
   final double? photoDistanceMeters;
+  final String? cleanupTaskId;
 
   ReportModel({
     required this.id,
@@ -77,6 +78,7 @@ class ReportModel {
     this.reportClaimGeneration = 0,
     this.locationVerificationStatus,
     this.photoDistanceMeters,
+    this.cleanupTaskId,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -175,7 +177,26 @@ class ReportModel {
       reportClaimGeneration: int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,
       locationVerificationStatus: json['location_verification_status']?.toString(),
       photoDistanceMeters: (json['photo_distance_meters'] as num?)?.toDouble(),
+      cleanupTaskId: json['cleanup_task_id']?.toString(),
     );
+  }
+
+  /// Whether this report can be withdrawn/deleted by the citizen before triage/dispatch.
+  bool get canBeWithdrawn {
+    if (cleanupTaskId != null && cleanupTaskId!.isNotEmpty) return false;
+    final stage = (lifecycleStage ?? '').toLowerCase().trim();
+    if (stage == 'assigned' || stage == 'in_progress' || stage == 'resolved' || stage == 'closed') {
+      return false;
+    }
+    final lifeState = (lifecycleState ?? '').toLowerCase().trim();
+    if (lifeState == 'dispatched' || lifeState == 'closed') {
+      return false;
+    }
+    final stat = status.toLowerCase().trim();
+    if (stat == 'in_progress' || stat == 'resolved' || stat == 'closed') {
+      return false;
+    }
+    return true;
   }
 
   Map<String, dynamic> toJson() {
@@ -208,6 +229,7 @@ class ReportModel {
       'sla_breach_duration': slaBreachDuration,
       'fc_version': fcVersion,
       'report_claim_generation': reportClaimGeneration,
+      'cleanup_task_id': cleanupTaskId,
     };
   }
 }

@@ -10,6 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart' as pull_refresh;
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:dio/dio.dart' as dio;
+import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 
 class ReportDetailsScreen extends ConsumerStatefulWidget {
   final String reportId;
@@ -95,11 +98,79 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
     }
   }
 
+  Future<void> _handleWithdrawReport(ReportModel report) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Withdraw report?'),
+        content: const Text(
+          'Are you sure you want to withdraw this report? It will be removed from your reports and the map. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Withdraw'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final dataSource = ref.read(reportDataSourceProvider);
+      await dataSource.withdrawReport(report.id);
+
+      ref.invalidate(myReportsProvider);
+      ref.invalidate(publicReportsProvider);
+      ref.invalidate(reportDetailsProvider(report.id));
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report withdrawn successfully.')),
+      );
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      String msg = 'Failed to withdraw report. Please try again.';
+      if (e is dio.DioException) {
+        final resData = e.response?.data;
+        if (resData is Map) {
+          if (resData['message'] != null) {
+            msg = resData['message'].toString();
+          } else if (resData['error'] != null) {
+            msg = resData['error'].toString();
+          }
+        } else if (resData is String && resData.trim().isNotEmpty) {
+          msg = resData.trim();
+        } else if (e.message != null && e.message!.isNotEmpty) {
+          msg = e.message!;
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final reportAsync = ref.watch(reportDetailsProvider(widget.reportId));
     final authState = ref.watch(authNotifierProvider);
     final isOfficerUser = authState.state.role == UserRole.officer;
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     return Scaffold(
       appBar: AppBar(
@@ -107,22 +178,37 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
         actions: [
           reportAsync.maybeWhen(
             data: (report) {
+              final isOwner = currentUserId != null &&
+                  report.userId != null &&
+                  report.userId == currentUserId;
+              final canWithdraw = !isOfficerUser && isOwner && report.canBeWithdrawn;
+
               final isRejected = report.status.toLowerCase() == 'rejected' ||
                   report.validationStatus.toLowerCase() == 'rejected';
-              if (isRejected) {
-                return const SizedBox.shrink();
-              }
               final photoUrl = report.beforePhotoUrl ??
                   (_evidence.isNotEmpty
                       ? _evidence.first['url'] ?? _evidence.first['file_url']
                       : null);
-              return IconButton(
-                icon: const Icon(Icons.share_rounded),
-                tooltip: 'Share Stamped Photo',
-                onPressed: () => ReportShareHelper.shareReportPhoto(
-                  report: report,
-                  photoUrl: photoUrl,
-                ),
+
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (canWithdraw)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      tooltip: 'Withdraw report',
+                      onPressed: () => _handleWithdrawReport(report),
+                    ),
+                  if (!isRejected)
+                    IconButton(
+                      icon: const Icon(Icons.share_rounded),
+                      tooltip: 'Share Stamped Photo',
+                      onPressed: () => ReportShareHelper.shareReportPhoto(
+                        report: report,
+                        photoUrl: photoUrl,
+                      ),
+                    ),
+                ],
               );
             },
             orElse: () => const SizedBox.shrink(),
@@ -134,17 +220,25 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
         onRefresh: _onRefresh,
         enablePullDown: true,
         child: reportAsync.when(
-          data: (report) => ReportDetailsBody(
-            report: report,
-            evidence: _evidence,
-            isLoadingEvidence: _isLoadingEvidence,
-            cleanupTask: _cleanupTask,
-            isLoadingCleanupTask: _isLoadingCleanupTask,
-            onFetchCleanupTask: report.clusterId != null
-                ? () => _fetchCleanupTask(report.clusterId!)
-                : null,
-            isOfficerUser: isOfficerUser,
-          ),
+          data: (report) {
+            final isOwner = currentUserId != null &&
+                report.userId != null &&
+                report.userId == currentUserId;
+            final canWithdraw = !isOfficerUser && isOwner && report.canBeWithdrawn;
+
+            return ReportDetailsBody(
+              report: report,
+              evidence: _evidence,
+              isLoadingEvidence: _isLoadingEvidence,
+              cleanupTask: _cleanupTask,
+              isLoadingCleanupTask: _isLoadingCleanupTask,
+              onFetchCleanupTask: report.clusterId != null
+                  ? () => _fetchCleanupTask(report.clusterId!)
+                  : null,
+              isOfficerUser: isOfficerUser,
+              onWithdraw: canWithdraw ? () => _handleWithdrawReport(report) : null,
+            );
+          },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) => NoInternetScreen(onRetry: () => ref.invalidate(reportDetailsProvider(widget.reportId))),
         ),

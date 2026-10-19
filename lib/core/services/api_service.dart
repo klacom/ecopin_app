@@ -771,4 +771,12 @@ class ApiClient {
   Future<dio.Response> getActiveRoutes() async {
     return _dio.get(ApiConstants.activeRoutes);
   }
+
+  // Account Deletion (Google Play User Data policy compliance)
+  Future<dio.Response> deleteAccount({String? password}) async {
+    return _dio.delete(
+      ApiConstants.deleteAccount,
+      data: password != null ? {'password': password} : null,
+    );
+  }
 }

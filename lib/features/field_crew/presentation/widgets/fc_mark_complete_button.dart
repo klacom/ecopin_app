@@ -5,10 +5,10 @@ import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.da
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class FcMarkCompleteButton extends StatelessWidget {
+class FcMarkCompleteButton extends StatefulWidget {
   final CleanupTask task;
   final List<ReportModel> reports;
-  final VoidCallback onComplete;
+  final Future<void> Function() onComplete;
 
   const FcMarkCompleteButton({
     super.key,
@@ -18,9 +18,16 @@ class FcMarkCompleteButton extends StatelessWidget {
   });
 
   @override
+  State<FcMarkCompleteButton> createState() => _FcMarkCompleteButtonState();
+}
+
+class _FcMarkCompleteButtonState extends State<FcMarkCompleteButton> {
+  bool _isSubmitting = false;
+
+  @override
   Widget build(BuildContext context) {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    final isAssigned = currentUserId != null && task.assignedCrewIds.contains(currentUserId);
+    final isAssigned = currentUserId != null && widget.task.assignedCrewIds.contains(currentUserId);
     
     if (!isAssigned) {
       return const SizedBox.shrink();
@@ -29,7 +36,7 @@ class FcMarkCompleteButton extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surfaceDark : Colors.grey.shade200;
 
-    if (task.status == 'completed') {
+    if (widget.task.status == 'completed') {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
@@ -47,10 +54,10 @@ class FcMarkCompleteButton extends StatelessWidget {
     }
 
     bool allReportsResolved = true;
-    bool hasBefore = task.beforePhotoUrl != null;
-    bool hasAfter = task.afterPhotoUrl != null;
+    bool hasBefore = widget.task.beforePhotoUrl != null;
+    bool hasAfter = widget.task.afterPhotoUrl != null;
 
-    for (var r in reports) {
+    for (var r in widget.reports) {
       bool isScouting = r.issueType == 'scouting' || r.issueType == 'acknowledge_only';
       bool isResolved = r.status.toLowerCase() == 'resolved' || r.status.toLowerCase() == 'completed';
       
@@ -73,7 +80,14 @@ class FcMarkCompleteButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: canComplete ? onComplete : null,
+        onPressed: canComplete && !_isSubmitting ? () async {
+          setState(() => _isSubmitting = true);
+          try {
+            await widget.onComplete();
+          } finally {
+            if (mounted) setState(() => _isSubmitting = false);
+          }
+        } : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryDark,
           foregroundColor: Colors.white,
@@ -82,10 +96,16 @@ class FcMarkCompleteButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
         ),
-        child: Text(
-          canComplete ? 'Mark Task Complete' : 'Cannot Complete Yet',
-          style: AppTypography.button,
-        ),
+        child: _isSubmitting
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : Text(
+                canComplete ? 'Mark Task Complete' : 'Cannot Complete Yet',
+                style: AppTypography.button,
+              ),
       ),
     );
   }

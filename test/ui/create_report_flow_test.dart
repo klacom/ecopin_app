@@ -464,4 +464,270 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'WT-90: backward and forward navigation preserves location, text fields, and attached media',
+    (tester) async {
+      final temporary = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('ecopin-nav-ui-'),
+      ))!;
+      addTearDown(() => temporary.delete(recursive: true));
+      final photo = File('${temporary.path}/evidence.png');
+      await tester.runAsync(() => photo.writeAsBytes(SyntheticTiles.bytes));
+      final api = SyntheticReportApi();
+      final address = SyntheticAddress();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(api)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: CreateReportScreen(
+              prefillData: const ReportPrefillData(
+                location: LatLng(14.575, 121.08),
+              ),
+              tileProvider: SyntheticTiles(),
+              locationSearchService: address,
+              imagePicker: SyntheticPicker(photo.path),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Step 1 -> Step 2
+      expect(find.text('Rosario, Pasig City, Metro Manila'), findsOneWidget);
+      await tester.ensureVisible(find.text('Next: Details'));
+      await tester.tap(find.text('Next: Details'));
+      await tester.pumpAndSettle();
+
+      // Fill Step 2
+      await tester.enterText(
+        find.byType(TextField).at(0),
+        'Illegal Dumping Site',
+      );
+      await tester.enterText(
+        find.byType(TextField).at(1),
+        'Piles of construction debris left on the corner.',
+      );
+      await tester.ensureVisible(find.byType(Switch));
+      await tester.tap(find.byType(Switch));
+      await tester.pumpAndSettle();
+
+      // Step 2 -> Step 3
+      await tester.ensureVisible(find.text('Next: Attach Media'));
+      await tester.tap(find.text('Next: Attach Media'));
+      await tester.pumpAndSettle();
+
+      // Pick photo in Step 3
+      await tester.ensureVisible(find.text('Gallery'));
+      await tester.tap(find.text('Gallery'));
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      });
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Remove photo 1'), findsOneWidget);
+
+      // Step 3 -> Step 4 (Review)
+      await tester.ensureVisible(find.text('Next: Review'));
+      await tester.tap(find.text('Next: Review'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Illegal Dumping Site'), findsOneWidget);
+      expect(
+        find.text('Piles of construction debris left on the corner.'),
+        findsOneWidget,
+      );
+      expect(find.text('On private property'), findsOneWidget);
+      expect(find.text('1 Photo(s), 0 Video(s)'), findsOneWidget);
+
+      // Navigate backwards: Step 4 -> Step 3 using bottom Back button
+      final backFromReview = find.widgetWithText(TextButton, 'Back');
+      await tester.ensureVisible(backFromReview);
+      await tester.tap(backFromReview);
+      await tester.pumpAndSettle();
+
+      // Verify on Step 3, photo is preserved
+      expect(find.text('Photos · Up to 5'), findsOneWidget);
+      expect(find.byTooltip('Remove photo 1'), findsOneWidget);
+
+      // Navigate backwards: Step 3 -> Step 2 using bottom Back button
+      final backFromMedia = find.widgetWithText(TextButton, 'Back');
+      await tester.ensureVisible(backFromMedia);
+      await tester.tap(backFromMedia);
+      await tester.pumpAndSettle();
+
+      // Verify on Step 2, title, description, and private switch are preserved
+      expect(find.text('Illegal Dumping Site'), findsOneWidget);
+      expect(
+        find.text('Piles of construction debris left on the corner.'),
+        findsOneWidget,
+      );
+      final switchWidget = tester.widget<Switch>(find.byType(Switch));
+      expect(switchWidget.value, isTrue);
+
+      // Navigate backwards: Step 2 -> Step 1 using AppBar Back arrow
+      final appBarBack = find.byTooltip('Previous step');
+      expect(appBarBack, findsOneWidget);
+      await tester.tap(appBarBack);
+      await tester.pumpAndSettle();
+
+      // Verify on Step 1, location pin and address are preserved
+      expect(find.text('Rosario, Pasig City, Metro Manila'), findsOneWidget);
+
+      // Navigate forward: Step 1 -> Step 2
+      await tester.ensureVisible(find.text('Next: Details'));
+      await tester.tap(find.text('Next: Details'));
+      await tester.pumpAndSettle();
+
+      // Verify details preserved
+      expect(find.text('Illegal Dumping Site'), findsOneWidget);
+
+      // Navigate forward: Step 2 -> Step 3
+      await tester.ensureVisible(find.text('Next: Attach Media'));
+      await tester.tap(find.text('Next: Attach Media'));
+      await tester.pumpAndSettle();
+
+      // Verify photo preserved
+      expect(find.byTooltip('Remove photo 1'), findsOneWidget);
+
+      // Navigate forward: Step 3 -> Step 4
+      await tester.ensureVisible(find.text('Next: Review'));
+      await tester.tap(find.text('Next: Review'));
+      await tester.pumpAndSettle();
+
+      // Verify Review shows all inputs intact
+      expect(find.text('Illegal Dumping Site'), findsOneWidget);
+      expect(find.text('1 Photo(s), 0 Video(s)'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'WT-90: review step Edit buttons jump directly to target step without resetting input',
+    (tester) async {
+      final temporary = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('ecopin-edit-ui-'),
+      ))!;
+      addTearDown(() => temporary.delete(recursive: true));
+      final photo = File('${temporary.path}/evidence.png');
+      await tester.runAsync(() => photo.writeAsBytes(SyntheticTiles.bytes));
+      final api = SyntheticReportApi();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(api)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: CreateReportScreen(
+              prefillData: const ReportPrefillData(
+                location: LatLng(14.575, 121.08),
+                title: 'Initial Hazard',
+                description: 'Initial notes',
+              ),
+              tileProvider: SyntheticTiles(),
+              locationSearchService: SyntheticAddress(),
+              imagePicker: SyntheticPicker(photo.path),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Jump to step 2 (Details) -> step 3 (Media) -> step 4 (Review)
+      await tester.ensureVisible(find.text('Next: Details'));
+      await tester.tap(find.text('Next: Details'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Next: Attach Media'));
+      await tester.tap(find.text('Next: Attach Media'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Gallery'));
+      await tester.tap(find.text('Gallery'));
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      });
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Next: Review'));
+      await tester.tap(find.text('Next: Review'));
+      await tester.pumpAndSettle();
+
+      // On Review: tap "Edit" details button
+      final editDetails = find.byKey(const ValueKey('edit-details-button'));
+      expect(editDetails, findsOneWidget);
+      await tester.ensureVisible(editDetails);
+      await tester.tap(editDetails);
+      await tester.pumpAndSettle();
+
+      // Verify jumped to Step 2
+      expect(find.text('Step 2: Details'), findsOneWidget);
+      expect(find.text('Initial Hazard'), findsOneWidget);
+
+      // Edit description
+      await tester.enterText(
+        find.byType(TextField).at(1),
+        'Updated notes after reviewing.',
+      );
+      await tester.pumpAndSettle();
+
+      // Use Step 4 chip in nav header to jump straight back to review
+      final reviewChip = find.text('4. Review');
+      expect(reviewChip, findsOneWidget);
+      await tester.tap(reviewChip);
+      await tester.pumpAndSettle();
+
+      // Verify on Review screen with updated details and preserved photo
+      expect(find.text('Step 4: Review'), findsOneWidget);
+      expect(find.text('Updated notes after reviewing.'), findsOneWidget);
+      expect(find.text('1 Photo(s), 0 Video(s)'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'WT-90: system back gesture via PopScope steps back without losing report draft',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: CreateReportScreen(
+              prefillData: const ReportPrefillData(
+                location: LatLng(14.575, 121.08),
+                title: 'Draft to keep',
+                description: 'Important details',
+              ),
+              tileProvider: SyntheticTiles(),
+              locationSearchService: SyntheticAddress(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Advance to Step 2
+      await tester.ensureVisible(find.text('Next: Details'));
+      await tester.tap(find.text('Next: Details'));
+      await tester.pumpAndSettle();
+      expect(find.text('Step 2: Details'), findsOneWidget);
+      expect(find.text('Draft to keep'), findsOneWidget);
+
+      // Simulate system back navigation via tester.binding.handlePopRoute()
+      final popHandled = await tester.binding.handlePopRoute();
+      expect(popHandled, isTrue);
+      await tester.pumpAndSettle();
+
+      // Screen stepped back to Step 1 instead of exiting
+      expect(find.text('Step 1: Location'), findsOneWidget);
+
+      // Navigate forward again and ensure values remain intact
+      await tester.ensureVisible(find.text('Next: Details'));
+      await tester.tap(find.text('Next: Details'));
+      await tester.pumpAndSettle();
+      expect(find.text('Draft to keep'), findsOneWidget);
+      expect(find.text('Important details'), findsOneWidget);
+    },
+  );
 }

@@ -3,7 +3,7 @@ import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 
-class FcReportActionButtons extends StatelessWidget {
+class FcReportActionButtons extends StatefulWidget {
   final ReportModel report;
   final bool isAssigned;
   final bool hasBeforePhoto;
@@ -22,14 +22,21 @@ class FcReportActionButtons extends StatelessWidget {
   });
 
   @override
+  State<FcReportActionButtons> createState() => _FcReportActionButtonsState();
+}
+
+class _FcReportActionButtonsState extends State<FcReportActionButtons> {
+  bool _isSubmitting = false;
+
+  @override
   Widget build(BuildContext context) {
     String label = '';
     String? nextStatus;
-    bool enabled = isAssigned;
+    bool enabled = widget.isAssigned && !_isSubmitting;
     bool requiresPhotos = false;
 
-    final currentStatus = report.status.toLowerCase();
-    final issueType = report.issueType?.toLowerCase() ?? '';
+    final currentStatus = widget.report.status.toLowerCase();
+    final issueType = widget.report.issueType?.toLowerCase() ?? '';
     final isScouting = issueType == 'scouting' || issueType == 'acknowledge_only';
     
     if (currentStatus == 'unresolved' || currentStatus == 'submitted' || currentStatus == 'pending') {
@@ -53,7 +60,7 @@ class FcReportActionButtons extends StatelessWidget {
       enabled = false;
     }
 
-    if (requiresPhotos && (!hasBeforePhoto || !hasAfterPhoto)) {
+    if (requiresPhotos && (!widget.hasBeforePhoto || !widget.hasAfterPhoto)) {
       enabled = false;
     }
 
@@ -65,7 +72,16 @@ class FcReportActionButtons extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: enabled && nextStatus != null ? () => onStatusChange(nextStatus!) : null,
+            onPressed: enabled && nextStatus != null ? () async {
+              setState(() => _isSubmitting = true);
+              try {
+                await widget.onStatusChange(nextStatus!);
+              } finally {
+                if (mounted) {
+                  setState(() => _isSubmitting = false);
+                }
+              }
+            } : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryDark,
               foregroundColor: Colors.white,
@@ -74,10 +90,16 @@ class FcReportActionButtons extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
             ),
-            child: Text(label, style: AppTypography.button),
+            child: _isSubmitting
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : Text(label, style: AppTypography.button),
           ),
         ),
-        if (requiresPhotos && (!hasBeforePhoto || !hasAfterPhoto))
+        if (requiresPhotos && (!widget.hasBeforePhoto || !widget.hasAfterPhoto))
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: Text('Requires both Before and After photos.', style: AppTypography.caption.copyWith(color: AppColors.error)),
@@ -86,7 +108,7 @@ class FcReportActionButtons extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: onViewOnMap,
+            onPressed: widget.onViewOnMap,
             icon: const Icon(Icons.map, color: AppColors.primaryDark),
             label: const Text('View on Map', style: AppTypography.button),
             style: OutlinedButton.styleFrom(

@@ -330,6 +330,11 @@ class _OfficerCreateCustomCleanupTaskScreenState
                       final members = crew['members'] as List? ?? [];
                       final memberCount = (crew['member_profile_ids'] as List?)?.length ?? members.length;
                       final isSelected = _selectedFieldCrewId == crewId;
+                      final activeTasks = (crew['active_task_count'] as num?)?.toInt() ??
+                          ((crew['active_tasks'] as List?)?.length ?? 0);
+                      final maxTasks = (crew['max_tasks_per_shift'] as num?)?.toInt() ?? 10;
+                      final isAtCapacity = crew['is_at_capacity'] == true || activeTasks >= maxTasks;
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
 
                       return ListTile(
                         leading: CircleAvatar(
@@ -345,9 +350,43 @@ class _OfficerCreateCustomCleanupTaskScreenState
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                           ),
                         ),
-                        subtitle: Text(
-                          '$memberCount member${memberCount == 1 ? '' : 's'}${crew['shift_start'] != null ? ' · Shift: ${crew['shift_start']}' : ''}',
-                          style: const TextStyle(fontSize: 12),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$memberCount member${memberCount == 1 ? '' : 's'}${crew['shift_start'] != null ? ' · Shift: ${crew['shift_start']}' : ''}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Icon(
+                                  activeTasks == 0
+                                      ? Icons.check_circle_outline
+                                      : (isAtCapacity ? Icons.warning_amber_rounded : Icons.assignment_outlined),
+                                  size: 13,
+                                  color: activeTasks == 0
+                                      ? AppColors.success
+                                      : (isAtCapacity ? AppColors.error : AppColors.primaryDark),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  activeTasks == 0
+                                      ? '0 tasks currently assigned (Available)'
+                                      : '$activeTasks task${activeTasks == 1 ? '' : 's'} assigned${isAtCapacity ? ' (At capacity $activeTasks/$maxTasks)' : ' ($activeTasks/$maxTasks)'}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isAtCapacity ? FontWeight.bold : FontWeight.w500,
+                                    color: activeTasks == 0
+                                        ? AppColors.success
+                                        : (isAtCapacity
+                                            ? AppColors.error
+                                            : (isDark ? Colors.grey.shade300 : Colors.grey.shade700)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                         trailing: Radio<String>(
                           value: crewId,
@@ -395,10 +434,15 @@ class _OfficerCreateCustomCleanupTaskScreenState
                         const Text('Crew Assigned'),
                         Text(
                           _selectedFieldCrewId != null
-                              ? (_fieldCrews.firstWhere(
-                                  (c) => c['id']?.toString() == _selectedFieldCrewId,
-                                  orElse: () => {'name': '1 crew'},
-                                )['name'] ?? '1 crew')
+                              ? () {
+                                  final c = _fieldCrews.firstWhere(
+                                    (c) => c['id']?.toString() == _selectedFieldCrewId,
+                                    orElse: () => {'name': '1 crew'},
+                                  );
+                                  final name = c['name'] ?? '1 crew';
+                                  final count = (c['active_task_count'] as num?)?.toInt() ?? 0;
+                                  return '$name ($count active task${count == 1 ? '' : 's'})';
+                                }()
                               : 'None',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
@@ -413,13 +457,6 @@ class _OfficerCreateCustomCleanupTaskScreenState
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitTask,
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Create Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
@@ -428,6 +465,13 @@ class _OfficerCreateCustomCleanupTaskScreenState
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Create Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -438,12 +482,12 @@ class _OfficerCreateCustomCleanupTaskScreenState
                   onPressed: () {
                     context.pop();
                   },
-                  child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

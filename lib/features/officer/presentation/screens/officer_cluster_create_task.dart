@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/features/officer/providers/officer_cleanup_tasks_provider.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 
@@ -246,6 +247,11 @@ class _OfficerClusterCreateTaskScreenState
                               final members = crew['members'] as List? ?? [];
                               final memberCount = (crew['member_profile_ids'] as List?)?.length ?? members.length;
                               final isSelected = _selectedFieldCrewId == crewId;
+                              final activeTasks = (crew['active_task_count'] as num?)?.toInt() ??
+                                  ((crew['active_tasks'] as List?)?.length ?? 0);
+                              final maxTasks = (crew['max_tasks_per_shift'] as num?)?.toInt() ?? 10;
+                              final isAtCapacity = crew['is_at_capacity'] == true || activeTasks >= maxTasks;
+                              final isDark = Theme.of(context).brightness == Brightness.dark;
 
                               return ListTile(
                                 leading: CircleAvatar(
@@ -261,9 +267,43 @@ class _OfficerClusterCreateTaskScreenState
                                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                                   ),
                                 ),
-                                subtitle: Text(
-                                  '$memberCount member${memberCount == 1 ? '' : 's'}${crew['shift_start'] != null ? ' · Shift: ${crew['shift_start']}' : ''}',
-                                  style: const TextStyle(fontSize: 12),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '$memberCount member${memberCount == 1 ? '' : 's'}${crew['shift_start'] != null ? ' · Shift: ${crew['shift_start']}' : ''}',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          activeTasks == 0
+                                              ? Icons.check_circle_outline
+                                              : (isAtCapacity ? Icons.warning_amber_rounded : Icons.assignment_outlined),
+                                          size: 13,
+                                          color: activeTasks == 0
+                                              ? AppColors.success
+                                              : (isAtCapacity ? AppColors.error : AppColors.primaryDark),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          activeTasks == 0
+                                              ? '0 tasks currently assigned (Available)'
+                                              : '$activeTasks task${activeTasks == 1 ? '' : 's'} assigned${isAtCapacity ? ' (At capacity $activeTasks/$maxTasks)' : ' ($activeTasks/$maxTasks)'}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: isAtCapacity ? FontWeight.bold : FontWeight.w500,
+                                            color: activeTasks == 0
+                                                ? AppColors.success
+                                                : (isAtCapacity
+                                                    ? AppColors.error
+                                                    : (isDark ? Colors.grey.shade300 : Colors.grey.shade700)),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                                 trailing: Radio<String>(
                                   value: crewId,
@@ -293,6 +333,14 @@ class _OfficerClusterCreateTaskScreenState
                               (_titleController.text.isEmpty || _isSubmitting)
                               ? null
                               : _submitTask,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                           child: _isSubmitting
                               ? const SizedBox(
                                   width: 24,
@@ -302,14 +350,6 @@ class _OfficerClusterCreateTaskScreenState
                                   ),
                                 )
                               : const Text('Create Cleanup Task', style: TextStyle(fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
                         ),
                       ),
                       const SizedBox(height: 8),

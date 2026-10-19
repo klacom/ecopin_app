@@ -284,7 +284,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                   (state.extra is Map
                       ? (state.extra as Map)['status']?.toString()
                       : null);
-              return OfficerCleanupTasksScreen(initialStatus: status);
+              final crewId =
+                  state.uri.queryParameters['crewId'] ??
+                  (state.extra is Map
+                      ? (state.extra as Map)['crewId']?.toString()
+                      : null);
+              final crewName =
+                  state.uri.queryParameters['crewName'] ??
+                  (state.extra is Map
+                      ? (state.extra as Map)['crewName']?.toString()
+                      : null);
+              return OfficerCleanupTasksScreen(
+                initialStatus: status,
+                initialCrewId: crewId,
+                initialCrewName: crewName,
+              );
             },
             routes: [
               GoRoute(

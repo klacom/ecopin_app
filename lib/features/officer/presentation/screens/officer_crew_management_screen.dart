@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
@@ -19,6 +21,7 @@ class _OfficerCrewManagementScreenState
   List<dynamic> _crews = [];
   List<dynamic> _unassigned = [];
   String? _mutatingMemberId;
+  final Set<String> _expandedCrewTaskIds = {};
 
   @override
   void initState() {
@@ -284,7 +287,13 @@ class _OfficerCrewManagementScreenState
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${_crews.length} Active Crews',
+                                    () {
+                                      final totalActiveTasks = _crews.fold<int>(
+                                        0,
+                                        (sum, c) => sum + ((c['active_task_count'] as num?)?.toInt() ?? 0),
+                                      );
+                                      return '${_crews.length} Active Crews · $totalActiveTasks Tasks Assigned';
+                                    }(),
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -320,6 +329,12 @@ class _OfficerCrewManagementScreenState
     final crewId = crew['id']?.toString() ?? '';
     final crewName = crew['name']?.toString() ?? 'Field Crew';
     final members = (crew['members'] as List<dynamic>?) ?? [];
+    final activeTaskCount = (crew['active_task_count'] as num?)?.toInt() ??
+        ((crew['active_tasks'] as List?)?.length ?? 0);
+    final maxTasks = (crew['max_tasks_per_shift'] as num?)?.toInt() ?? 10;
+    final isAtCapacity = crew['is_at_capacity'] == true || activeTaskCount >= maxTasks;
+    final activeTasks = (crew['active_tasks'] as List<dynamic>?) ?? [];
+    final isTasksExpanded = _expandedCrewTaskIds.contains(crewId);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -362,15 +377,202 @@ class _OfficerCrewManagementScreenState
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
+
+            // Workload & Current Tasks Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: activeTaskCount == 0
+                    ? (isDark ? const Color(0xFF143322) : const Color(0xFFE8F5E9))
+                    : (isAtCapacity
+                        ? (isDark ? const Color(0xFF3B1818) : const Color(0xFFFFEBEE))
+                        : (isDark ? const Color(0xFF1B2E3D) : const Color(0xFFE1F5FE))),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: activeTaskCount == 0
+                      ? AppColors.success.withValues(alpha: 0.4)
+                      : (isAtCapacity
+                          ? AppColors.error.withValues(alpha: 0.4)
+                          : AppColors.primaryDark.withValues(alpha: 0.4)),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    activeTaskCount == 0
+                        ? Icons.check_circle_outline
+                        : (isAtCapacity
+                            ? Icons.warning_amber_rounded
+                            : Icons.assignment_outlined),
+                    size: 18,
+                    color: activeTaskCount == 0
+                        ? AppColors.success
+                        : (isAtCapacity ? AppColors.error : AppColors.primaryDark),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      activeTaskCount == 0
+                          ? 'Available · 0 active tasks assigned'
+                          : '$activeTaskCount active task${activeTaskCount == 1 ? '' : 's'} assigned ($activeTaskCount / $maxTasks capacity)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: activeTaskCount == 0
+                            ? (isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32))
+                            : (isAtCapacity
+                                ? (isDark ? const Color(0xFFE57373) : const Color(0xFFC62828))
+                                : (isDark ? const Color(0xFF64B5F6) : const Color(0xFF0277BD))),
+                      ),
+                    ),
+                  ),
+                  if (activeTaskCount > 0)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: () {
+                        setState(() {
+                          if (isTasksExpanded) {
+                            _expandedCrewTaskIds.remove(crewId);
+                          } else {
+                            _expandedCrewTaskIds.add(crewId);
+                          }
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isTasksExpanded ? 'Hide' : 'Details',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white70 : Colors.black87,
+                              ),
+                            ),
+                            Icon(
+                              isTasksExpanded
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                              size: 16,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // Expandable Active Tasks Details
+            if (isTasksExpanded && activeTasks.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black26 : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? Colors.white10 : Colors.black12,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Currently Assigned Tasks (${activeTasks.length})',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            context.go(
+                              '${OfficerAppRoutes.cleanupTasks}?crewId=$crewId&crewName=${Uri.encodeComponent(crewName)}',
+                            );
+                          },
+                          child: const Text(
+                            'Open in Tasks →',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ...activeTasks.map((t) {
+                      final taskId = t['id']?.toString() ?? '';
+                      final title = t['title']?.toString() ?? 'Cleanup Task';
+                      final status = t['status']?.toString() ?? 'pending';
+
+                      return InkWell(
+                        onTap: taskId.isNotEmpty
+                            ? () => context.push(
+                                  OfficerAppRoutes.taskDetails.replaceAll(':id', taskId),
+                                )
+                            : null,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.circle, size: 8, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  style: const TextStyle(fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: status == 'in_progress'
+                                      ? AppColors.primary.withValues(alpha: 0.2)
+                                      : Colors.grey.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  status.replaceAll('_', ' '),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 14),
             Text(
               '${members.length} Assigned Members',
               style: TextStyle(
                 fontSize: 13,
+                fontWeight: FontWeight.w500,
                 color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             if (members.isEmpty)
               Container(
                 width: double.infinity,

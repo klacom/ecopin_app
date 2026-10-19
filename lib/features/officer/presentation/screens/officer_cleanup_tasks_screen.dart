@@ -9,8 +9,15 @@ import 'package:ecopin_app/routes/app_routes.dart';
 
 class OfficerCleanupTasksScreen extends ConsumerStatefulWidget {
   final String? initialStatus;
+  final String? initialCrewId;
+  final String? initialCrewName;
 
-  const OfficerCleanupTasksScreen({super.key, this.initialStatus});
+  const OfficerCleanupTasksScreen({
+    super.key,
+    this.initialStatus,
+    this.initialCrewId,
+    this.initialCrewName,
+  });
 
   @override
   ConsumerState<OfficerCleanupTasksScreen> createState() =>
@@ -20,12 +27,18 @@ class OfficerCleanupTasksScreen extends ConsumerStatefulWidget {
 class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksScreen> {
   String _searchQuery = '';
   String _statusFilter = 'all';
+  String? _crewIdFilter;
+  String? _crewNameFilter;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialStatus != null && widget.initialStatus!.isNotEmpty) {
       _statusFilter = widget.initialStatus!;
+    }
+    if (widget.initialCrewId != null && widget.initialCrewId!.isNotEmpty) {
+      _crewIdFilter = widget.initialCrewId;
+      _crewNameFilter = widget.initialCrewName ?? 'Assigned Crew';
     }
   }
 
@@ -271,7 +284,7 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                if (_searchQuery.isNotEmpty || _statusFilter != 'all')
+                if (_searchQuery.isNotEmpty || _statusFilter != 'all' || _crewIdFilter != null)
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: ActionChip(
@@ -281,8 +294,27 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
                         setState(() {
                           _searchQuery = '';
                           _statusFilter = 'all';
+                          _crewIdFilter = null;
+                          _crewNameFilter = null;
                         });
                       },
+                    ),
+                  ),
+                if (_crewIdFilter != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Chip(
+                      avatar: const Icon(Icons.groups, size: 16),
+                      label: Text('Crew: ${_crewNameFilter ?? 'Assigned'}', style: TextStyle(color: textColor)),
+                      backgroundColor: fillColor,
+                      side: BorderSide(color: officerColor),
+                      onDeleted: () {
+                        setState(() {
+                          _crewIdFilter = null;
+                          _crewNameFilter = null;
+                        });
+                      },
+                      deleteIconColor: officerColor,
                     ),
                   ),
                 if (_statusFilter != 'all')
@@ -318,7 +350,11 @@ class _OfficerCleanupTasksScreenState extends ConsumerState<OfficerCleanupTasksS
       final matchesStatus =
           _statusFilter == 'all' || task.status == _statusFilter;
 
-      return matchesSearch && matchesStatus;
+      final matchesCrew = _crewIdFilter == null ||
+          task.assignedFieldCrewId == _crewIdFilter ||
+          (task.assignedCrewIds != null && task.assignedCrewIds!.contains(_crewIdFilter));
+
+      return matchesSearch && matchesStatus && matchesCrew;
     }).toList();
   }
 

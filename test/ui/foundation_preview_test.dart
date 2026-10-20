@@ -8,6 +8,7 @@ import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_wi
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,13 +37,18 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         const preview = Key('account-preview');
+        if (entry.key == 'intro') {
+          const illustration = SvgAssetLoader('assets/illustrations/welcome_neighborhood.svg');
+          await tester.runAsync(() => svg.cache.putIfAbsent(
+            illustration.cacheKey(null), () => illustration.loadBytes(null)));
+        }
         await tester.pumpWidget(ProviderScope(overrides: [apiClientProvider.overrideWithValue(SyntheticAccountApi())], child: MaterialApp(
           theme: dark ? AppTheme.dark : AppTheme.light,
           home: RepaintBoundary(key: preview, child: entry.value),
         )));
         await tester.pumpAndSettle();
         if (entry.key == 'intro') {
-          await tester.runAsync(() => precacheImage(AssetImage(dark ? 'assets/logos/Full Logo Dark.png' : 'assets/logos/Full Logo Light.png'), tester.element(find.byType(LandingScreen))));
+          await tester.runAsync(() => precacheImage(const AssetImage('assets/logos/Full Logo Dark.png'), tester.element(find.byType(LandingScreen))));
           await tester.pumpAndSettle();
         }
         expect(tester.takeException(), isNull);

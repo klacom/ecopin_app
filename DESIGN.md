@@ -43,6 +43,18 @@ Use the existing 4/8/16/24/32/48/64 spacing scale, adding 12 or 20 only for comp
 
 ## Controls and navigation
 
+### Welcome screen
+
+The signed-out introduction leads with **A cleaner Pasig starts with us.** Use a civic-blue field in both themes, a white wordmark, and a single soft-green emphasis on “us.” Set the headline in medium Outfit, with ordinary readable body text and a compact three-step sequence: Snap & pin, Describe, Follow up. Avoid script lettering, gradients, decorative badges, and repeated cards.
+
+The bundled `assets/illustrations/welcome_neighborhood.svg` is an original folded-neighborhood drawing: a river, a footbridge, garden plots, and one leaf pin. It is decorative, excluded from screen-reader output, and does not represent live reports or geographic data. Keep all meaningful copy as native text.
+
+Place **Sign in** and **Create an account** in a quiet, theme-aware bottom section using the shared buttons and existing routes. The map currently requires authentication, so the introduction must not offer an anonymous-map action. Constrain the reading width on tablets; let the whole screen scroll on short displays and with enlarged text. Preserve device safe areas, full text scaling, a semantic heading, and keyboard activation.
+
+Verification: account layout tests cover small phones with 2× text, landscape, tablet, both themes, and the two account destinations. Foundation preview tests render the native welcome screen in both themes. Physical-device safe areas and TalkBack remain device acceptance.
+
+### Shared controls
+
 - Target at least 48dp interactive areas. A button's configured height is its minimum; it grows for multiline/scaled labels. Named loading states disable duplicate actions.
 - Inputs have labels, helper/error text, keyboard/autofill appropriate to their value, visible focus, and named show/hide-password actions. Preserve controllers, validation, submissions, and values after failures.
 - Shells keep role destinations, safe areas, readable selected labels, accessible notification counts, and predictable back behavior. Public reporting, My reports, crew objectives, and officer review remain distinct tasks.
@@ -57,7 +69,7 @@ Use `CitizenNavigationBar` in the citizen shell. The supplied navigation referen
 
 - Order: **Map · Reports · Report · Alerts · Profile**. Four destination indices remain unchanged; reporting never becomes a fifth page or a selected tab.
 - Attach the surface to the bottom and both screen edges, with only 12dp top-left and top-right corners. No outer margin, floating pill, bottom corner rounding, or gap below the bar. Paint the surface through the bottom device inset and keep every control above it. The citizen shell extends its body behind the bar so the transparent space beside the raised action reveals the screen rather than a rectangular scaffold background.
-- The surface is white in light mode and neutral charcoal in dark mode. A quiet upward shadow separates it from content. The center has a 72dp surface-colored circular shoulder around a 56dp circular action. Reserve 104dp plus the device's bottom inset for the whole component, so the raised area remains inside the shell's layout and hit-test bounds.
+- The surface is white in light mode and neutral charcoal in dark mode. Keep the rectangular base shadow-free so it cannot create a gray strip beside the raised action on Reports or Alerts. The center has a 72dp surface-colored circular shoulder around a 56dp circular action, which retains its own quiet elevation. Reserve 104dp plus the device's bottom inset for the whole component, so the raised area remains inside the shell's layout and hit-test bounds.
 - The report action uses civic blue `#0052CC` and a white camera icon in both themes. Keep its visible **Report** caption and full accessible name, **Report an environmental concern**. During location lookup, disable repeat activation and announce **Finding location**. Preserve current location failures and manual map-selection recovery.
 - Use the Bootstrap font bundled with `icons_plus` for map, document, camera, notification, and person icons. Icons are generally 24dp; the central camera is 26dp. Selection adds a short 16 × 2dp marker above the icon and changes icon/label color. It must also expose the native selected state.
 - Labels use bundled Outfit, 12dp, regular (400), with ordinary letter spacing. Use the readable blue token for selected labels, secondary text for inactive labels, and a maximum navigation text scale of 1.3. Main content keeps the system's full scale. Keep at least 48dp tap targets and native keyboard focus/activation.

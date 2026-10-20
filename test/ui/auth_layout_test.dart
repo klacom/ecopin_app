@@ -14,6 +14,8 @@ import 'package:ecopin_app/shared/auth/presentation/screens/landing_screen.dart'
 import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/email_verification_screen.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
 
 class SyntheticAccountApi extends ApiClient {
   final loginResult = Completer<dio.Response>();
@@ -46,6 +48,55 @@ dio.DioException rejection(String message) {
 
 void main() {
   setUp(() => dotenv.loadFromString(envString: 'SYNTHETIC_TEST=true'));
+  for (final dark in [false, true]) {
+    testWidgets('welcome actions remain reachable across display sizes, dark=$dark', (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      tester.view.devicePixelRatio = 1;
+      for (final size in [const Size(320, 640), const Size(844, 390), const Size(768, 1024)]) {
+        tester.view.physicalSize = size;
+        await tester.pumpWidget(MaterialApp(
+          theme: dark ? AppTheme.dark : AppTheme.light,
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(2), padding: EdgeInsets.only(top: 24, bottom: 32)),
+            child: LandingScreen(key: ValueKey(size)),
+          ),
+        ));
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(find.text('Create an account'), 200);
+        await tester.pumpAndSettle();
+        expect(find.text('Create an account').hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: '$size, dark=$dark');
+      }
+    });
+  }
+  testWidgets('welcome opens the existing account routes with touch and keyboard', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final router = GoRouter(initialLocation: PublicAppRoutes.landing, routes: [
+      GoRoute(path: PublicAppRoutes.landing, builder: (_, _) => const LandingScreen()),
+      GoRoute(path: PublicAppRoutes.login, builder: (_, _) => const Scaffold(body: Text('Login destination'))),
+      GoRoute(path: PublicAppRoutes.register, builder: (_, _) => const Scaffold(body: Text('Registration destination'))),
+    ]);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(theme: AppTheme.light, routerConfig: router));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Sign in'));
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Login destination'), findsOneWidget);
+    router.go(PublicAppRoutes.landing);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.text('Registration destination'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('resend respects server cooldown and never marks a timed wait verified', (tester) async {
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(const MethodChannel('com.llfbandit.app_links/events'), (call) async => null);

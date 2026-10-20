@@ -78,13 +78,6 @@ class CitizenNavigationBar extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(12),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.shadowColor.withValues(alpha: .06),
-                      blurRadius: 12,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
                 ),
               ),
             ),

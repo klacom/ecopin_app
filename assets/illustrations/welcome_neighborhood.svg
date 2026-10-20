@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="224" viewBox="0 0 400 224" fill="none">
+  <!-- An imagined neighborhood, drawn for the welcome screen; not live map data. -->
+  <path d="M27 63 130 32 252 63 374 32 360 175 242 211 126 179 17 211Z" fill="white" fill-opacity=".05"/>
+  <path d="m130 32 122 31-10 148-116-32Z" fill="white" fill-opacity=".035"/>
+  <g stroke="white" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M27 63 130 32 252 63 374 32 360 175 242 211 126 179 17 211Z" stroke-width="1.5" stroke-opacity=".7"/>
+    <path d="m130 33-4 146m126-116-10 147" stroke-width="1.2" stroke-dasharray="3 5" stroke-opacity=".4"/>
+    <g stroke-width="1.3" stroke-opacity=".55">
+      <path d="m24 104 68-19 37 9m-52-45-4 38-6 49-45 13m4 27 101-29m-79-65-4 54m52-39-2 31m35-17 50 13m-49-65 47 13m-26-22-2 63m-18 45 46 12m-24-7-1 39m117-99 90-26m-77 13-3 44m28-50-4 48m-56 31 83-24m-64 19-4 40m-23 11 60-17m-17-28-2 33"/>
+      <path d="m37 114 18-5-2 20-18 5Zm61-52 19-6-1 19-19 6Zm-12 91 26-7-1 17-26 7Zm202-82 16-5-2 18-16 5Zm48 58 18-5-1 16-18 5Z" fill="white" fill-opacity=".05"/>
+    </g>
+  </g>
+  <!-- The river cuts across the folds, joining the neighborhood. -->
+  <path d="M190 48c-18 23-2 42 22 58 23 16 35 30 17 48-15 15-52 10-64 28l28 8c11-11 37-8 52-22 32-29 9-53-10-65-22-15-38-28-24-49Z" fill="#82B6FF" fill-opacity=".7"/>
+  <path d="M198 50c-16 24 5 41 25 55 20 14 36 34 15 54-19 19-46 11-60 27" stroke="white" stroke-width="1.2" stroke-opacity=".6"/>
+  <!-- A footbridge and two small garden plots. -->
+  <path d="m185 121 38-25m-34 31 38-25" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <path d="m43 160 28-8-2 26-28 9Z" fill="#83CBA0" fill-opacity=".9"/>
+  <path d="m310 144 22-7-2 27-22 7Z" fill="#83CBA0" fill-opacity=".9"/>
+  <g stroke="#0052CC" stroke-width="1.2" stroke-linecap="round">
+    <path d="m51 164 11-3m-12 10 11-3m-12 10 11-3m255-29 9-3m-10 10 9-3m-10 10 9-3"/>
+  </g>
+  <!-- One deliberate pin. Its leaf echoes EcoPin's mark. -->
+  <ellipse cx="251" cy="126" rx="19" ry="6" fill="#003D99" fill-opacity=".55"/>
+  <path d="M251 123s-28-30-28-48a28 28 0 0 1 56 0c0 18-28 48-28 48Z" fill="white"/>
+  <path d="M240 85c-7-18 6-23 23-24 1 17-4 31-23 24Z" fill="#27754D"/>
+  <path d="m238 91 19-23m-11 13 9 0m-5-5 0-7" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- A short drawn route, rather than decorative sparkles. -->
+  <path d="M72 126c14 0 13-17 29-15 14 2 10 25 25 24 17-1 15-25 31-23" stroke="white" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 6"/>
+  <circle cx="69" cy="127" r="4" fill="#83CBA0"/>
+  <path d="m154 106 8 5-7 7" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

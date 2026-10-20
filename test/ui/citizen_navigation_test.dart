@@ -1,14 +1,25 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:ecopin_app/core/theme/app_theme.dart';
+import 'package:ecopin_app/features/citizen/presentation/screens/citizen_main_screen.dart';
 import 'package:ecopin_app/features/citizen/presentation/widgets/citizen_navigation_bar.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
+import 'package:ecopin_app/shared/notifications/presentation/screens/notifications_screen.dart';
+import 'package:ecopin_app/shared/notifications/providers/notifications_provider.dart';
+import 'package:ecopin_app/shared/reports/presentation/screens/reports_screen.dart';
+import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   setUpAll(() async {
+    await (FontLoader(
+      'MaterialIcons',
+    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
     await (FontLoader(
       'Outfit',
     )..addFont(rootBundle.load('assets/fonts/Outfit-Regular.ttf'))).load();
@@ -17,6 +28,109 @@ void main() {
         ))
         .load();
   });
+
+  for (final dark in [false, true]) {
+    for (final reports in [true, false]) {
+      testWidgets(
+        'no rectangular strip above citizen ${reports ? "reports" : "alerts"} / ${dark ? "dark" : "light"}',
+        (tester) async {
+          tester.view.physicalSize = const Size(390, 800);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final router = GoRouter(
+            initialLocation: reports
+                ? ProtectedAppRoutes.reports
+                : ProtectedAppRoutes.notifications,
+            routes: [
+              ShellRoute(
+                builder: (_, _, child) => CitizenMainScreen(child: child),
+                routes: [
+                  GoRoute(
+                    path: ProtectedAppRoutes.reports,
+                    builder: (_, _) => const ReportsScreen(),
+                  ),
+                  GoRoute(
+                    path: ProtectedAppRoutes.notifications,
+                    builder: (_, _) => const NotificationsScreen(),
+                  ),
+                ],
+              ),
+            ],
+          );
+          addTearDown(router.dispose);
+          final theme = dark ? AppTheme.dark : AppTheme.light;
+          const preview = Key('citizen-page-preview');
+          final previousShadows = debugDisableShadows;
+          debugDisableShadows = false;
+          addTearDown(() => debugDisableShadows = previousShadows);
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                myReportsProvider.overrideWith((ref) async => []),
+                notificationsProvider.overrideWith((ref) => Stream.value([])),
+                unreadNotificationsCountProvider.overrideWith(
+                  (ref) => Stream.value(0),
+                ),
+              ],
+              child: MaterialApp.router(
+                routerConfig: router,
+                theme: theme,
+                builder: (_, child) =>
+                    RepaintBoundary(key: preview, child: child!),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          try {
+            tester.renderObject(find.byKey(preview)).markNeedsPaint();
+            await tester.pump();
+            final boundary = tester.renderObject<RenderRepaintBoundary>(
+              find.byKey(preview),
+            );
+            final top = tester
+                .getTopLeft(find.byKey(const Key('citizen-navigation')))
+                .dy
+                .round();
+            await tester.runAsync(() async {
+              final image = await boundary.toImage();
+              try {
+                final output = Platform.environment['ECOPIN_SCREENSHOT_DIR'];
+                if (output != null) {
+                  final png = await image.toByteData(
+                    format: ui.ImageByteFormat.png,
+                  );
+                  await File(
+                    '$output/citizen-${reports ? "reports" : "alerts"}-${dark ? "dark" : "light"}.png',
+                  ).writeAsBytes(png!.buffer.asUint8List());
+                }
+                final rgba = (await image.toByteData(
+                  format: ui.ImageByteFormat.rawRgba,
+                ))!;
+                final background = theme.scaffoldBackgroundColor.toARGB32();
+                for (var y = top + 8; y < top + 22; y++) {
+                  final offset = (y * image.width + 24) * 4;
+                  expect(
+                    rgba.getUint8(offset),
+                    (background >> 16) & 255,
+                    reason:
+                        'The space beside the raised action must show the page without a rectangular shadow.',
+                  );
+                  expect(rgba.getUint8(offset + 1), (background >> 8) & 255);
+                  expect(rgba.getUint8(offset + 2), background & 255);
+                }
+              } finally {
+                image.dispose();
+              }
+            });
+          } finally {
+            debugDisableShadows = previousShadows;
+          }
+        },
+      );
+    }
+  }
 
   for (final dark in [false, true]) {
     for (final width in [320.0, 390.0, 768.0, 1024.0, 1440.0]) {

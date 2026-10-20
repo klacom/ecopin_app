@@ -1,8 +1,22 @@
 # EcoPin mobile design contract
 
-Updated: 14 October 2026
+Updated: 21 October 2026
 
 This replaces the obsolete neon design. The civic identity follows [the web contract](../ecopin-web/DESIGN.md), adapted to citizens reporting concerns and SWMO staff working on phones. The shared backlog defines implementation scope; this document does not claim every screen has been modernized.
+
+## App purpose and information architecture
+
+Design for a phone held in one hand: find a concern, report it with location and evidence, then follow its progress. Use native Flutter controls and device safe areas rather than reproducing the web header, hero, hover interactions, or desktop sidebar. Keep the current role routes and platform back behavior.
+
+| Citizen control | Job | Existing destination |
+| --- | --- | --- |
+| Map | Explore public concerns | `ProtectedAppRoutes.maps` |
+| Reports | Follow the citizen's own submissions | `ProtectedAppRoutes.reports` |
+| Report | Start a new concern; an action rather than a selected tab | Existing location-prefill flow → `ProtectedAppRoutes.createReport` |
+| Alerts | Read notifications and their unread count | `ProtectedAppRoutes.notifications` |
+| Profile | Manage the signed-in account | `ProtectedAppRoutes.profile` |
+
+Citizen navigation is the first rollout of the raised-action treatment. Staff shells retain their existing shared navigation. Do not imply that their destinations, permissions, or workflows changed.
 
 ## Palette and themes
 
@@ -32,10 +46,26 @@ Use the existing 4/8/16/24/32/48/64 spacing scale, adding 12 or 20 only for comp
 - Target at least 48dp interactive areas. A button's configured height is its minimum; it grows for multiline/scaled labels. Named loading states disable duplicate actions.
 - Inputs have labels, helper/error text, keyboard/autofill appropriate to their value, visible focus, and named show/hide-password actions. Preserve controllers, validation, submissions, and values after failures.
 - Shells keep role destinations, safe areas, readable selected labels, accessible notification counts, and predictable back behavior. Public reporting, My reports, crew objectives, and officer review remain distinct tasks.
-- Use the shared native navigation bar for the four role shells. Five-tab shells use Home rather than a long Overview label. Officer secondary destinations belong in the scrollable More sheet. Keep crew detail-route navigation behavior intact. Native navigation labels and supplementary badges follow platform text-scale limits; speak the full unread count. Main content and actions continue to grow with system text size.
-- The citizen Report a concern action uses a bounded, wrapping shared button above the navigation bar. Do not apply a circular floating-action shape to a text action. Map status overlays reserve additional space as text size grows. Account avatars use private-media delivery, including fallbacks.
+- Staff shells use the shared native navigation bar. Five-tab shells use Home rather than a long Overview label. Officer secondary destinations belong in the scrollable More sheet. Keep crew detail-route navigation behavior intact. Navigation labels and supplementary badges follow platform text-scale limits; speak the full unread count. Main content and actions continue to grow with system text size.
+- Citizen navigation uses the raised circular Report action described below. Map status overlays reserve additional space as text size grows. Account avatars elsewhere use private-media delivery, including fallbacks.
 - Forms use logical sections with inline errors and an explicit final review where supported. Keep map attribution and action buttons clear of keyboard and device insets.
 - Dialogs/sheets have a clear title, dismiss/back behavior, scrollable content, and usable actions at large text sizes. Continuous motion has pause controls. Respect reduced motion outside the approved web landing behavior.
+
+### Citizen bottom navigation
+
+Use `CitizenNavigationBar` in the citizen shell. The supplied navigation reference informs the compact five-position layout, raised center action, fine selection marker, and lighter labels. Use EcoPin's palette and destinations.
+
+- Order: **Map · Reports · Report · Alerts · Profile**. Four destination indices remain unchanged; reporting never becomes a fifth page or a selected tab.
+- Attach the surface to the bottom and both screen edges, with only 12dp top-left and top-right corners. No outer margin, floating pill, bottom corner rounding, or gap below the bar. Paint the surface through the bottom device inset and keep every control above it. The citizen shell extends its body behind the bar so the transparent space beside the raised action reveals the screen rather than a rectangular scaffold background.
+- The surface is white in light mode and neutral charcoal in dark mode. A quiet upward shadow separates it from content. The center has a 72dp surface-colored circular shoulder around a 56dp circular action. Reserve 104dp plus the device's bottom inset for the whole component, so the raised area remains inside the shell's layout and hit-test bounds.
+- The report action uses civic blue `#0052CC` and a white camera icon in both themes. Keep its visible **Report** caption and full accessible name, **Report an environmental concern**. During location lookup, disable repeat activation and announce **Finding location**. Preserve current location failures and manual map-selection recovery.
+- Use the Bootstrap font bundled with `icons_plus` for map, document, camera, notification, and person icons. Icons are generally 24dp; the central camera is 26dp. Selection adds a short 16 × 2dp marker above the icon and changes icon/label color. It must also expose the native selected state.
+- Labels use bundled Outfit, 12dp, regular (400), with ordinary letter spacing. Use the readable blue token for selected labels, secondary text for inactive labels, and a maximum navigation text scale of 1.3. Main content keeps the system's full scale. Keep at least 48dp tap targets and native keyboard focus/activation.
+- Alerts retain the visible capped `99+` badge and full unread count for assistive technology. Loading or failed counts remain identifiable. Profile uses the same icon family as its neighboring destinations.
+
+`icons_plus` 5.0.0 subclasses `IconData`, which is final in the app's installed Flutter SDK. Until the upstream package supports that SDK, the citizen widget declares five constant native `IconData` values using the package's Bootstrap font and matching codepoints. Do not import the incompatible Dart barrel or patch the SDK/package cache. Recheck these bindings when upgrading the icon package.
+
+Verification: `test/ui/role_navigation_test.dart` exercises all role routes, both themes, 320dp width, 2× system text, and a 32dp bottom inset. `test/ui/citizen_navigation_test.dart` covers responsive widths, report activation/loading, keyboard activation, and renders the actual Flutter navigation states for visual review. Real Android GPS, TalkBack, and gesture-navigation acceptance remain device checks.
 
 ## States, reports, and field work
 

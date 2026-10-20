@@ -1,13 +1,11 @@
 import 'package:ecopin_app/shared/notifications/providers/notifications_provider.dart';
-import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/core/services/location_service.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
-import 'package:ecopin_app/shared/widgets/app_button.dart';
+import '../widgets/citizen_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/shared/widgets/app_navigation_bar.dart';
 
 class CitizenMainScreen extends ConsumerStatefulWidget {
   final Widget child;
@@ -83,73 +81,22 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
-    final profileAsync = ref.watch(profileProvider);
     final unreadAsync = ref.watch(unreadNotificationsCountProvider);
     final unread = unreadAsync.value ?? 0;
-    Widget alertsIcon(IconData icon) => Semantics(
-      label: unreadAsync.hasError
-          ? 'Unread count unavailable'
-          : unreadAsync.isLoading
-          ? 'Loading unread count'
-          : '$unread unread notifications',
-      excludeSemantics: true,
-      child: Badge(
-        isLabelVisible: unread > 0,
-        label: MediaQuery.withClampedTextScaling(
-          maxScaleFactor: 1.3,
-          child: Text(
-            unread > 99 ? '99+' : '$unread',
-            style: const TextStyle(fontSize: 12),
-          ),
-        ),
-        child: Icon(icon),
-      ),
-    );
     return Scaffold(
+      extendBody: true,
       body: widget.child,
-      floatingActionButton: Tooltip(
-        message: 'Report an environmental concern',
-        child: AppButton(
-          width: (MediaQuery.sizeOf(context).width - 32)
-              .clamp(0.0, 360.0)
-              .toDouble(),
-          text: _findingLocation ? 'Finding location…' : 'Report a concern',
-          icon: Icons.add_a_photo_outlined,
-          isLoading: _findingLocation,
-          onPressed: _findingLocation ? null : _beginReport,
-        ),
-      ),
-      bottomNavigationBar: AppNavigationBar(
+      bottomNavigationBar: CitizenNavigationBar(
         selectedIndex: selectedIndex,
         onSelected: (index) => _onItemTapped(index, context),
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map),
-            label: 'Map',
-            tooltip: 'Explore map',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.description_outlined),
-            selectedIcon: Icon(Icons.description),
-            label: 'My reports',
-          ),
-          NavigationDestination(
-            icon: alertsIcon(Icons.notifications_outlined),
-            selectedIcon: alertsIcon(Icons.notifications),
-            label: 'Alerts',
-            tooltip: 'Notifications',
-          ),
-          NavigationDestination(
-            icon: AppNavAvatar(
-              source: profileAsync.value?['avatar_url'] as String?,
-            ),
-            selectedIcon: AppNavAvatar(
-              source: profileAsync.value?['avatar_url'] as String?,
-            ),
-            label: 'Account',
-          ),
-        ],
+        onReport: _beginReport,
+        isReporting: _findingLocation,
+        unreadCount: unread,
+        unreadLabel: unreadAsync.hasError
+            ? 'Unread count unavailable'
+            : unreadAsync.isLoading
+            ? 'Loading unread count'
+            : '$unread unread notifications',
       ),
     );
   }

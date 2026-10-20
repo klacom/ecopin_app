@@ -14,7 +14,6 @@ import 'package:ecopin_app/features/officer/presentation/screens/officer_main_sc
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/notifications/providers/notifications_provider.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
-import 'package:ecopin_app/shared/widgets/app_button.dart';
 
 void main() {
   setUpAll(() async {
@@ -35,7 +34,7 @@ void main() {
         ProtectedAppRoutes.notifications,
         ProtectedAppRoutes.profile,
       ],
-      ['Map', 'My reports', 'Alerts', 'Account'],
+      ['Map', 'Reports', 'Alerts', 'Profile'],
     ),
     'crew': (
       (child) => FieldCrewMainScreen(child: child),
@@ -140,23 +139,22 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
+          final navigation = role.key == 'citizen'
+              ? find.byKey(const Key('citizen-navigation'))
+              : find.byType(NavigationBar);
           if (role.key == 'citizen') {
             final action = tester.getRect(
-              find.widgetWithText(AppButton, 'Report a concern'),
+              find.byTooltip('Report an environmental concern'),
             );
-            expect(action.left, greaterThanOrEqualTo(16));
-            expect(action.right, lessThanOrEqualTo(304));
+            expect(action.width, 56);
+            expect(action.center.dx, 160);
             expect(
-              action.bottom,
-              lessThanOrEqualTo(
-                tester.getTopLeft(find.byType(NavigationBar)).dy,
-              ),
+              action.top,
+              greaterThanOrEqualTo(tester.getTopLeft(navigation).dy),
             );
+            expect(action.bottom, lessThanOrEqualTo(768));
           }
-          expect(
-            tester.getBottomRight(find.byType(NavigationBar)).dy,
-            lessThanOrEqualTo(800),
-          );
+          expect(tester.getBottomRight(navigation).dy, 800);
           final output = Platform.environment['ECOPIN_SCREENSHOT_DIR'];
           if (output != null) {
             final boundary = tester.renderObject<RenderRepaintBoundary>(
@@ -180,12 +178,30 @@ void main() {
               router.routeInformationProvider.value.uri.path,
               role.value.$2[index],
             );
-            expect(
-              tester
-                  .widget<NavigationBar>(find.byType(NavigationBar))
-                  .selectedIndex,
-              index,
-            );
+            if (role.key == 'citizen') {
+              expect(
+                tester.getSemantics(
+                  find.bySemanticsLabel(role.value.$3[index]),
+                ),
+                matchesSemantics(
+                  isButton: true,
+                  isSelected: true,
+                  hasSelectedState: true,
+                  hasEnabledState: true,
+                  isEnabled: true,
+                  isFocusable: true,
+                  hasTapAction: true,
+                  hasFocusAction: true,
+                  label: role.value.$3[index],
+                  hint: index == 2 ? '123 unread notifications' : null,
+                ),
+              );
+            } else {
+              expect(
+                tester.widget<NavigationBar>(navigation).selectedIndex,
+                index,
+              );
+            }
             expect(tester.takeException(), isNull);
           }
           if (role.key == 'officer') {

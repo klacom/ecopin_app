@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_info.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_layer.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_preview.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/map_privacy_consent_dialog.dart';
@@ -32,6 +33,41 @@ ReportModel previewReport({
 );
 
 void main() {
+  for (final dark in [false, true]) {
+    testWidgets(
+      'legend shows an illustrative cluster at 320dp and 2x / $dark',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 700);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: dark ? AppTheme.dark : AppTheme.light,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: Scaffold(body: ReportMapInfo(openSource: (_) {})),
+          ),
+        );
+        expect(tester.widget<Text>(find.text('© OpenStreetMap contributors')).textAlign, TextAlign.center);
+        final sample = find.byType(ReportClusterBadge);
+        expect(sample, findsOneWidget);
+        expect(tester.widget<ReportClusterBadge>(sample).onActivate, isNull);
+        expect(find.textContaining('Report cluster'), findsOneWidget);
+        expect(
+          find.textContaining('number shows how many reports'),
+          findsOneWidget,
+        );
+        await tester.ensureVisible(find.text('CARTO basemap credits'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   testWidgets(
     'public preview keeps the full title and approximate-location context at 320px/2x',
     (tester) async {
@@ -82,7 +118,7 @@ void main() {
     },
   );
   testWidgets(
-    'marker names the report/status and has a real 48dp native action',
+    'marker names the report/status and has a coordinate-pin footprint and native action',
     (tester) async {
       var opens = 0;
       await tester.pumpWidget(
@@ -101,7 +137,7 @@ void main() {
         ),
       );
       final action = find.byTooltip('Street concern, Waiting for Feedback');
-      expect(tester.getSize(action), const Size(48, 48));
+      expect(tester.getSize(action), const Size(56, 64));
       await tester.tap(action);
       expect(opens, 1);
       expect(
@@ -145,8 +181,9 @@ void main() {
                             14.58 + (coincident ? 0 : index * .001),
                             121.08,
                           ),
-                          width: 48,
-                          height: 48,
+                          width: ReportPinFrame.width,
+                          height: ReportPinFrame.height,
+                          alignment: Alignment.topCenter,
                           child: ReportMarker(
                             status: 'unresolved',
                             title: 'Report $index',
@@ -173,7 +210,7 @@ void main() {
                 .hasAction(ui.SemanticsAction.tap),
             isTrue,
           );
-          expect(tester.getSize(badge), const Size(48, 48));
+          expect(tester.getSize(badge), const Size(56, 64));
           final focusable = find.descendant(
             of: badge,
             matching: find.byType(FocusableActionDetector),

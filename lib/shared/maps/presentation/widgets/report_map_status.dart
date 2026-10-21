@@ -5,10 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class ReportMapStatus extends StatelessWidget {
   final AsyncValue<ReportMapPage> value;
   final VoidCallback onRetry;
+  final bool hasPreviousReports;
+  final bool compact;
   const ReportMapStatus({
     super.key,
     required this.value,
     required this.onRetry,
+    this.hasPreviousReports = false,
+    this.compact = false,
   });
 
   @override
@@ -21,14 +25,16 @@ class ReportMapStatus extends StatelessWidget {
       loading: () => 'Loading reports in this area…',
       error: (error, stack) => 'Reports could not load.',
     );
-    final displayMessage = value.hasError && value.hasValue
+    final displayMessage =
+        value.hasError && (value.hasValue || hasPreviousReports)
         ? '$message Showing the last loaded reports.'
         : message;
     return Semantics(
       liveRegion: true,
-      child: Card(
+      child: Material(
+        color: Theme.of(context).colorScheme.surface,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: compact ? EdgeInsets.zero : const EdgeInsets.all(12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,

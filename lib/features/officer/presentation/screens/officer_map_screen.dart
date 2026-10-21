@@ -203,7 +203,7 @@ class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
                   subdomains: const ['a', 'b', 'c'],
                   userAgentPackageName: 'dev.ecopinas.ecopin_app',
                 ),
-                if (_showHeatmap)
+                if (_showHeatmap && reports.isNotEmpty)
                   HeatMapLayer(
                     heatMapDataSource: InMemoryHeatMapDataSource(
                       data: reports.map((report) {
@@ -249,12 +249,16 @@ class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
                 MyMarkerClusterLayer(
                   markers: reports.map((report) {
                     return Marker(
+                      key: ValueKey(report.id),
                       point: report.location,
-                      width: 40,
-                      height: 40,
-                      child: GestureDetector(
+                      width: ReportPinFrame.width,
+                      height: ReportPinFrame.height,
+                      alignment: Alignment.topCenter,
+                      child: ReportMarker(
+                        status: report.status,
+                        title: report.title,
+                        issueType: report.issueType,
                         onTap: () => _showReportPreview(context, report),
-                        child: ReportMarker(status: report.status),
                       ),
                     );
                   }).toList(),
@@ -676,4 +680,3 @@ class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
     );
   }
 }
-

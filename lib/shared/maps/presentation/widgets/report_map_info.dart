@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'report_marker.dart';
+import 'my_marker_cluster_layer.dart';
 
 class ReportMapInfo extends StatelessWidget {
   const ReportMapInfo({super.key, required this.openSource});
@@ -13,6 +14,20 @@ class ReportMapInfo extends StatelessWidget {
       children: [
         const Text(
           'Choose a pin to preview a report. Numbered groups expand to show nearby reports. A ring highlights your selected report.',
+        ),
+        const SizedBox(height: 16),
+        const Row(
+          children: [
+            ExcludeSemantics(
+              child: ReportClusterBadge(count: 3, onActivate: null),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Report cluster\nThe number shows how many reports are grouped nearby. Tap a cluster on the map to zoom in or spread its reports in a circle. This is an example.',
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         for (final status in [
@@ -29,8 +44,8 @@ class ReportMapInfo extends StatelessWidget {
               children: [
                 ExcludeSemantics(
                   child: SizedBox(
-                    width: 48,
-                    height: 48,
+                    width: ReportPinFrame.width,
+                    height: ReportPinFrame.height,
                     child: ReportMarker(status: status),
                   ),
                 ),
@@ -55,12 +70,18 @@ class ReportMapInfo extends StatelessWidget {
         TextButton(
           onPressed: () =>
               openSource(Uri.parse('https://www.openstreetmap.org/copyright')),
-          child: const Text('© OpenStreetMap contributors'),
+          child: const Text(
+            '© OpenStreetMap contributors',
+            textAlign: TextAlign.center,
+          ),
         ),
         TextButton(
           onPressed: () =>
               openSource(Uri.parse('https://carto.com/attributions')),
-          child: const Text('CARTO basemap credits'),
+          child: const Text(
+            'CARTO basemap credits',
+            textAlign: TextAlign.center,
+          ),
         ),
       ],
     ),

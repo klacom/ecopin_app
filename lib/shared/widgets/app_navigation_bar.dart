@@ -9,7 +9,9 @@ class AppNavigationBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelected,
     required this.destinations,
+    this.compact = false,
   });
+  final bool compact;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final List<NavigationDestination> destinations;
@@ -20,6 +22,76 @@ class AppNavigationBar extends StatelessWidget {
     final muted = dark
         ? AppColors.textSecondaryDark
         : AppColors.textSecondaryLight;
+    if (compact) {
+      return MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.3,
+        child: Material(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+          clipBehavior: Clip.antiAlias,
+          child: SafeArea(
+            top: false,
+            child: Row(
+              children: [
+                for (var i = 0; i < destinations.length; i++)
+                  Expanded(
+                    child: Semantics(
+                      selected: selectedIndex == i,
+                      child: TextButton(
+                        onPressed: () => onSelected(i),
+                        style: TextButton.styleFrom(
+                          foregroundColor: selectedIndex == i
+                              ? selected
+                              : muted,
+                          minimumSize: const Size(48, 80),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 16,
+                              height: 2,
+                              decoration: BoxDecoration(
+                                color: selectedIndex == i
+                                    ? selected
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(1),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            IconTheme(
+                              data: IconThemeData(
+                                size: 24,
+                                color: selectedIndex == i ? selected : muted,
+                              ),
+                              child: selectedIndex == i
+                                  ? destinations[i].selectedIcon ??
+                                        destinations[i].icon
+                                  : destinations[i].icon,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              destinations[i].label,
+                              style: const TextStyle(
+                                fontFamily: 'Outfit',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                height: 1.3,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return NavigationBarTheme(
       data: NavigationBarThemeData(
         backgroundColor: Theme.of(context).colorScheme.surface,

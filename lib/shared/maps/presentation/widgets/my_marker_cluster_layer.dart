@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'report_marker.dart';
 
 class MyMarkerClusterLayer extends StatelessWidget {
   const MyMarkerClusterLayer({super.key, required this.markers});
@@ -10,7 +11,8 @@ class MyMarkerClusterLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MarkerClusterLayerWidget(
     options: MarkerClusterLayerOptions(
-      size: const Size(48, 48),
+      size: const Size(ReportPinFrame.width, ReportPinFrame.height),
+      alignment: Alignment.topCenter,
       polygonOptions: const PolygonOptions(
         borderColor: Colors.transparent,
         color: Colors.transparent,
@@ -85,33 +87,19 @@ class _ReportClusterBadgeState extends State<ReportClusterBadge> {
           },
         ),
       },
-      child: Container(
-        width: 48,
-        height: 48,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AppColors.accent,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: _focused
-                ? AppColors.linkDark
-                : Theme.of(context).colorScheme.surface,
-            width: _focused ? 3 : 2,
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x26000000),
-              blurRadius: 3,
-              offset: Offset(0, 1),
-            ),
-          ],
-        ),
+      child: ReportPinFrame(
+        color: AppColors.accent,
+        selected: _focused,
+        layered: true,
+        badge: const Icon(Icons.layers_outlined, size: 14, color: Colors.white),
         child: MediaQuery.withClampedTextScaling(
           maxScaleFactor: 1.3,
           child: Text(
             widget.count > 999 ? '999+' : '${widget.count}',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Colors.white,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.linkDark
+                  : AppColors.accent,
               fontWeight: FontWeight.w600,
             ),
           ),

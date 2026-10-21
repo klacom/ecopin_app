@@ -1,3 +1,5 @@
+import 'package:ecopin_app/shared/reports/data/datasources/public_report_map_cache.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/public_report_list.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -53,8 +55,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Timer? _viewportDebounce;
   Timer? _refreshTimer;
   ReportViewport? _viewport;
+  final _areaCache = PublicReportMapCache();
+  ReportMapPage? _cachedPage;
+  ReportMapPage? _lastFetchedPage;
+  ReportMapPage? _lastPage;
 
   bool _showHeatmap = false;
+  bool _listView = false;
+  bool _listOpened = false;
   bool _isLoadingLocation = false;
   bool _checkingPrivacy = false;
   String? _selectedReportId;
@@ -66,9 +74,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final lifecycle = WidgetsBinding.instance.lifecycleState;
       if (mounted &&
           _viewport != null &&
+          !_listView &&
           TickerMode.valuesOf(context).enabled &&
           (lifecycle == null || lifecycle == AppLifecycleState.resumed)) {
-        ref.invalidate(publicReportMapProvider(_viewport!));
+        _refreshArea();
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -121,9 +130,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       east: bounds.east,
     );
     _viewportDebounce?.cancel();
-    _viewportDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (mounted && next != _viewport) setState(() => _viewport = next);
-    });
+    if (_listView) return;
+    _viewportDebounce = Timer(
+      _viewport == null ? Duration.zero : const Duration(milliseconds: 150),
+      () {
+        if (!mounted || next == _viewport) return;
+        final cached = _areaCache.get(next);
+        setState(() {
+          _viewport = next;
+          _cachedPage = cached;
+        });
+      },
+    );
+  }
+
+  void _refreshArea() {
+    if (_viewport == null) return;
+    _areaCache.clear();
+    setState(() => _cachedPage = null);
+    ref.invalidate(publicReportMapProvider(_viewport!));
   }
 
   // For Data/Location Disclosure
@@ -229,8 +254,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     final reportsAsync = _viewport == null
         ? const AsyncLoading<ReportMapPage>()
+        : _cachedPage != null
+        ? AsyncData(_cachedPage!)
         : ref.watch(publicReportMapProvider(_viewport!));
-    final reports = reportsAsync.value?.reports ?? <ReportModel>[];
+    if (reportsAsync.hasValue) {
+      _lastPage = reportsAsync.value;
+      if (_cachedPage == null &&
+          !reportsAsync.isLoading &&
+          !reportsAsync.hasError &&
+          !identical(_lastFetchedPage, reportsAsync.value)) {
+        _lastFetchedPage = reportsAsync.value;
+        _areaCache.put(_viewport!, _lastFetchedPage!);
+      }
+    }
+    final reports =
+        (reportsAsync.value ?? _lastPage)?.reports ?? <ReportModel>[];
     final colorScheme = Theme.of(context).colorScheme;
     // Filter out rejected reports
     var visibleReports = reports
@@ -249,175 +287,249 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
 
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
+      body: Column(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: pasigInitialCenter,
-              initialZoom: 15.0,
-              minZoom: 3,
-              maxZoom: 18,
-              interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.all,
-              ),
-              onMapReady: () => _updateViewport(_mapController.camera),
-              onPositionChanged: (camera, hasGesture) =>
-                  _updateViewport(camera),
-              onTap: null,
-            ),
-            children: [
-              TileLayer(
-                tileProvider: widget.tileProvider,
-                urlTemplate: Theme.of(context).brightness == Brightness.dark
-                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
-                    : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
-                subdomains: const ['a', 'b', 'c'],
-                userAgentPackageName: 'dev.ecopinas.ecopin_app',
-              ),
-              if (_showHeatmap)
-                HeatMapLayer(
-                  heatMapDataSource: InMemoryHeatMapDataSource(
-                    data: visibleReports.map((report) {
-                      double weight;
-                      switch (report.status.toLowerCase()) {
-                        case 'resolved':
-                        case 'closed':
-                          weight = 0.3;
-                          break;
-                        case 'in progress':
-                        case 'in_progress':
-                        case 'acknowledged':
-                        case 'waiting_for_feedback':
-                          weight = 0.6;
-                          break;
-                        case 'pending_owner_consent':
-                          weight = 0.8;
-                          break;
-                        default:
-                          weight = 1.0;
-                          break;
-                      }
-                      return WeightedLatLng(report.location, weight);
-                    }).toList(),
-                  ),
-                  heatMapOptions: HeatMapOptions(radius: 50, minOpacity: 0.6),
-                ),
-              CurrentLocationLayer(
-                alignPositionOnUpdate: AlignOnUpdate.never,
-                alignDirectionOnUpdate: AlignOnUpdate.never,
-                style: LocationMarkerStyle(
-                  marker: DefaultLocationMarker(
-                    child: Icon(Icons.navigation, color: colorScheme.surface),
-                  ),
-                  markerSize: const Size(40, 40),
-                  markerDirection: MarkerDirection.heading,
-                  accuracyCircleColor: const Color(0x182196F3),
-                  headingSectorColor: const Color(0xCC2196F3),
-                  headingSectorRadius: 60,
-                  showAccuracyCircle: true,
-                  showHeadingSector: true,
-                ),
-              ),
-              if (widget.showOptimizedRoute)
-                const PolylineLayer(polylines: <Polyline<Object>>[]),
-              if (widget.showBaseOfOperations) const MarkerLayer(markers: []),
-              if (widget.showOtherCrews) const MarkerLayer(markers: []),
-              MyMarkerClusterLayer(
-                markers: visibleReports
-                    .map(
-                      (report) => Marker(
-                        key: ValueKey(report.id),
-                        point: report.location,
-                        width: 48,
-                        height: 48,
-                        child: ReportMarker(
-                          status: report.status,
-                          title: report.title,
-                          selected: _selectedReportId == report.id,
-                          onTap: () => _showReportPreview(report),
+          _buildMapToolbar(reportsAsync),
+          Expanded(
+            child: IndexedStack(
+              index: _listView ? 1 : 0,
+              children: [
+                Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: pasigInitialCenter,
+                        initialZoom: 15.0,
+                        minZoom: 3,
+                        maxZoom: 18,
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.all,
                         ),
+                        onMapReady: () =>
+                            _updateViewport(_mapController.camera),
+                        onPositionChanged: (camera, hasGesture) =>
+                            _updateViewport(camera),
+                        onTap: null,
                       ),
-                    )
-                    .toList(),
-              ),
-            ],
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: widget.isFieldCrewMode
-                ? 16
-                : MediaQuery.textScalerOf(context).scale(48) + 40,
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 64),
-                    child: ReportMapStatus(
-                      value: reportsAsync,
-                      onRetry: () {
-                        if (_viewport != null) {
-                          ref.invalidate(publicReportMapProvider(_viewport!));
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (!widget.isFieldCrewMode)
-            Positioned(
-              top: 16,
-              right: 16,
-              child: SafeArea(
-                child: ReportMapControls(
-                  heatmap: _showHeatmap,
-                  locating: _isLoadingLocation,
-                  onSearch: () => showGeneralDialog(
-                    context: context,
-                    pageBuilder: (_, animation, secondaryAnimation) =>
-                        SearchOverlay(mapController: _mapController),
-                  ),
-                  onHeatmap: () => setState(() => _showHeatmap = !_showHeatmap),
-                  onLocate: _getCurrentLocation,
-                  onInfo: _showMapInfo,
-                ),
-              ),
-            ),
-          if (widget.isFieldCrewMode)
-            Positioned(
-              top: 16,
-              left: 16,
-              right: 16,
-              child: SafeArea(
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'Public map preview',
-                          style: Theme.of(context).textTheme.titleSmall,
+                        TileLayer(
+                          tileProvider: widget.tileProvider,
+                          urlTemplate:
+                              Theme.of(context).brightness == Brightness.dark
+                              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
+                              : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                          subdomains: const ['a', 'b', 'c'],
+                          userAgentPackageName: 'dev.ecopinas.ecopin_app',
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Open an assigned task for its route details and report response actions.',
+                        if (_showHeatmap && visibleReports.isNotEmpty)
+                          HeatMapLayer(
+                            heatMapDataSource: InMemoryHeatMapDataSource(
+                              data: visibleReports.map((report) {
+                                double weight;
+                                switch (report.status.toLowerCase()) {
+                                  case 'resolved':
+                                  case 'closed':
+                                    weight = 0.3;
+                                    break;
+                                  case 'in progress':
+                                  case 'in_progress':
+                                  case 'acknowledged':
+                                  case 'waiting_for_feedback':
+                                    weight = 0.6;
+                                    break;
+                                  case 'pending_owner_consent':
+                                    weight = 0.8;
+                                    break;
+                                  default:
+                                    weight = 1.0;
+                                    break;
+                                }
+                                return WeightedLatLng(report.location, weight);
+                              }).toList(),
+                            ),
+                            heatMapOptions: HeatMapOptions(
+                              radius: 50,
+                              minOpacity: 0.6,
+                            ),
+                          ),
+                        CurrentLocationLayer(
+                          alignPositionOnUpdate: AlignOnUpdate.never,
+                          alignDirectionOnUpdate: AlignOnUpdate.never,
+                          style: LocationMarkerStyle(
+                            marker: DefaultLocationMarker(
+                              child: Icon(
+                                Icons.navigation,
+                                color: colorScheme.surface,
+                              ),
+                            ),
+                            markerSize: const Size(40, 40),
+                            markerDirection: MarkerDirection.heading,
+                            accuracyCircleColor: const Color(0x182196F3),
+                            headingSectorColor: const Color(0xCC2196F3),
+                            headingSectorRadius: 60,
+                            showAccuracyCircle: true,
+                            showHeadingSector: true,
+                          ),
+                        ),
+                        if (widget.showOptimizedRoute)
+                          const PolylineLayer(polylines: <Polyline<Object>>[]),
+                        if (widget.showBaseOfOperations)
+                          const MarkerLayer(markers: []),
+                        if (widget.showOtherCrews)
+                          const MarkerLayer(markers: []),
+                        MyMarkerClusterLayer(
+                          markers: visibleReports
+                              .map(
+                                (report) => Marker(
+                                  key: ValueKey(report.id),
+                                  point: report.location,
+                                  width: ReportPinFrame.width,
+                                  height: ReportPinFrame.height,
+                                  alignment: Alignment.topCenter,
+                                  child: ReportMarker(
+                                    status: report.status,
+                                    issueType: report.issueType,
+                                    title: report.title,
+                                    selected: _selectedReportId == report.id,
+                                    onTap: () => _showReportPreview(report),
+                                  ),
+                                ),
+                              )
+                              .toList(),
                         ),
                       ],
                     ),
-                  ),
+                    if (!widget.isFieldCrewMode)
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: SafeArea(
+                          child: ReportMapControls(
+                            heatmap: _showHeatmap,
+                            locating: _isLoadingLocation,
+                            onSearch: () => showGeneralDialog(
+                              context: context,
+                              pageBuilder: (_, animation, secondaryAnimation) =>
+                                  SearchOverlay(mapController: _mapController),
+                            ),
+                            onHeatmap: () =>
+                                setState(() => _showHeatmap = !_showHeatmap),
+                            onLocate: _getCurrentLocation,
+                            onInfo: _showMapInfo,
+                          ),
+                        ),
+                      ),
+                    if (widget.isFieldCrewMode)
+                      Positioned(
+                        top: 16,
+                        left: 16,
+                        right: 16,
+                        child: SafeArea(
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Public map preview',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleSmall,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Open an assigned task for its route details and report response actions.',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              ),
+                if (_listOpened)
+                  PublicReportList(onOpen: _showReportPreview)
+                else
+                  const SizedBox.shrink(),
+              ],
             ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMapToolbar(AsyncValue<ReportMapPage> value) {
+    final controls = SegmentedButton<bool>(
+      segments: const [
+        ButtonSegment(
+          value: false,
+          icon: Icon(Icons.map_outlined),
+          label: Text('Map'),
+        ),
+        ButtonSegment(
+          value: true,
+          icon: Icon(Icons.view_list_outlined),
+          label: Text('List'),
+        ),
+      ],
+      selected: {_listView},
+      onSelectionChanged: (selection) => setState(() {
+        _listView = selection.single;
+        _listOpened = _listOpened || _listView;
+        if (_listView) {
+          _viewportDebounce?.cancel();
+        } else {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_listView) _updateViewport(_mapController.camera);
+          });
+        }
+      }),
+    );
+    final status = ReportMapStatus(
+      value: value,
+      hasPreviousReports: _lastPage != null,
+      onRetry: _refreshArea,
+      compact: true,
+    );
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (widget.isFieldCrewMode) return status;
+              if (_listView) {
+                return Align(alignment: Alignment.centerLeft, child: controls);
+              }
+              if (constraints.maxWidth >= 300 &&
+                  MediaQuery.textScalerOf(context).scale(14) <= 18.2) {
+                return Row(
+                  children: [
+                    controls,
+                    const SizedBox(width: 12),
+                    Expanded(child: status),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(alignment: Alignment.centerLeft, child: controls),
+                  const SizedBox(height: 8),
+                  status,
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }

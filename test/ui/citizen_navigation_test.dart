@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:ecopin_app/core/theme/app_theme.dart';
@@ -67,6 +68,9 @@ void main() {
           await tester.pumpWidget(
             ProviderScope(
               overrides: [
+                profileProvider.overrideWith(
+                  (ref) => Stream.value({'full_name': 'Synthetic Citizen'}),
+                ),
                 myReportsProvider.overrideWith((ref) async => []),
                 notificationsProvider.overrideWith((ref) => Stream.value([])),
                 unreadNotificationsCountProvider.overrideWith(
@@ -108,7 +112,23 @@ void main() {
                 final rgba = (await image.toByteData(
                   format: ui.ImageByteFormat.rawRgba,
                 ))!;
-                final background = theme.scaffoldBackgroundColor.toARGB32();
+                final shell = tester.widget<Scaffold>(
+                  find
+                      .descendant(
+                        of: find.byType(CitizenMainScreen),
+                        matching: find.byType(Scaffold),
+                      )
+                      .first,
+                );
+                final background =
+                    (shell.backgroundColor ?? theme.scaffoldBackgroundColor)
+                        .toARGB32();
+                expect(
+                  background,
+                  isNot(theme.colorScheme.surface.toARGB32()),
+                  reason:
+                      'The navbar silhouette needs contrast against the citizen page canvas.',
+                );
                 for (var y = top + 8; y < top + 22; y++) {
                   final offset = (y * image.width + 24) * 4;
                   expect(
@@ -120,6 +140,23 @@ void main() {
                   expect(rgba.getUint8(offset + 1), (background >> 8) & 255);
                   expect(rgba.getUint8(offset + 2), background & 255);
                 }
+                for (final sample in [
+                  (1, top + 25, background),
+                  (24, top + 28, theme.colorScheme.surface.toARGB32()),
+                ]) {
+                  final offset = (sample.$2 * image.width + sample.$1) * 4;
+                  expect(rgba.getUint8(offset), (sample.$3 >> 16) & 255);
+                  expect(rgba.getUint8(offset + 1), (sample.$3 >> 8) & 255);
+                  expect(rgba.getUint8(offset + 2), sample.$3 & 255);
+                }
+                final ringOffset =
+                    ((top + 2) * image.width + image.width ~/ 2) * 4;
+                expect(
+                  rgba.getUint8(ringOffset),
+                  greaterThan((background >> 16) & 255),
+                  reason:
+                      'The raised Report action keeps a visible surface ring.',
+                );
               } finally {
                 image.dispose();
               }

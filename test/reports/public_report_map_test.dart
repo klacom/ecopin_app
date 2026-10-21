@@ -42,6 +42,36 @@ void main() {
     return client;
   }
 
+  test('public list pages across all areas using only public fields', () async {
+    late Uri request;
+    final client = clientFor((r) async {
+      request = r.url;
+      return http.Response(
+        jsonEncode([
+          fixture,
+          {...fixture, 'id': 'second'},
+          {...fixture, 'id': 'sentinel'},
+        ]),
+        200,
+      );
+    });
+    final page = await PublicReportMapDataSource(
+      client,
+    ).getFeedPage(offset: 20, limit: 2);
+    expect(page.reports.map((r) => r.id), ['synthetic-report', 'second']);
+    expect(page.hasMore, isTrue);
+    expect(request.path, '/rest/v1/public_reports');
+    expect(request.queryParameters['select'], PublicReportMapDataSource.fields);
+    expect(request.queryParameters.containsKey('latitude'), isFalse);
+    expect(request.queryParameters.containsKey('longitude'), isFalse);
+    expect(request.queryParameters['offset'], '20');
+    expect(request.queryParameters['limit'], '3');
+    expect(
+      request.queryParameters['order'],
+      'created_at.desc.nullslast,id.desc.nullslast',
+    );
+  });
+
   test(
     'public map requests safe viewport fields and one truncation sentinel',
     () async {
@@ -83,7 +113,10 @@ void main() {
         'gte.121.0',
         'lte.121.2',
       ]);
-      expect(request.queryParameters['order'], 'created_at.desc.nullslast,id.desc.nullslast');
+      expect(
+        request.queryParameters['order'],
+        'created_at.desc.nullslast,id.desc.nullslast',
+      );
       expect(request.queryParameters['limit'], '3');
       expect(client.realtime.getChannels(), isEmpty);
     },

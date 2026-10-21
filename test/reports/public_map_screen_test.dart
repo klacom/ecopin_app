@@ -1,4 +1,6 @@
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_status.dart';
 import 'dart:async';
+import 'package:latlong2/latlong.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:image/image.dart' as image;
@@ -43,6 +45,14 @@ class _SyntheticConsentApi extends ApiClient {
 class _ControlledReports extends PublicReportMapDataSource {
   final requests = <(ReportViewport, Completer<ReportMapPage>)>[];
   _ControlledReports(super.client);
+  final feedRequests = <Completer<ReportMapPage>>[];
+  @override
+  Future<ReportMapPage> getFeedPage({int offset = 0, int limit = 30}) {
+    final request = Completer<ReportMapPage>();
+    feedRequests.add(request);
+    return request.future;
+  }
+
   @override
   Future<ReportMapPage> getPage(ReportViewport viewport, {int limit = 200}) {
     final completion = Completer<ReportMapPage>();
@@ -178,6 +188,96 @@ void main() {
     return reports;
   }
 
+  testWidgets('report status sits beside Map/List on a phone toolbar', (
+    tester,
+  ) async {
+      tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final reports = await mount(tester);
+    reports.requests.first.$2.complete(page(7));
+    await tester.pumpAndSettle();
+    final controls = tester.getRect(find.byType(SegmentedButton<bool>));
+    final status = tester.getRect(find.byType(ReportMapStatus));
+    expect(status.left, greaterThanOrEqualTo(controls.right));
+    expect(
+      status.bottom,
+      lessThanOrEqualTo(tester.getTopLeft(find.byType(FlutterMap)).dy),
+    );
+    expect(
+      tester.widget<Scaffold>(find.byType(Scaffold).first).bottomNavigationBar,
+      isNull,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'citizen list browses public reports independently and preserves the map',
+    (tester) async {
+      final reports = await mount(tester);
+      reports.requests.first.$2.complete(page(0));
+      await tester.pumpAndSettle();
+      final map = tester.state(find.byType(FlutterMap));
+      expect(reports.feedRequests, isEmpty);
+      await tester.tap(find.text('List'));
+      await tester.pump();
+      expect(reports.feedRequests, hasLength(1));
+      reports.feedRequests.single.complete(
+        page(1, title: 'Public concern from another resident'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Public concern from another resident'), findsOneWidget);
+      expect(find.text('Search this area'), findsNothing);
+      await tester.tap(find.text('Public concern from another resident'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ReportMapPreview), findsOneWidget);
+      await tester.tap(find.byTooltip('Close report preview'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Map'));
+      await tester.pumpAndSettle();
+      expect(tester.state(find.byType(FlutterMap)), same(map));
+      expect(reports.requests, hasLength(1));
+      await tester.tap(find.text('List'));
+      await tester.pumpAndSettle();
+      expect(reports.feedRequests, hasLength(1));
+      expect(find.text('Public concern from another resident'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'empty heatmap survives repeated zooms and refreshing an empty area',
+    (tester) async {
+      final reports = await mount(tester);
+      reports.requests.first.$2.complete(page(0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Show report heatmap'));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      final controller = tester
+          .widget<FlutterMap>(find.byType(FlutterMap))
+          .mapController!;
+      for (final zoom in [16.0, 13.0, 17.0, 14.0]) {
+        controller.move(controller.camera.center, zoom);
+        await tester.pump(const Duration(milliseconds: 250));
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+      expect(find.text('Search this area'), findsNothing);
+      expect(tester.takeException(), isNull);
+      for (final request in reports.requests) {
+        if (!request.$2.isCompleted) request.$2.complete(page(0));
+      }
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(FlutterMap), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('map stays mounted through loading, failure and retry', (
     tester,
   ) async {
@@ -199,32 +299,69 @@ void main() {
   });
 
   testWidgets(
-    'navigation changes viewport and old results cannot overwrite the current map',
+    'panning fetches after 150ms and old results cannot overwrite the current map',
     (tester) async {
       final reports = await mount(tester);
       reports.requests.first.$2.complete(page(0));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
       final mapState = tester.state(find.byType(FlutterMap));
-      await tester.drag(find.byType(FlutterMap), const Offset(100, 0));
-      await tester.pump(const Duration(seconds: 1));
+      final controller = tester
+          .widget<FlutterMap>(find.byType(FlutterMap))
+          .mapController!;
+      controller.move(const LatLng(14.65, 121.15), 15);
+      await tester.pump(const Duration(milliseconds: 149));
+      expect(reports.requests, hasLength(1));
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump();
+      expect(reports.requests, hasLength(2));
       final oldRequest = reports.requests.last;
-      expect(oldRequest.$1, isNot(reports.requests.first.$1));
-      await tester.drag(find.byType(FlutterMap), const Offset(0, 100));
-      await tester.pump(const Duration(seconds: 1));
-      expect(reports.requests.last.$1, isNot(oldRequest.$1));
+      controller.move(const LatLng(14.7, 121.2), 15);
+      await tester.pump(const Duration(milliseconds: 150));
+      await tester.pump();
+      expect(reports.requests, hasLength(3));
       reports.requests.last.$2.complete(page(3));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.text('3 public reports in this area'), findsOneWidget);
       oldRequest.$2.complete(page(1));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.text('3 public reports in this area'), findsOneWidget);
+      expect(find.text('Search this area'), findsNothing);
       expect(tester.state(find.byType(FlutterMap)), same(mapState));
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets('returning to a cached area needs no new request', (
+    tester,
+  ) async {
+    final reports = await mount(tester);
+    reports.requests.first.$2.complete(page(0));
+    await tester.pumpAndSettle();
+    final controller = tester
+        .widget<FlutterMap>(find.byType(FlutterMap))
+        .mapController!;
+    final originalCenter = controller.camera.center;
+    controller.move(originalCenter, 16);
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pumpAndSettle();
+    expect(reports.requests, hasLength(1));
+    controller.move(const LatLng(14.7, 121.2), 15);
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump();
+    reports.requests.last.$2.complete(page(2));
+    await tester.pumpAndSettle();
+    controller.move(originalCenter, 15);
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pumpAndSettle();
+    expect(reports.requests, hasLength(2));
+    expect(find.text('0 public reports in this area'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 60));
+    await tester.pump();
+    expect(reports.requests, hasLength(3));
+    reports.requests.last.$2.complete(page(1));
+    await tester.pumpAndSettle();
+    expect(find.text('1 public report in this area'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets(
     'preview selection remains stable through a refresh and uses only public data',
     (tester) async {
@@ -362,6 +499,12 @@ void main() {
           await mount(tester, dark: dark, scale: 2);
           reports.requests.first.$2.complete(page(1));
           await tester.pumpAndSettle();
+          expect(
+            tester.getBottomRight(find.byType(ReportMapStatus)).dy,
+            lessThanOrEqualTo(
+              tester.getTopLeft(find.byType(FlutterMap)).dy + 1,
+            ),
+          );
           final info = tester.getRect(find.byTooltip('Map legend and credits'));
           expect(info.top, greaterThanOrEqualTo(0));
           expect(info.bottom, lessThanOrEqualTo(size.height));

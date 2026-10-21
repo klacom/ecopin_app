@@ -43,6 +43,26 @@ class PublicReportMapDataSource {
   static const fields =
       'id,title,description,issue_type,status,cluster_id,created_at,updated_at,stage,is_overdue,severity_score,severity_level,lifecycle_state,breached_at,validation_status,location,latitude,longitude,location_precision';
 
+  Future<ReportMapPage> getFeedPage({int offset = 0, int limit = 30}) async {
+    if (offset < 0) throw RangeError.value(offset, 'offset');
+    if (limit < 1 || limit > 100) {
+      throw RangeError.range(limit, 1, 100, 'limit');
+    }
+    final rows = await _client
+        .from('public_reports')
+        .select(fields)
+        .order('created_at', ascending: false)
+        .order('id', ascending: false)
+        .range(offset, offset + limit);
+    return ReportMapPage(
+      reports: rows
+          .take(limit)
+          .map(ReportModel.fromJson)
+          .toList(growable: false),
+      hasMore: rows.length > limit,
+    );
+  }
+
   Future<ReportMapPage> getPage(
     ReportViewport bounds, {
     int limit = 200,

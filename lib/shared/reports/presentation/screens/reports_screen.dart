@@ -38,12 +38,75 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     ref.invalidate(myReportsProvider);
     try { await ref.read(myReportsProvider.future); } catch (_) { /* The provider exposes the failure below. */ }
   }
+  Future<void> _showFilters() async {
+    FocusScope.of(context).unfocus();
+    var draft = _selectedFilter;
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, updateSheet) => ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(sheetContext).height * .8),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(children: [
+                  Expanded(child: Text('Filter reports', style: Theme.of(sheetContext).textTheme.titleLarge)),
+                  IconButton(tooltip: 'Close filters', onPressed: () => Navigator.pop(sheetContext), icon: const Icon(Icons.close)),
+                ]),
+                const SizedBox(height: 8),
+                const Text('Report status'),
+                RadioGroup<String>(
+                  groupValue: draft,
+                  onChanged: (value) { if (value != null) updateSheet(() => draft = value); },
+                  child: Column(children: [
+                    for (final filter in reportFilters)
+                      RadioListTile<String>(
+                        value: filter,
+                        title: Text(reportStatusLabels[filter] ?? filter),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                  ]),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(onPressed: () => Navigator.pop(sheetContext, draft), child: const Text('Apply filters')),
+                TextButton(onPressed: () => updateSheet(() => draft = 'All'), child: const Text('Reset status')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (mounted && selected != null) {
+      setState(() { _selectedFilter = selected; _displayLimit = 20; });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final reportsAsync = ref.watch(myReportsProvider);
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('My reports')),
+      appBar: AppBar(title: const Text('My Reports'), actions: [
+        IconButton(
+          tooltip: 'Filter reports',
+          onPressed: _showFilters,
+          icon: Badge(
+            isLabelVisible: _selectedFilter != 'All',
+            label: const Text('1'),
+            child: const Icon(Icons.filter_list),
+          ),
+        ),
+      ]),
       body: SafeArea(child: Column(children: [
         Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12), child: TextField(
           controller: _search, textInputAction: TextInputAction.search,
@@ -52,14 +115,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             suffixIcon: _query.isEmpty ? null : IconButton(tooltip: 'Clear search', icon: const Icon(Icons.close),
               onPressed: () { _search.clear(); setState(() { _query = ''; _displayLimit = 20; }); })),
         )),
-        SingleChildScrollView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), child: Row(children: [
-          for (final filter in reportFilters) Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(
-            label: Text(reportStatusLabels[filter] ?? filter), selected: _selectedFilter == filter,
-            selectedColor: theme.colorScheme.primary,
-            labelStyle: TextStyle(color: _selectedFilter == filter ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface),
-            onSelected: (selected) { if (selected) setState(() { _selectedFilter = filter; _displayLimit = 20; }); },
-          )),
-        ])),
         if (reportsAsync.isLoading && reportsAsync.hasValue) const LinearProgressIndicator(semanticsLabel: 'Refreshing your reports'),
         if (reportsAsync.hasError && reportsAsync.hasValue) Padding(padding: const EdgeInsets.all(16), child: Column(children: [
           const Text('Reports could not refresh. Previous results are still shown.'),

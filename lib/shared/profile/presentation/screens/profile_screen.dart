@@ -1,3 +1,4 @@
+import '../widgets/delete_account_dialog.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:ecopin_app/core/utils/validators.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
@@ -64,7 +65,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _log.severe('DioException during avatar upload: $e', stackTrace);
         String errorMsg = 'Failed to upload avatar';
 
-        if (e.response?.data != null && e.response?.data['message'] != null) {
+        if (e.response?.data is Map && e.response?.data['message'] is String) {
           errorMsg = e.response?.data['message'];
         } else if (e.message != null) {
           errorMsg = e.message!;
@@ -237,144 +238,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _deleteAccount() async {
+    if (_isSaving || ref.read(profileProvider).value?['role'] != 'citizen') return;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(AppColors.spaceLG),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10.0,
-                offset: Offset(0.0, 10.0),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(AppColors.spaceMD),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.delete_forever_rounded,
-                  color: AppColors.error,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: AppColors.spaceLG),
-              const Text(
-                'Delete Account?',
-                style: TextStyle(
-                  fontSize: 22.0,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: AppColors.spaceSM),
-              const Text(
-                'Deleting your account is permanent and cannot be undone.\n\n'
-                '• Your sign-in credentials, profile info, and notifications will be permanently deleted.\n'
-                '• To preserve city waste tracking statistics, your submitted waste reports will remain in the public record but will be permanently anonymized (all personal identifying links removed).',
-                textAlign: TextAlign.start,
-                style: TextStyle(
-                  fontSize: 14.0,
-                  color: Colors.grey,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: AppColors.spaceXL),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        side: BorderSide(
-                          color: Theme.of(context).dividerColor,
-                        ),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(
-                          color: Theme.of(context).textTheme.bodyLarge?.color,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppColors.spaceMD),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.error,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Delete Forever',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (context) => const DeleteAccountDialog(),
     );
 
-    if (confirmed == true) {
+    if (confirmed == true && mounted) {
       setState(() {
         _isSaving = true;
       });
 
+      final auth = ref.read(authNotifierProvider.notifier);
       try {
         final apiClient = ref.read(apiClientProvider);
-        await apiClient.deleteAccount();
-
-        await ref.read(authNotifierProvider.notifier).signOut();
-        if (mounted) {
-          SnackbarHelper.showMessage('Account deleted. Personal data removed and waste reports anonymized.');
-          context.go(PublicAppRoutes.login);
-        }
+        await apiClient.deleteAccount(confirmation: 'I confirm');
+        await auth.signOut();
+        SnackbarHelper.showMessage('Account deleted. Personal data removed and waste reports anonymized.');
       } on dio.DioException catch (e, stackTrace) {
         _log.severe('DioException deleting account: $e', stackTrace);
         String errorMsg = 'Failed to delete account. Please try again.';
-        if (e.response?.data != null && e.response?.data['message'] != null) {
+        if (e.response?.data is Map && e.response?.data['message'] is String) {
           errorMsg = e.response?.data['message'];
         }
-        if (mounted) {
-          SnackbarHelper.showError(errorMsg);
+        if (e.response?.data is Map && e.response?.data['signed_out'] == true) {
+          await auth.signOut();
         }
+        SnackbarHelper.showError(errorMsg);
       } catch (e, stackTrace) {
         _log.severe('Error deleting account: $e', stackTrace);
-        if (mounted) {
-          SnackbarHelper.showError('Error deleting account. Please contact support.');
-        }
+        SnackbarHelper.showError('Account deletion could not be completed. Sign in again to retry.');
       } finally {
         if (mounted) {
           setState(() {
@@ -841,21 +734,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: TextButton.icon(
-                        onPressed: _isSaving ? null : _deleteAccount,
-                        icon: const Icon(Icons.delete_forever_outlined, color: AppColors.error, size: 20),
-                        label: const Text(
-                          'Delete Account',
-                          style: TextStyle(
-                            color: AppColors.error,
-                            fontWeight: FontWeight.w600,
+                    if (profile?['role'] == 'citizen') ...[
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton.icon(
+                          onPressed: _isSaving ? null : _deleteAccount,
+                          icon: const Icon(Icons.delete_forever_outlined, color: AppColors.error, size: 20),
+                          label: const Text(
+                            'Delete Account',
+                            style: TextStyle(
+                              color: AppColors.error,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: 128),
                   ],
                 ),

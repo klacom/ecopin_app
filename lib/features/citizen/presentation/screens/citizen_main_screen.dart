@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/shared/notifications/providers/notifications_provider.dart';
 import 'package:ecopin_app/core/services/location_service.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
@@ -81,13 +82,33 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
+    final profile = ref.watch(profileProvider).value;
     final unreadAsync = ref.watch(unreadNotificationsCountProvider);
     final unread = unreadAsync.value ?? 0;
+    final theme = Theme.of(context);
+    final canvas = theme.brightness == Brightness.light
+        ? Color(
+            Color.alphaBlend(
+              (theme.dividerTheme.color ?? theme.colorScheme.outlineVariant)
+                  .withValues(alpha: .5),
+              theme.scaffoldBackgroundColor,
+            ).toARGB32(),
+          )
+        : theme.scaffoldBackgroundColor;
     return Scaffold(
+      backgroundColor: canvas,
       extendBody: true,
-      body: widget.child,
+      body: Theme(
+        data: theme.copyWith(
+          scaffoldBackgroundColor: canvas,
+          appBarTheme: theme.appBarTheme.copyWith(backgroundColor: canvas),
+        ),
+        child: widget.child,
+      ),
       bottomNavigationBar: CitizenNavigationBar(
         selectedIndex: selectedIndex,
+        profileName: profile?['full_name'] as String?,
+        profileImageUrl: profile?['avatar_url'] as String?,
         onSelected: (index) => _onItemTapped(index, context),
         onReport: _beginReport,
         isReporting: _findingLocation,

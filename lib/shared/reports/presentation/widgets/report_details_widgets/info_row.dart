@@ -14,7 +14,7 @@ class InfoRow extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: Colors.grey),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(fontSize: 14)),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );

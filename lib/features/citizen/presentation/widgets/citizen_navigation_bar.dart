@@ -18,11 +18,6 @@ const _alertsIcon = IconData(
   fontFamily: 'Bootstrap',
   fontPackage: 'icons_plus',
 );
-const _profileIcon = IconData(
-  0xeea9,
-  fontFamily: 'Bootstrap',
-  fontPackage: 'icons_plus',
-);
 const _reportIcon = IconData(
   0xeaa2,
   fontFamily: 'Bootstrap',
@@ -39,6 +34,8 @@ class CitizenNavigationBar extends StatelessWidget {
     required this.isReporting,
     required this.unreadCount,
     required this.unreadLabel,
+    this.profileName,
+    this.profileImageUrl,
   });
 
   final int selectedIndex;
@@ -47,6 +44,7 @@ class CitizenNavigationBar extends StatelessWidget {
   final bool isReporting;
   final int unreadCount;
   final String unreadLabel;
+  final String? profileName, profileImageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +57,7 @@ class CitizenNavigationBar extends StatelessWidget {
         : AppColors.textSecondaryLight;
     final bottom = MediaQuery.paddingOf(context).bottom;
     const labels = ['Map', 'Reports', 'Alerts', 'Profile'];
-    const icons = [_mapIcon, _reportsIcon, _alertsIcon, _profileIcon];
+    const icons = [_mapIcon, _reportsIcon, _alertsIcon];
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
@@ -117,7 +115,12 @@ class CitizenNavigationBar extends StatelessWidget {
                         child: Builder(
                           builder: (context) {
                             final index = slot < 2 ? slot : slot - 1;
-                            Widget icon = Icon(icons[index], size: 24);
+                            Widget icon = index == 3
+                                ? _ProfileAvatar(
+                                    name: profileName,
+                                    imageUrl: profileImageUrl,
+                                  )
+                                : Icon(icons[index], size: 24);
                             if (index == 2) {
                               icon = Badge(
                                 isLabelVisible: unreadCount > 0,
@@ -174,6 +177,40 @@ class CitizenNavigationBar extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({this.name, this.imageUrl});
+  final String? name, imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = (name ?? '')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    final initials = parts.isEmpty
+        ? '?'
+        : (parts.first.characters.first +
+                  (parts.length > 1 ? parts.last.characters.first : ''))
+              .toUpperCase();
+    final url = imageUrl?.trim();
+    final hasImage = url != null && url.isNotEmpty;
+    final scheme = Theme.of(context).colorScheme;
+    return CircleAvatar(
+      radius: 14,
+      backgroundColor: scheme.primaryContainer,
+      foregroundColor: scheme.onPrimaryContainer,
+      foregroundImage: hasImage ? NetworkImage(url) : null,
+      // Keep initials visible while loading and if the uploaded image cannot load.
+      onForegroundImageError: hasImage ? (_, _) {} : null,
+      child: Text(
+        initials,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
       ),
     );
   }

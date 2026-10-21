@@ -565,39 +565,21 @@ class _OfficerCreateCustomCleanupTaskScreenState
                     markers: _reports.map((report) {
                       final isSelected = _selectedReportIds.contains(report.id);
                       return Marker(
+                        key: ValueKey(report.id),
                         point: report.location,
-                        width: 44,
-                        height: 44,
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              if (_selectedReportIds.contains(report.id)) {
-                                _selectedReportIds.remove(report.id);
-                              } else {
-                                _selectedReportIds.add(report.id);
-                              }
-                            });
-                          },
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              ReportMarker(status: report.status),
-                              if (isSelected)
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  width: 44,
-                                  height: 44,
-                                  child: const Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
-                            ],
-                          ),
+                        width: ReportPinFrame.width,
+                        height: ReportPinFrame.height,
+                        alignment: Alignment.topCenter,
+                        child: ReportMarker(
+                          status: report.status,
+                          title: report.title,
+                          issueType: report.issueType,
+                          selected: isSelected,
+                          onTap: () => setState(() {
+                            if (!_selectedReportIds.add(report.id)) {
+                              _selectedReportIds.remove(report.id);
+                            }
+                          }),
                         ),
                       );
                     }).toList(),

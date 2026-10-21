@@ -1,8 +1,114 @@
 # EcoPin mobile design contract
 
-Updated: 21 October 2026
+Updated: 22 October 2026
 
 This replaces the obsolete neon design. The civic identity follows [the web contract](../ecopin-web/DESIGN.md), adapted to citizens reporting concerns and SWMO staff working on phones. The shared backlog defines implementation scope; this document does not claim every screen has been modernized.
+
+## Read this first: scope and authority
+
+This is the design contract for **the Flutter mobile application in `ecopin_app/`**, including all four authenticated roles. “Citizen app” means the citizen experience inside this application, not a separate repository. “Public map” describes the visibility of report data; it does not mean the native map is available without signing in.
+
+This document defines intended UI behavior and role boundaries. It is not evidence that every requirement is implemented, released, or tested on a physical device. The source references below describe the current implementation inspected on 21 October 2026; unfinished work and verification evidence belong in [UI_UPDATE_BACKLOG.md](../UI_UPDATE_BACKLOG.md).
+
+### Resolve a request before choosing a screen
+
+1. Identify **platform**: native Flutter app (`ecopin_app/`) or web (`ecopin-web/`). A browser screenshot or a shared brand does not make their layouts interchangeable.
+2. Identify **role**: citizen, officer, field crew, administrator, or signed-out account flow. Role is a workflow/access boundary, not a color theme.
+3. Identify **object and task**: public concern, own submission, operational report, cluster, cleanup task, route, account, or queued change.
+4. Use the role and map matrices below to find the owning screen. Inspect its callers before changing a shared widget.
+5. Read only the relevant contract sections and their source references. Preserve existing authorization, routes, backend values, and privacy boundaries.
+6. If the task names a role, keep that scope. If a shared change affects other roles, verify those callers too. If context cannot resolve an ambiguous “map” or “reports” request, clarify that boundary before implementing a different workflow.
+
+### Which source decides what?
+
+| Question | Reference | Rule |
+| --- | --- | --- |
+| Which native visual/interaction pattern should be used? | This `DESIGN.md` | Apply the design contract; an old screen is not a new visual precedent. |
+| What code actually runs and which route is registered? | `lib/routes/app_routes.dart`, router configuration, owning shell/screen | Verify registration and callers; a route constant alone does not prove a usable feature. |
+| What colors, type, radii, and component APIs exist? | `lib/core/theme/`, existing shared widgets | Reuse actual tokens/APIs; do not invent an equivalent second system. |
+| What permissions, transitions, limits, and data are supported? | Existing providers/services and server contracts | Design copy cannot grant permissions or invent outcomes. |
+| What remains unfinished or verified? | Shared UI backlog and relevant tests | Report evidence accurately; a test file's existence is not a passing run. |
+| What should the website look like? | `../ecopin-web/DESIGN.md` | Shared civic identity; web-specific layouts do not override native navigation. |
+
+Explicit task instructions may revise this contract. Record accepted revisions here. If code and contract differ, identify the difference and limit the fix to the authorized task; do not silently modernize unrelated screens or claim the difference is already resolved.
+
+### Quick reading index
+
+- **Distinguishing experiences:** role ownership, terminology, map matrix, and source map below.
+- **Visual implementation:** Palette and themes; Typography, spacing, and shape; Controls and navigation.
+- **Citizen workflows:** Citizen bottom navigation; States, reports, and field work; Public map and place search.
+- **Operational work:** role ownership; Crew dashboard and assignment hierarchy; Field-crew preparation and Sync Center.
+- **Account/admin workflows:** States, reports, and field work, including administrator, notification, and password rules.
+- **Finishing a change:** UI state matrix and acceptance checklist at the end.
+
+## Role ownership and navigation
+
+All roles share EcoPin identity, light/dark themes, accessibility, and truthful feedback. They do not share every destination, dataset, or action.
+
+| Experience | Primary job | Shell and visible navigation | Scope to preserve |
+| --- | --- | --- | --- |
+| Citizen | Discover public concerns, submit a concern, follow own reports | `CitizenMainScreen`; **Map · Reports · Report · Alerts · Profile** | Center Report is an action; the other four are destinations. Public discovery and own submissions remain distinct. |
+| Officer | Review concerns, organize response work, plan and monitor assignments | `OfficerMainScreen`; **Home · Clusters · Tasks · Reports · More** | More contains Map, Spatial scan, Analytics, Dispatch planning, Crew management, Response logs, and Account. Do not replace this shell with citizen navigation. |
+| Field crew | Work assigned cleanup tasks, follow routes, record evidence and sync | `FieldCrewMainScreen`; **Home · Route · Tasks · Reports · Profile** | Task/report detail routes hide this bottom bar. Preserve task context and the local-versus-server distinction. |
+| Administrator | Manage supported accounts/settings and inspect audit activity | `AdminMainScreen`; **Home · Users · Settings · Logs · Account** | Own admin routes and authorization. No native admin report-detail route; fleet/algorithm configuration remains outside approved mobile scope. |
+| Signed out / pending account action | Sign in, register, verify email, complete required password change | Existing public/account routes | No authenticated workspace shell. A pending password-change token is not an authenticated session. |
+
+Officer and administrator notifications have role-specific route constants even though Alerts is not a bottom-tab destination in those shells. Do not add tabs simply to match citizen navigation.
+
+### Terms that agents must keep separate
+
+| Term | Meaning | Do not substitute |
+| --- | --- | --- |
+| Public report / concern | Privacy-filtered report visible in public discovery | Full officer/crew operational record or the user's own-report list |
+| My reports / citizen Reports | Signed-in citizen's submissions and progress | Every public report in the current viewport |
+| Validation | Review/acceptance decision | Response lifecycle or cleanup completion |
+| Response status / lifecycle | Current handling stage of a concern | Upload state, priority, or assignment |
+| Cluster | Operational grouping of related reports | A numbered visual marker group produced by map clustering |
+| Cleanup task | Assigned unit of response work | One public pin or necessarily one report |
+| Route | Supplied/planned travel and stop context for crew work | Citizen map camera position or unsupported live ETA |
+| Priority / severity | Existing urgency/risk fields | A successful sync or review decision |
+| Saved locally / queued | Work held on the device | Server accepted, uploaded evidence, or resolved concern |
+| Synced / acknowledged | Actual server outcome for the relevant item | Completion of the cleanup or every item in the queue |
+| Empty | Successful request with no matching results | Failed request, missing permission, or unknown queue |
+
+Use the user's language in conversation, but preserve established app labels and backend values. Do not translate the whole application or rename routes as a side effect of a UI fix.
+
+### Map ownership: three different native screens
+
+| Map | Entry / owner | Data and interaction intent | Must not acquire |
+| --- | --- | --- | --- |
+| Citizen public map | `/maps`; `lib/shared/maps/presentation/screens/maps_screen.dart` (`MapScreen`) | Bounded public reports, marker preview, heatmap, place search, locate, legend/credits | Staff-only evidence, exact-location enrichment, assignment mutations, or crew navigation tools |
+| Officer map | `/officer/maps`; `lib/features/officer/presentation/screens/officer_map_screen.dart` (`OfficerMapScreen`) | Existing operational report exploration in the officer workflow | Citizen raised Report action or an assumed public-map fetch policy |
+| Crew Route | `/field-crew/map`; `lib/features/field_crew/presentation/screens/field_crew_map_screen.dart` (`FieldCrewMapScreen`) | Assigned task/route context and supported navigation behavior | Public-discovery replacement, fabricated traffic, or unsupported ETA |
+| Legacy shared crew preview | `MapScreen(isFieldCrewMode: true)` when used by a caller | Restricted public preview with explanatory guidance | Proof that it is the crew Route screen; empty route-layer flags do not implement routing |
+
+A file under `shared/` is reusable code, not proof that all roles use it. A citizen-map fix must not be copied into the officer or crew maps without checking their own behavior and scope.
+
+## Source map and component ownership
+
+Paths in this section are relative to `ecopin_app/`. These are starting points, not permission to read or change every feature.
+
+| Concern | Existing owner / reference | Reuse rule |
+| --- | --- | --- |
+| Color, spacing, shape | `lib/core/theme/colors.dart` (`AppColors`) | Use semantic tokens; avoid fresh hex values and parallel constants. |
+| Typography | `lib/core/theme/typography.dart` (`AppTypography`) | Outfit and the existing text hierarchy; theme text styles first. |
+| Material theme and status extensions | `lib/core/theme/app_theme.dart` (`AppTheme`, `AppStatusColors`) | Keep both themes and native component defaults coherent. |
+| Shared action | `lib/shared/widgets/app_button.dart` (`AppButton`) | Primary, secondary, danger, link; retain loading/disabled semantics and growing height. |
+| Page-level empty/error state | `lib/shared/widgets/app_state_view.dart` (`AppStateView`) | Named title, explanation, and a working recovery action when available. |
+| Staff navigation and avatar | `lib/shared/widgets/app_navigation_bar.dart` | Preserve each shell's destinations; private-media avatar fallback remains supported. |
+| Citizen navigation | `lib/features/citizen/presentation/widgets/citizen_navigation_bar.dart` | Raised action and four destination indices are citizen-specific. |
+| Citizen role shell | `lib/features/citizen/presentation/screens/citizen_main_screen.dart` | Owns navigation and location-prefill reporting entry. |
+| Officer role shell | `lib/features/officer/presentation/screens/officer_main_screen.dart` | Owns primary destinations and the More sheet. |
+| Crew role shell | `lib/features/field_crew/presentation/screens/field_crew_main_screen.dart` | Owns Route navigation and detail-route bar visibility. |
+| Administrator role shell | `lib/features/admin/presentation/screens/admin_main_screen.dart` | Owns admin destinations, separate from officer work. |
+| Public map loading/status | `lib/shared/maps/presentation/widgets/report_map_status.dart` (`ReportMapStatus`) | Persistent area/search/stale feedback; not a temporary floating snackbar. |
+| Public pin and preview | `lib/shared/maps/presentation/widgets/report_marker.dart`, `report_map_preview.dart` | Preserve selected state, accessible activation, and public precision. |
+| Report response presentation | `lib/shared/reports/presentation/widgets/report_status_presentation.dart` | Normalize display labels only; use existing theme-aware status mapping. |
+| Private photo delivery | `lib/shared/widgets/private_media_image.dart` | Retain authenticated delivery and truthful unavailable fallback. |
+| Citizen map request bounds | `lib/shared/reports/providers/public_report_map_provider.dart`, `lib/shared/reports/data/datasources/public_report_map_datasource.dart` | Keep bounded public queries and truncation feedback; do not switch to an unbounded report download. |
+| Route names | `lib/routes/app_routes.dart` | Use existing role constants and encoded IDs; inspect router registration before changing navigation. |
+
+Shared-widget edits require checking every affected role/caller. Feature-specific layouts and workflows stay with their feature; sharing tokens does not require a universal configurable screen.
 
 ## App purpose and information architecture
 
@@ -16,7 +122,7 @@ Design for a phone held in one hand: find a concern, report it with location and
 | Alerts | Read notifications and their unread count | `ProtectedAppRoutes.notifications` |
 | Profile | Manage the signed-in account | `ProtectedAppRoutes.profile` |
 
-Citizen navigation is the first rollout of the raised-action treatment. Staff shells retain their existing shared navigation. Do not imply that their destinations, permissions, or workflows changed.
+Citizen navigation is the first rollout of the raised-action treatment. Officer and administrator shells retain their existing shared navigation. Crew uses the compact citizen-family treatment without a raised action. Do not imply that their destinations, permissions, or workflows changed.
 
 ## Palette and themes
 
@@ -58,8 +164,8 @@ Verification: account layout tests cover small phones with 2× text, landscape, 
 - Target at least 48dp interactive areas. A button's configured height is its minimum; it grows for multiline/scaled labels. Named loading states disable duplicate actions.
 - Inputs have labels, helper/error text, keyboard/autofill appropriate to their value, visible focus, and named show/hide-password actions. Preserve controllers, validation, submissions, and values after failures.
 - Shells keep role destinations, safe areas, readable selected labels, accessible notification counts, and predictable back behavior. Public reporting, My reports, crew objectives, and officer review remain distinct tasks.
-- Staff shells use the shared native navigation bar. Five-tab shells use Home rather than a long Overview label. Officer secondary destinations belong in the scrollable More sheet. Keep crew detail-route navigation behavior intact. Navigation labels and supplementary badges follow platform text-scale limits; speak the full unread count. Main content and actions continue to grow with system text size.
-- Citizen navigation uses the raised circular Report action described below. Map status overlays reserve additional space as text size grows. Account avatars elsewhere use private-media delivery, including fallbacks.
+- Officer and administrator shells use the shared native navigation bar. Crew opts into its compact variant: five equal destinations, 12dp top corners, a fine 16×2dp selection line, Outfit 12 regular labels, 48dp minimum targets, a local 1.3 navigation text-scale cap, and the device bottom inset. No raised center action or empty action slot. Its subtly tinted light page canvas reveals the white bar corners; dark mode uses the existing background/surface distinction. Five-tab shells use Home rather than a long Overview label. Officer secondary destinations belong in the scrollable More sheet. Keep crew detail-route navigation behavior intact. Navigation labels and supplementary badges follow platform text-scale limits; speak the full unread count. Main content and actions continue to grow with system text size.
+- Citizen navigation uses the raised circular Report action described below. Citizen-map status belongs in the top toolbar beside Map/List, stacking below those controls at narrow widths or enlarged text. Keep map pixels visible behind the shell navigation. Account avatars elsewhere use private-media delivery, including fallbacks.
 - Forms use logical sections with inline errors and an explicit final review where supported. Keep map attribution and action buttons clear of keyboard and device insets.
 - Dialogs/sheets have a clear title, dismiss/back behavior, scrollable content, and usable actions at large text sizes. Continuous motion has pause controls. Respect reduced motion outside the approved web landing behavior.
 
@@ -73,9 +179,9 @@ Use `CitizenNavigationBar` in the citizen shell. The supplied navigation referen
 - The report action uses civic blue `#0052CC` and a white camera icon in both themes. Keep its visible **Report** caption and full accessible name, **Report an environmental concern**. During location lookup, disable repeat activation and announce **Finding location**. Preserve current location failures and manual map-selection recovery.
 - Use the Bootstrap font bundled with `icons_plus` for map, document, camera, notification, and person icons. Icons are generally 24dp; the central camera is 26dp. Selection adds a short 16 × 2dp marker above the icon and changes icon/label color. It must also expose the native selected state.
 - Labels use bundled Outfit, 12dp, regular (400), with ordinary letter spacing. Use the readable blue token for selected labels, secondary text for inactive labels, and a maximum navigation text scale of 1.3. Main content keeps the system's full scale. Keep at least 48dp tap targets and native keyboard focus/activation.
-- Alerts retain the visible capped `99+` badge and full unread count for assistive technology. Loading or failed counts remain identifiable. Profile uses the same icon family as its neighboring destinations.
+- Alerts retain the visible capped `99+` badge and full unread count for assistive technology. Loading or failed counts remain identifiable. Profile uses the live circular profile photo or initials described below.
 
-`icons_plus` 5.0.0 subclasses `IconData`, which is final in the app's installed Flutter SDK. Until the upstream package supports that SDK, the citizen widget declares five constant native `IconData` values using the package's Bootstrap font and matching codepoints. Do not import the incompatible Dart barrel or patch the SDK/package cache. Recheck these bindings when upgrading the icon package.
+`icons_plus` 5.0.0 subclasses `IconData`, which is final in the app's installed Flutter SDK. Until the upstream package supports that SDK, the citizen widget declares four constant native `IconData` values using the package's Bootstrap font and matching codepoints. Do not import the incompatible Dart barrel or patch the SDK/package cache. Recheck these bindings when upgrading the icon package.
 
 Verification: `test/ui/role_navigation_test.dart` exercises all role routes, both themes, 320dp width, 2× system text, and a 32dp bottom inset. `test/ui/citizen_navigation_test.dart` covers responsive widths, report activation/loading, keyboard activation, and renders the actual Flutter navigation states for visual review. Real Android GPS, TalkBack, and gesture-navigation acceptance remain device checks.
 
@@ -91,7 +197,7 @@ Present report location, description, evidence, review state, response progress,
 
 The reporting form keeps a named location → details → media → review progression. Without a detected location, require explicit map selection before continuing; a default Pasig view is not a detected location. Show an address with coordinates when available and a working address retry when unavailable. Keep entered values after rejection and distinguish a report saved on this device from a server acknowledgement.
 
-Media selection has a visible checking state, repeat-action lock, persistent recoverable errors, and a device-settings action for denied access. Keep photo count/combined-size and video format/duration limits visible. Read actual video duration through the existing player's initialized metadata; never infer duration from file size or truncate it before validation. Selected local photos support uncropped zoom and previous/next navigation; video inspection has explicit play/pause, position, and retry. Identify both as unsent media. Do not autoplay. Controllers are released after inspection/metadata reads. See [Flutter's video-player lifecycle guidance](https://docs.flutter.dev/cookbook/plugins/play-video).
+Media selection has a visible checking state, repeat-action lock, persistent recoverable errors, and a device-settings action for denied access. Report videos use camera recording only; do not reintroduce a gallery-video option without an explicitly supported provenance/priority policy. Every clip is at least 5 seconds; the administrator chooses the maximum from 5–10 seconds, persisted in `system_settings.report_video_max_seconds`. Load only the dedicated authenticated media-policy projection, display the saved range, refresh before recording/submission, and validate exact metadata. Keep the camera configured to the saved nominal maximum, but allow at most 100ms above it in both app/server validation for recorder/container stop timing. Keep the minimum strict and do not truncate metadata to whole seconds. A policy-load failure offers retry/photos and must not silently accept video against a hard-coded fallback. Server enforcement probes uploaded bytes independently. Native System settings and web administrator settings edit the same value. See [report video policy](../ecopin_backend_node/docs/report-video-policy.md) for migration, enforcement, AI fixes, and verification limits. Keep photo count/combined-size and video format/duration limits visible. Read actual video duration through the existing player's initialized metadata; never infer duration from file size or truncate it before validation. Selected local photos support uncropped zoom and previous/next navigation; video inspection has explicit play/pause, position, and retry. Identify both as unsent media. Do not autoplay. Controllers are released after inspection/metadata reads. See [Flutter's video-player lifecycle guidance](https://docs.flutter.dev/cookbook/plugins/play-video).
 
 Account forms use a bounded scrollable layout above the keyboard with appropriate autofill, visible password rules, inline validation, and retained values on failure. Email verification identifies the destination email and uses server-provided resend cooldown; a timer never proves verification. Feedback names all five choices, explains that submitting closes the report, and returns to that report after success.
 
@@ -115,9 +221,35 @@ Charts show question, period, units, readable legends, and useful text summaries
 
 ## Public map and place search
 
+### Citizen viewport loading and attached status bar
+
+This policy applies to the citizen `MapScreen` and its existing shared-preview callers, not automatically to `OfficerMapScreen` or `FieldCrewMapScreen`.
+
+- Load the initial visible area immediately after the map is ready. Automatically select the latest bounds after 150ms without camera movement; there is no manual Search this area action. Coalesce rapid moves into one request.
+- Reuse up to six recently loaded public areas for 60 seconds. Complete cached areas can serve contained viewports with their reports filtered to the new bounds; truncated pages can only serve their exact bounds. Cache lookups do not extend freshness. Respect wrapped longitudes/date-line queries.
+- Keep loaded pins while another area request or refresh is pending. A late response for an older area must not replace the selected area's results. Keep the map controller/camera mounted through loading, retry, theme and Map/List changes.
+- Report count and loading/error/stale feedback belong in the top Map/List toolbar. Place them beside the view controls at ordinary phone widths; stack them beneath the controls at narrow widths or enlarged text. There is no status footer above the citizen navbar. Never claim that old retained pins/count fully describe a new viewport while its request is pending.
+- Preserve a 60-second refresh while the map is active and the app is resumed. Refresh/retry bypasses the area cache. Pause camera-triggered loading and periodic refresh while List is visible; restore the map's laid-out bounds after returning.
+- Keep the existing bounded page: up to 200 public reports, with the newest-200 disclosure and zoom-in instruction when truncated. Do not load the entire dataset or label truncated results as all reports.
+- On request failure, retain useful loaded pins and expose retry. Distinguish valid zero reports from failure. Do not weaken public filtering or geolocation precision. These are request scheduling/cache guarantees; real-device network and rendering latency require separate measurement.
+
+### Pins, previews, and tools
+
+#### Native pin and visual-cluster adaptation (21 October 2026)
+
+The shared native `ReportMarker` and `ReportClusterBadge` adopt web contract section 9's pointed silhouette, white separation outline, restrained shadow, status badge, and blue selection treatment. The native interactive footprint is **56 x 64dp**, with a **50dp** circular face, **12 x 10dp** downward tip, and **24dp** status/layers badge. Map markers and visual clusters use `Alignment.topCenter`: in the installed Flutter map API this puts the widget above the coordinate, with the bottom tip at that coordinate. Update every caller's dimensions when changing this frame, including officer task selection and the legend.
+
+Public map results currently contain no evidence thumbnails. Show a concern icon inside the frame, with a location-icon fallback for unknown categories. This is a deliberate native fallback, not a photograph or proof of evidence. Do not add per-pin evidence requests, expose private photos, or imply full web photo-pin parity. Photos require a supported privacy-safe data path.
+
+Map status treatment follows the web specialized-pin palette: unresolved/submitted/pending use error + alert; in-progress/acknowledged use warning + clock; resolved uses success + check; waiting for feedback uses information + message; pending owner consent uses information + lock; closed uses muted + double check. Rejected remains error; unknown states use muted + help. Use theme-aware semantic display colors and readable badge foreground. This changes map presentation only, not lifecycle values or unrelated list badges.
+
+Native visual clusters retain the count (visually capped at `999+`, full count spoken), civic-blue border, offset backing circle, and Layers badge. The map legend must show this actual shared cluster pin as a noninteractive example, explain its count, and describe zoom/circular expansion; prose alone is insufficient. This uses the web operational cluster family. Do not import the public web preview's representative-photo-only clusters or geographic grouping algorithm. Keep the installed native package's zoom and circular **spiderfy** behavior: opening coincident reports still arranges them around the cluster. Preserve original coordinates, keyboard/semantic activation, and reduced-motion settings. The blue ring identifies selected report pins or focused cluster controls; do not invent group-selection or overdue state unavailable to these visual groups.
+
+Shared callers include citizen/public preview, officer map, officer custom-task selection, and the legend. Crew Route remains a separate screen. `test/ui/map_pin_preview_test.dart` exercises both themes at large text; `test/ui/public_map_ui_test.dart` checks native activation and retained cluster expansion.
+
 Public map pins use written response states and recognizable status icons, with a selected ring and named native 48dp actions. Cluster counts expose the full count to assistive technology; the compact visual count may cap at 999+. Keyboard and semantic activation use the existing clustering package's zoom/spiderfy action. Reduced motion disables that package's transition durations. Keep its algorithm and public viewport limits intact.
 
-The selected report is a stable snapshot while the map refreshes. Its scrollable bottom sheet shows the full title, concern, response status, description, and any approximate-location disclosure. Closing the sheet precedes navigation to the existing report route. Do not fetch a more precise location to enrich a public preview. Map refresh failures retain loaded pins with a stale-data notice and retry. Theme changes update the actual tile layer without resetting the map. Show linked OpenStreetMap and CARTO attribution directly on the map; reserve space beside the controls so links remain usable in landscape and at large text sizes.
+The selected report is a stable snapshot while the map refreshes. Its scrollable bottom sheet shows the full title, concern, response status, description, and any approximate-location disclosure. Closing the sheet precedes navigation to the existing report route. Do not fetch a more precise location to enrich a public preview. Map refresh failures retain loaded pins with a stale-data notice and retry. Theme changes update the actual tile layer without resetting the map. The current native credits are linked from the named Map legend and credits dialog (`ReportMapInfo`). Keep both OpenStreetMap and CARTO links reachable and readable. This describes the current UI location, not a determination of provider attribution compliance; any attribution-placement change must check the applicable provider requirements.
 
 Map tools have named search, heatmap, location, and legend actions. Location and privacy actions lock repeat requests and provide persistent recovery after denied access or failed saves. A failed privacy read is not consent. The legacy shared crew preview must not invent routes, travel times, traffic, weather, or crew counts; direct crews to their assigned task for supported work.
 
@@ -127,13 +259,13 @@ Microphone initialization is an explicit opt-in through Use voice search. Openin
 
 ## Crew dashboard and assignment hierarchy
 
-The dashboard starts with a short greeting and a native, wrapping Sync Center control, followed by the current task and its primary Open current task button. Secondary route context, loaded-assignment progress, up to three queued tasks, local completion receipts, held work, and preparation follow in that order. Keep the task title and supplied address readable in full. Use written priority and response state; do not rely on a colored dot. Opening details is not starting a task, so the button must describe navigation accurately.
+The dashboard starts with a short greeting and a compact 48dp Sync Center icon in the upper-right corner, followed by the current task and its primary Open current task button. A single tappable route row, compact loaded-assignment progress, up to two queued tasks, collapsed device records, and preparation follow in that order. Keep the greeting short and omit introductory/helper paragraphs that repeat the action labels. Use a titleLarge current task title, with full wrapping rather than truncation. Queue cards retain title, location, written status and priority without a repeated Open task details footer. Device records summarizes local completion/held counts and expands to their records and the local-versus-server explanation. Preparation remains a quiet text action with a 48dp target. Keep the task title and supplied address readable in full. Use written priority and response state; do not rely on a colored dot. Opening details is not starting a task, so the button must describe navigation accurately.
 
 Retain the established in-progress → route order → high/urgent priority → creation-time ordering. Completed/cancelled records and locally held or recorded-complete tasks are not proposed as the next task; their records remain accessible through their sections and the full assignment list. Local receipts describe this device/session and do not prove a server acknowledgement. Do not mutate loaded models while arranging the dashboard. Detail links keep existing routes and encoded IDs. Returning from details refreshes local queue counts without silently refetching and replacing task records.
 
-Progress describes loaded assignments, including any cancelled records in its denominator. It is not a shift or today's performance without a supporting filter. Show the count in written text and the progress indicator's label, leaving its numeric accessibility value to Flutter. Route context shows the supplied stop count and the current task's next recorded sequence when available. Dispatch distance/time estimates do not become live ETA or remaining-work claims. Missing route data is unavailable rather than a completed route. Explicit route refresh reloads the existing route provider; routes, authorization, and routing calculations remain unchanged.
+Progress describes loaded assignments, including any cancelled records in its denominator. It is not a shift or today's performance without a supporting filter. Show the count in written text and the progress indicator's label, leaving its numeric accessibility value to Flutter. Route context shows the supplied stop count and the current task's next recorded sequence when available. Omit dispatch distance/time estimates and their explanatory paragraph from the compact dashboard; route planning remains in Route. Never invent live ETA or remaining-work claims. Missing route data is unavailable rather than a completed route. Explicit route refresh reloads the existing route provider; routes, authorization, and routing calculations remain unchanged.
 
-Keep useful assignments and route context during refresh failures, with distinct loading, empty, unavailable, stale, and retry states. An empty assignment list does not prove the crew finished its shift. Cached records remain identified as possible cached data. The crew sync control uses actual queued changes, photos, and removals, plus the current mode and detected network. Include photo-only failures and unknown/stale queue feedback. Never label an unknown queue as synced, or hide a failure after an arbitrary short timer. It remains a named, keyboard-accessible destination to Sync Center rather than a tiny gesture-only chip.
+Keep useful assignments and route context during refresh failures, with distinct loading, empty, unavailable, stale, and retry states. An empty assignment list does not prove the crew finished its shift. Cached records remain identified as possible cached data. The crew sync control uses actual queued changes, photos, and removals, plus the current mode and detected network. Include photo-only failures and unknown/stale queue feedback. Never label an unknown queue as synced, or hide a failure after an arbitrary short timer. It remains a named, keyboard-accessible destination to Sync Center with a 48dp target. Pulse the icon when work is queued or syncing; respect reduced-motion settings. Persistent error/unknown states use distinct icons and an accessible name/long-press tooltip with actual queue, connection, and policy details. Full counts and recovery remain in Sync Center.
 
 The global citizen/officer/admin offline banner and legacy queue indicator have separate acceptance under A09. Improving the crew control does not claim that those other surfaces expose complete sync state.
 
@@ -156,3 +288,180 @@ UI verification uses simulated services and real provider/widget interactions al
 Preserve authentication, role access, API contracts, Supabase behavior, backend lifecycle, geolocation precision, private media, consent, and sync. Do not add unsupported exports, saved reports, admin capabilities, or field-crew web access. Dependencies remain visible in [UI_UPDATE_BACKLOG.md](../UI_UPDATE_BACKLOG.md).
 
 Validate narrow/ordinary phones, landscape/tablet where supported, keyboard, safe areas, large text, both themes, long content, no photos, empty/error/refresh, and denied permissions. Crew checks include offline/queued/partial failure/server acknowledgement. Run targeted widget tests and analysis during batches; run broader tests and representative device previews before completion. Record what was actually verified in the backlog.
+
+
+## Layout recipes and visual hierarchy
+
+These are implementation rules for new or modified screens; they do not certify every legacy screen already conforms.
+
+| Screen type | Recommended hierarchy | Avoid |
+| --- | --- | --- |
+| Working list | Native title/context → search/filter controls → count/scope → records → pagination/recovery | A promotional hero, invented summary metrics, or a separate prominent card for each field |
+| Report/task detail | Identity and written state → permitted next action → location/context → evidence → history/supporting facts | Mixing validation, priority, lifecycle, and sync into one badge; unsupported action buttons |
+| Form | Title and step/context → labeled fields → inline validation → review where supported → submit/result | Losing entered values on failure, keyboard-covered actions, or success before acknowledgement |
+| Map | Compact view/status toolbar → map as primary work surface → named tools → selected report sheet | Status text drifting over pins, resetting camera on fetch, or public/staff data mixing |
+| Operational dashboard | Current actionable work → supported progress/context → secondary work → recovery/sync | Decorative KPI grids, fake real-time claims, or treating an empty list as shift completion |
+| Settings/account | Related labeled groups → current saved value → explicit changes and recovery | Displaying an unsaved preference as persisted, or requiring undocumented gestures |
+
+Use existing native app bars: theme-aware background/foreground, centered title, and quiet elevation. Standard content uses 16dp side padding, 8–12dp within compact related groups, and 24dp between major sections unless an existing component already owns that space. Do not add duplicate padding around shared components. Use the existing spacing tokens rather than mechanically making every gap identical.
+
+On phones, favor one readable column. On wide/landscape screens, constrain reading width and adapt groups only when the workflow benefits; do not stretch account forms edge to edge or import a desktop sidebar. A card's 24dp radius does not apply to every bar: citizen navigation has its explicit 12dp top corners, while the map status surface attaches to its edges.
+
+Allow long titles, addresses, IDs, status labels, and translated/scaled strings to wrap or remain inspectable. Truncation is acceptable only when the full value has an obvious accessible way to be read. Use selectable/copyable technical identifiers where the workflow requires them. Fixed-height decorative arrangements must not clip meaningful content.
+
+### Color and type decisions agents commonly confuse
+
+- Civic blue is the primary action/selection identity in both themes. Dark-mode readable links use `AppColors.linkDark`; do not use the filled-button blue indiscriminately for small text on charcoal.
+- Environmental green is a restrained brand accent. It is not a universal color for all statuses or all crew screens.
+- Use `AppStatusColors` and existing status presentation for response states. A lifecycle badge must include a label; color/icon alone is insufficient.
+- The palette table's “Role” means a **semantic color role**, not a user role. Citizen/officer/crew/admin do not each get a different brand palette.
+- `AppTypography` contains larger display styles for approved contexts. Their existence does not require 40dp headings on routine working pages. Typical working titles remain 20–32dp; welcome copy follows its own contract.
+- Prefer `Theme.of(context).textTheme` and component themes. When constructing a direct style, retain Outfit explicitly, suitable weight, contrast, and system scaling.
+- Body text uses full system scaling. The citizen and crew navigation's 1.3 scale cap is a local navigation exception, not a global app cap.
+
+## UI state and feedback matrix
+
+| State | What the UI should communicate | Required behavior |
+| --- | --- | --- |
+| First load | Data is being requested | Name what is loading; keep navigation usable and avoid a false empty result. |
+| Refresh / new-area search | Existing data remains useful while a request runs | Preserve content/camera and distinguish old scope from pending scope. |
+| Loaded empty | Request succeeded, no matching records | Explain scope/filter and offer only applicable recovery or creation actions. |
+| First-load failure | Data could not be obtained | Show a persistent explanation and working retry/access recovery. |
+| Refresh failure / stale data | Last loaded data is still displayed | Identify staleness/failure; do not erase useful data or announce success. |
+| Unavailable value | A particular field/count/route is unknown | Say unavailable; do not substitute zero, “synced,” or a completed state. |
+| Permission denied | OS/app permission prevents the requested action | Explain the blocked action, retain alternatives, offer settings when supported. |
+| Confirming | User is reviewing a consequential choice | Keep review separate from saving; do not show uploading progress yet. |
+| Submitting / saving | Request is in flight | Disable duplicate activation and name the action; preserve inputs. |
+| Local queued outcome | Device holds pending work | Identify local scope and actual sync policy; avoid server-success wording. |
+| Server success / partial success | Returned server outcome | Reflect acknowledged records and remaining failures separately. |
+| Unauthorized / expired | Current access/session cannot continue | Use existing account recovery and role routing; do not leak another role's data. |
+
+Snackbars may announce brief outcomes, but persistent failures, map scope, pending sync, and recoverable field errors need an enduring visible home. Announce meaningful asynchronous changes without turning every map camera movement into a screen-reader announcement.
+
+## Agent acceptance checklist and maintenance
+
+Before calling a UI task complete:
+
+1. State the affected platform, role, screen, and shared callers. Confirm the change did not accidentally substitute another role's map, shell, or report dataset.
+2. Compare the result with the relevant contract section, existing tokens, and actual supported actions. Update this document if the accepted interaction changes.
+3. Check initial loading, valid empty, loaded, refresh, failure/retry, stale data, long content, and permission states relevant to the task. For crew work include queued, partial, and server outcomes.
+4. Check both themes, 320dp narrow phones, ordinary phone width, short landscape, a wider/tablet layout where supported, 2× text, keyboard visibility, and bottom safe-area/navigation overlap. Use the existing 320×480, 320×700, 700×360, and 768×900 map fixtures as concrete starting cases, not a guarantee of all devices.
+5. Verify 48dp minimum interactions, named icon controls, visible focus/keyboard activation, readable contrast, semantic selected states/headings, and no clipped actions. Preserve reduced-motion behavior where supported.
+6. Run the focused existing tests for changed behavior and analysis appropriate to the change. Inspect a representative rendered result when the UI changes. Report actual passes, failures, and skipped/device-only checks separately.
+7. Keep release status in the backlog. A screenshot, mocked-service test, successful compile, or route constant does not alone prove live server/device acceptance.
+
+### Existing verification entry points
+
+Run commands from `ecopin_app/`. These are relevant suites, not a requirement to run every suite for a documentation-only edit.
+
+| Change area | Existing checks |
+| --- | --- |
+| Shared theme/type/actions | `test/ui/theme_typography_test.dart`, `test/ui/shared_controls_test.dart` |
+| Shells and role destinations | `test/ui/role_navigation_test.dart`, `test/ui/citizen_navigation_test.dart`, `test/ui/admin_routes_test.dart` |
+| Citizen public map | `test/reports/public_map_screen_test.dart`, `test/reports/report_map_status_test.dart`, `test/reports/public_report_map_test.dart`, `test/ui/public_map_ui_test.dart` |
+| Reporting and local evidence | `test/ui/create_report_flow_test.dart`, `test/ui/local_media_test.dart`, `test/ui/offline_report_receipt_test.dart` |
+| Place search and voice | `test/ui/location_search_controller_test.dart`, `test/ui/location_search_overlay_test.dart`, `test/ui/location_voice_adapter_test.dart` |
+| Crew dashboard/offline/sync | `test/ui/crew_dashboard_ui_test.dart`, `test/ui/crew_offline_ui_test.dart`, `test/ui/crew_sync_settings_test.dart` |
+| Account and notifications | `test/ui/auth_layout_test.dart`, `test/ui/required_password_change_test.dart`, `test/ui/notifications_test.dart` |
+| Native administrator work | `test/ui/admin_users_test.dart`, `test/ui/admin_settings_test.dart`, `test/ui/admin_audit_test.dart` |
+
+For example, a citizen viewport change can be checked with `flutter test test/reports/public_map_screen_test.dart test/reports/report_map_status_test.dart`, followed by appropriate analysis and rendered inspection. Documentation-only changes require checking links, source references, and contradictions rather than claiming a new runtime verification.
+
+Physical GPS/microphone behavior, Android permissions/settings, real connectivity/storage failures, background uploads, push/deep links, gesture navigation, and TalkBack remain explicit device acceptance when affected. Do not mark them verified from synthetic tests.
+
+### Keeping this contract useful
+
+- Update the relevant section when an approved design behavior changes; remove contradictory old wording in the same edit.
+- Keep native guidance here and web guidance in the web contract. Link shared background instead of copying web-only instructions.
+- Preserve established requirements when expanding the document. Label new intended rules and known implementation gaps honestly.
+- Keep paths and test references real. Move/rename references with their owning files; avoid line-number references that immediately drift.
+- Do not use this document to add permissions, unsupported capabilities, backend state transitions, or dependencies. Those need their own authorized implementation scope.
+- Do not append claims such as “all screens modernized” or “fully tested” without evidence covering that claim.
+
+### Citizen self-service account deletion
+
+Only a profile with the explicit `citizen` role may show or invoke Delete Account. Officer, field-crew, administrator, missing-profile and unknown-role states have no self-service deletion action; the server independently enforces this rule. The scrollable dialog explains permanence and report anonymization, requires the exact phrase `I confirm`, and enables its centered full-width destructive button only after a match. Cancel or dismiss performs no request; reopening clears the phrase. Use stacked actions at small widths and enlarged text.
+
+The authorized server request revokes sessions before anonymizing reports or deleting account data. Stop without deleting when revocation fails. Clear the mobile session after success and after server-reported post-revocation failure; show failures honestly and direct the user to sign in again or contact support. Existing multi-step deletion can partially complete if a downstream service fails; it is not an atomic database transaction.
+
+### Citizen public Map / List browsing
+
+The citizen Map destination offers Map and List views; My Reports remains the user's own submissions. Only the citizen public-discovery screen gains this switch. Preserve the map instance/camera, heatmap choice, loaded results and list scroll position when switching. Fetch the List lazily on first selection; list browsing spans all public areas independently of the map viewport, newest first, with bounded pages and explicit Load more. Describe that scope in the UI.
+
+List cards show public title, concern type, response status, submission date and approximate-location disclosure, and open the existing public preview. Reuse the explicit safe fields from `public_reports`; no reporter identity, staff enrichment or private evidence. Use an icon fallback rather than inventing a gallery photo path. Include initial loading, valid empty, retry, refreshing with retained cards, and load-more failure with retained cards. Refresh starts a new list; deduplicate reports across pages. Stacked cards and wrapping text must work in both themes at narrow width/enlarged text. This is a List alternative; web gallery filters and image parity are outside this increment.
+
+### Report location picker and detail maps
+
+Create Report and the shared Report Details map default to zoom 17 for a closer street-level view. Both use the 56 by 64 pointed `ReportPinFrame` footprint with `Alignment.topCenter`, placing the visible bottom tip exactly on the selected/stored coordinate. Do not center the whole pin silhouette on that point. Creation uses a primary-color crosshair/check pin identifying the selected location; submitted report detail uses the shared status/concern marker. Keep selection explicit (tap or Use this map center); panning alone does not change the saved location. Preserve supplied coordinates and any public approximation; closer zoom does not improve GPS accuracy. Detail maps remain noninteractive. Location/date text wraps alongside its icon.
+
+### Citizen My Reports filter sheet
+
+Use the exact title `My Reports`. A named Filter reports button in the app bar replaces the horizontal status-chip strip. Its badge identifies an active status filter. Open a rounded (24dp top corners), safe-area, scrollable bottom sheet with the existing status options, an explicit Apply filters action, Reset status, and a named close action. Stage status changes locally until Apply; dismissing preserves the applied status. Reset status stages All without clearing search. Preserve search, rejected-report visibility, provider ownership and pagination rules; applying a status starts from the first displayed page. Keep sheet choices and actions readable at 320dp with enlarged text in both themes.
+
+### Citizen profile navigation avatar and map credits
+
+The citizen Profile destination uses the current profile's uploaded `avatar_url` as a circular foreground image, with first/last-name initials underneath while loading, when no image exists, or on image failure. Trim names/URLs; a single name uses one initial and an unavailable name uses `?`. Subscribe to the existing profile provider so profile edits/uploads refresh the navigation avatar. Preserve the Profile label, selected indicator, destination and 48dp action target. Map legend credit buttons center each wrapped text line, including OpenStreetMap and CARTO, in both themes and at enlarged text sizes.
+
+### Citizen navbar silhouette on plain pages
+
+The citizen shell provides a subtly tinted light page canvas, derived from the existing divider palette, with matching page app bars; the navigation surface remains white. Dark mode retains the existing background/surface distinction. Apply this scope consistently to Reports, Alerts and Profile rather than changing the global app theme. The 12dp top corners, 72dp surface backing and 56dp raised Report action remain unchanged. Keep the space beside the raised action transparent so the page canvas or map is visible; do not introduce a rectangular shadow band. The map fills the area behind navigation after its status footer is removed. Public List adds the inherited bottom inset to its scroll padding so final records/actions remain reachable.
+
+### Crew evidence ownership
+
+Task Details is a task overview, not a cleanup evidence editor. Show a wrapping title, written priority/status, readable street address, team name and member names. Never display UUID initials or raw geometry as a place. Resolve point coordinates independently, cache the address, and use a labeled coordinate fallback when unavailable.
+
+Progress and the report list use only the task's canonical linked report IDs (including satellite/claim/embedded membership). Never fall back to every report in a cluster. Exclude rows assigned to a different task. Show missing linked-record counts and block completion until all linked records are present and handled. Label progress as reports handled, not sites physically cleaned. Local completion remains pending sync until acknowledged.
+
+Remove task-level Before/After controls and the task-wide Unable to Work This Site action, including standalone tasks. Preserve existing stored/queued task media without exposing new task-photo mutations. Cleanup evidence and outcomes belong to each report. The citizen gallery displays authorized citizen evidence for linked reports; accept the service's canonical url field and legacy keys. Show loading, unavailable with retry, and confirmed-empty states distinctly. Fetch in bounded batches without polling. Report cards offer All/Open/Handled filters, written statuses and navigation back to their report details. Refresh after returning from a report.
+
+### Offline preparation request and receipt contract
+
+Prepare offline downloads records explicitly; its byte estimate excludes image/video binaries and map tiles and does not predict request latency. Fetch only assigned task report IDs in batches of at most 100, validate returned IDs on-device, paginate cluster-only assignments, and use strict evidence batches of at most 10. Never fetch an unfiltered report list as reference data. Pace preparation requests at least 250ms apart, enforce a 20-second whole-request cancellation deadline, allow only one preparation run, and stop later network steps on 401/403/429. Honor Retry-After (seconds or HTTP date), with a minimum 60-second cooldown; no automatic polling/retry loop. Authentication refresh retries each failed request once.
+
+Show actual cached task/report/evidence/note/route counts and an expandable Saved on this device inventory of task/report titles. Persist the section results, counts, inventory, owner and attempt phase; reopening must retain missing-data warnings, not turn partial preparation into verified success. An unreadable/legacy receipt is unverified; another account's inventory must not be restored. Cache write failures must surface as preparation failures, and fetching server task/report records must preserve locally modified records. Bundled reference fallbacks are labeled available in the app rather than downloaded. Preparation downloads metadata only; images, videos and map tiles still require a connection unless independently cached.
+
+
+### Crew Route availability
+
+An active route is an approved published route linked to unfinished assigned tasks, not only a route from the newest approved run across all crews, and not necessarily a route created today. Preserve crew membership authorization. Select a matching route from unfinished, non-held, non-locally-completed tasks in the established in-progress/priority order, skipping missing historical links. Remove settled report stops and completed/cancelled/held task stops. A task assignment without a published route remains accessible through Tasks; do not fabricate a route or imply approval is pending. Distinguish route loading failures from a verified empty result, and keep a Refresh route action. No GPS/navigation calculations or scheduling capacities are changed by this lookup.
+
+
+### Crew cannot-work dialog dismissal
+
+Cancel, barrier dismissal and system Back close Unable to Work This Site without queuing feedback or holding the task. Keep text-editing resources alive until the dialog exit transition and overlay removal finish; a navigation pop result alone does not mean its text fields are unmounted. A delayed photo picker result must not rebuild a dismissed dialog. Opening a new dialog starts with fresh notes. Keep long reason choices within the available dialog width.
+
+
+### Report arrival evidence and cleanup outcomes
+
+For acknowledged reports assigned to the crew, allow After Photos without a Before photo to document a site already clear on arrival. Show explicit guidance: normal cleanup requires Before before work and After once finished; an already-clear observation needs one current photo in After, then Already clear on arrival in Task Details. Never instruct users to duplicate a photo into both slots or claim cleanup credit for a clear-on-arrival observation. Missing-evidence outcome actions show contextual instructions and Open report navigation, not a dead-end toast. Cleaned outcomes require both report photo slots; already-clear observations require After only. Returning from report details refreshes task data.
+
+
+### Crew response action ownership
+
+Keep Mark as Acknowledged on new reports. Once acknowledged, remove the manual Mark as Responded action entirely and direct the crew to Before photo evidence. Responded must follow the authoritative photo workflow, not a second manual status button. Preserve map navigation and existing completion/photo guards.
+
+
+### Crew report stage and list contract
+
+Acknowledgement is a stage update, not a legacy status transition to in_progress. Resolve the action from both stage and terminal status: an unresolved report with acknowledged stage must never repeat Mark as Acknowledged. Before evidence records Responded locally pending sync and commits stage responded/status in_progress atomically through set_report_photo on the server. Do not expose manual Responded. Refresh must await authoritative report data when there are no pending local edits.
+
+The crew Reports page contains exact task-linked reports only, including canonical satellite/claim links. Sharing a cluster does not grant list membership. Exclude rejected response and validation states, including cached records. Report filter sheets must scroll as a whole, protect the bottom system inset, use compact title spacing and white selected checkmarks; do not offer rejected validation as a crew work filter.
+
+
+### Citizen evidence viewing in crew report details
+
+Citizen evidence remains inside the app. Photos open the existing full-screen zoomable viewer with normal Back navigation; do not launch Cloudinary URLs externally. Videos have an explicit play affordance and open an in-app player with play/pause, loading/error handling and controller disposal on exit. Reuse the citizen report player rather than maintaining a second playback implementation. Empty, invalid or unavailable evidence shows a media placeholder and truthful refresh guidance, never a claim that the citizen submitted nothing. Preserve evidence-error distinction and authorization-aware photo delivery.
+
+
+### Crew report Before photo capacity
+
+Allow up to five Before photos per report, retaining the existing one-After-photo limit. Show the current count and remaining capacity; render each Before photo with its own preview, sync state and delete action. Existing single Before photos count toward five. Persist collection IDs and metadata through server, cache and offline sync; never overwrite the prior Before photo when adding another. Preserve the legacy first-photo URL for compatibility and completion guards. Enforce capacity under the report lock on the server, reject duplicate/replayed uploads safely, and delete only the selected photo. Pending removals free local capacity; synchronize removals before replacement uploads. Photo-section headings and requirement/remaining-slot labels wrap naturally on narrow screens and with large text.
+
+
+### Crew automatic sync and queue indicators
+
+Every crew report/task/photo/outcome edit saves locally first. In Automatic mode, new outbox payloads and photo upload/removal intents wake one mode-aware sync engine after a 150ms burst debounce, on an allowed connection. Keep the service active across settings changes, await saved preferences before sending, serialize runs and schedule one follow-up for edits made during an active run. Retry counters, in-flight transitions and queue removals do not count as new edits and must not create a polling loop. Reconnect, transitions from a blocked transport to an allowed Wi-Fi/mobile transport, and periodic recovery remain available. Manual Commit requires an explicit commit; Offline Only sends nothing. Repositories must not bypass this gate with independent REST writes.
+
+Display Syncing while sending and reserve Pending Sync wording for manual/offline modes; automatic unsent work is Sync queued until sending or a reported failure. Never hide work merely because an earlier run succeeded. Drive dashboard/detail counts from live local queue changes, including photo-only intents; refresh open details after a run. Failed/exhausted uploads stay on the device and remain attention states. Removing the last unsent photo also removes its orphaned upload queue marker. Network restrictions and server errors can still prevent automatic delivery; do not claim acknowledgement until confirmed.
+
+Crew note responses reconcile into the notes cache by their saved local-note ID. Never apply a note server record to the report snapshot or replace the report identity.

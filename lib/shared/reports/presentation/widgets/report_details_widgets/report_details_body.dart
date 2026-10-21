@@ -1,3 +1,5 @@
+import 'report_video_player.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 
 import 'package:ecopin_app/routes/app_routes.dart';
@@ -29,6 +31,7 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
   final VoidCallback? onFetchCleanupTask;
   final bool isOfficerUser;
   final TileProvider? tileProvider;
+  final VideoPlayerController Function(Uri source)? videoControllerFactory;
   final VoidCallback? onWithdraw;
 
   const ReportDetailsBody({
@@ -41,6 +44,7 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
     this.onFetchCleanupTask,
     this.isOfficerUser = false,
     this.tileProvider,
+    this.videoControllerFactory,
     this.onWithdraw,
   });
 
@@ -360,7 +364,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               child: FlutterMap(
                 options: MapOptions(
                   initialCenter: widget.report.location,
-                  initialZoom: 15.0,
+                  initialZoom: 17.0,
                   // Disable all gestures — this map is view-only.
                   interactionOptions: const InteractionOptions(
                     flags: InteractiveFlag.none,
@@ -379,12 +383,13 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                     markers: [
                       Marker(
                         point: widget.report.location,
-                        width: 40,
-                        height: 40,
-                        child: const Icon(
-                          Icons.location_pin,
-                          color: Colors.red,
-                          size: 40,
+                        width: ReportPinFrame.width,
+                        height: ReportPinFrame.height,
+                        alignment: Alignment.topCenter,
+                        child: ReportMarker(
+                          status: widget.report.status,
+                          title: widget.report.title,
+                          issueType: widget.report.issueType,
                         ),
                       ),
                     ],
@@ -442,7 +447,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                         width: 200,
                         height: 200,
                         child: isVideo
-                            ? _VideoPlayerWidget(videoUrl: evidence['url'])
+                            ? ReportVideoPlayer(
+                                videoUrl: evidence['url'],
+                                createController: widget.videoControllerFactory,
+                              )
                             : GestureDetector(
                                 onTap: () {
                                   Navigator.push(
@@ -879,147 +887,5 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
       default:
         return 'Neutral';
     }
-  }
-}
-
-class _VideoPlayerWidget extends StatefulWidget {
-  final String videoUrl;
-
-  const _VideoPlayerWidget({required this.videoUrl});
-
-  @override
-  State<_VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
-}
-
-class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
-  VideoPlayerController? _controller;
-  bool _isInitialized = false;
-  bool _isPlaying = false;
-  bool _hasError = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeVideo();
-  }
-
-  Future<void> _initializeVideo() async {
-    try {
-      final controller = VideoPlayerController.networkUrl(
-        Uri.parse(widget.videoUrl),
-      );
-      await controller.initialize();
-
-      if (mounted) {
-        setState(() {
-          _controller = controller;
-          _isInitialized = true;
-        });
-
-        controller.addListener(() {
-          if (mounted) {
-            setState(() {
-              _isPlaying = controller.value.isPlaying;
-            });
-          }
-        });
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() {
-          _hasError = true;
-          _isInitialized = true;
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  void _togglePlayPause() {
-    final controller = _controller;
-    if (controller == null) return;
-
-    setState(() {
-      if (controller.value.isPlaying) {
-        controller.pause();
-        _isPlaying = false;
-      } else {
-        controller.play();
-        _isPlaying = true;
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_isInitialized) {
-      return Container(
-        width: 200,
-        height: 200,
-        color: Colors.grey.shade300,
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final controller = _controller;
-    if (_hasError || controller == null) {
-      return Container(
-        width: 200,
-        height: 200,
-        color: Colors.grey.shade300,
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 32, color: Colors.grey),
-              SizedBox(height: 8),
-              Text(
-                'Video load failed',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        GestureDetector(
-          onTap: _togglePlayPause,
-          child: SizedBox(
-            width: 200,
-            height: 200,
-            child: FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: controller.value.size.width,
-                height: controller.value.size.height,
-                child: VideoPlayer(controller),
-              ),
-            ),
-          ),
-        ),
-        if (!_isPlaying)
-          Container(
-            width: 200,
-            height: 200,
-            color: Colors.black26,
-            child: const Center(
-              child: Icon(
-                Icons.play_circle_outline,
-                size: 64,
-                color: Colors.white,
-              ),
-            ),
-          ),
-      ],
-    );
   }
 }

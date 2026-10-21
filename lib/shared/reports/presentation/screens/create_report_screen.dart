@@ -1,3 +1,5 @@
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
+import 'package:ecopin_app/shared/reports/data/models/video_submission_policy.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:ecopin_app/shared/reports/data/models/report_prefill_data.dart';
@@ -56,6 +58,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   String? _mediaError;
   bool _mediaPermissionDenied = false;
   bool _isSelectingMedia = false;
+  VideoSubmissionPolicy? _videoPolicy;
+  bool _loadingVideoPolicy = false;
+  String? _videoPolicyError;
   late Future<String?> _addressFuture;
   bool _locationConfirmed = false;
   bool _addressRequested = false;
@@ -140,6 +145,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     _titleFocusNode.unfocus();
     _descriptionFocusNode.unfocus();
     setState(() => _currentStep = targetStep);
+    if (targetStep == 2 && _videoPolicy == null && !_loadingVideoPolicy) {
+      _loadVideoPolicy();
+    }
     if (MediaQuery.disableAnimationsOf(context)) {
       _pageController.jumpToPage(targetStep);
     } else {
@@ -247,7 +255,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           continue;
         }
         final rawFile = File(xFile.path);
-        if (_capturedImages.any((image) => image.path == rawFile.path)) continue;
+        if (_capturedImages.any((image) => image.path == rawFile.path)) {
+          continue;
+        }
         if (_capturedImages.length >= reportMaxPhotos) {
           _showMediaError(
             'You can attach up to $reportMaxPhotos photos. Remove one before adding another.',
@@ -262,7 +272,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           final data = validationRes.data;
           if (data is Map && data['is_valid'] == false) {
             final category = data['predicted_category'] ?? 'non-hazard';
-            final conf = ((data['confidence'] as num?)?.toDouble() ?? 0.0) * 100;
+            final conf =
+                ((data['confidence'] as num?)?.toDouble() ?? 0.0) * 100;
             _showMediaError(
               'Photo could not be verified as an environmental concern ($category, ${conf.toStringAsFixed(0)}% confidence). Please take a clearer photo of the issue.',
             );
@@ -286,7 +297,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           knownAddress: currentAddress,
           fallbackLat: _locationConfirmed ? _reportLocation.latitude : null,
           fallbackLng: _locationConfirmed ? _reportLocation.longitude : null,
-          qrPayload: dotenv.env['WEB_BASE_URL'] ?? 'https://ecopin-web.vercel.app',
+          qrPayload:
+              dotenv.env['WEB_BASE_URL'] ?? 'https://ecopin-web.vercel.app',
         );
         _photoVerificationResult = processed;
         final file = processed.file;
@@ -316,7 +328,32 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     }
   }
 
-  Future<void> _pickVideo(ImageSource source) async {
+  Future<VideoSubmissionPolicy?> _loadVideoPolicy() async {
+    if (!mounted || _loadingVideoPolicy) return null;
+    setState(() {
+      _loadingVideoPolicy = true;
+      _videoPolicyError = null;
+    });
+    try {
+      final response = await ref.read(apiClientProvider).getReportVideoPolicy();
+      final policy = VideoSubmissionPolicy.fromJson(response.data);
+      if (mounted) setState(() => _videoPolicy = policy);
+      return policy;
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _videoPolicy = null;
+          _videoPolicyError =
+              'Video limits could not load. Retry or attach photos instead.';
+        });
+      }
+      return null;
+    } finally {
+      if (mounted) setState(() => _loadingVideoPolicy = false);
+    }
+  }
+
+  Future<void> _pickVideo() async {
     if (_isSelectingMedia) return;
     setState(() {
       _isSelectingMedia = true;
@@ -328,9 +365,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         _showMediaError('Remove the selected video before choosing another.');
         return;
       }
+      final policy = await _loadVideoPolicy();
+      if (policy == null || !mounted) return;
       final picked = await _picker.pickVideo(
-        source: source,
-        maxDuration: const Duration(seconds: reportMaxVideoDuration),
+        source: ImageSource.camera,
+        maxDuration: Duration(seconds: policy.maxSeconds),
       );
       if (picked == null || !mounted) return;
       final ext = picked.path.split('.').last;
@@ -350,10 +389,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         );
         return;
       }
-      if (duration < const Duration(seconds: reportMinVideoDuration) ||
-          duration > const Duration(seconds: reportMaxVideoDuration)) {
+      if (!policy.accepts(duration)) {
         _showMediaError(
-          'Choose a video between $reportMinVideoDuration and $reportMaxVideoDuration seconds long. This video is ${duration.inMilliseconds / 1000} seconds.',
+          'Record a video between ${VideoSubmissionPolicy.minSeconds} and ${policy.maxSeconds} seconds long. This video is ${duration.inMilliseconds / 1000} seconds.',
         );
         return;
       }
@@ -402,6 +440,20 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       final mainVideo = _capturedVideos.isNotEmpty
           ? _capturedVideos.first
           : null;
+      if (mainVideo != null) {
+        final policy = await _loadVideoPolicy();
+        if (!mounted) return;
+        final duration = _videoDurations[mainVideo.path];
+        if (policy == null || duration == null || !policy.accepts(duration)) {
+          setState(() {
+            _isSubmitting = false;
+            _submissionError = policy == null
+                ? 'Video limits could not load. Please retry.'
+                : 'The video limit changed. Record a video between 5 and ${policy.maxSeconds} seconds.';
+          });
+          return;
+        }
+      }
       final result = await apiClient.createReport(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -577,41 +629,44 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ),
           ),
 
-        if (_isSubmitting)
-          Positioned.fill(
-            child: Material(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: SafeArea(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(color: AppColors.accent),
-                      const SizedBox(height: 32),
-                      Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          'Sending your report…',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+          if (_isSubmitting)
+            Positioned.fill(
+              child: Material(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: SafeArea(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(
+                          color: AppColors.accent,
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Keep this screen open while your report is sent. You can track it after it is accepted.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                        const SizedBox(height: 32),
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            'Sending your report…',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
                         ),
-                      ).padding(const EdgeInsets.symmetric(horizontal: 40)),
-                    ],
+                        const SizedBox(height: 16),
+                        Text(
+                          'Keep this screen open while your report is sent. You can track it after it is accepted.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                              ),
+                        ).padding(const EdgeInsets.symmetric(horizontal: 40)),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -627,7 +682,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           children: List.generate(_totalSteps, (index) {
             final isCurrent = index == _currentStep;
             final canJump = _canNavigateToStep(index);
-            final isCompleted = index < _currentStep ||
+            final isCompleted =
+                index < _currentStep ||
                 (index == 0 && _locationConfirmed) ||
                 (index == 1 && _titleController.text.trim().isNotEmpty) ||
                 (index == 2 &&
@@ -645,8 +701,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                     backgroundColor: isCurrent
                         ? AppColors.accent
                         : (isCompleted
-                            ? AppColors.success
-                            : colorScheme.outline.withValues(alpha: 0.3)),
+                              ? AppColors.success
+                              : colorScheme.outline.withValues(alpha: 0.3)),
                     child: Icon(
                       isCompleted && !isCurrent ? Icons.check : null,
                       size: 11,
@@ -661,24 +717,27 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       color: isCurrent
                           ? AppColors.accent
                           : (canJump
-                              ? colorScheme.onSurface
-                              : colorScheme.onSurface.withValues(alpha: 0.4)),
+                                ? colorScheme.onSurface
+                                : colorScheme.onSurface.withValues(alpha: 0.4)),
                     ),
                   ),
                   backgroundColor: isCurrent
                       ? AppColors.accent.withValues(alpha: 0.12)
                       : (canJump
-                          ? colorScheme.surfaceContainerLow
-                          : colorScheme.surfaceContainerLowest),
+                            ? colorScheme.surfaceContainerLow
+                            : colorScheme.surfaceContainerLowest),
                   side: BorderSide(
                     color: isCurrent
                         ? AppColors.accent
                         : (canJump
-                            ? colorScheme.outlineVariant
-                            : colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                              ? colorScheme.outlineVariant
+                              : colorScheme.outlineVariant.withValues(
+                                  alpha: 0.3,
+                                )),
                   ),
-                  onPressed:
-                      canJump && !isCurrent ? () => _jumpToStep(index) : null,
+                  onPressed: canJump && !isCurrent
+                      ? () => _jumpToStep(index)
+                      : null,
                 ),
               ),
             );
@@ -695,11 +754,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     bool isLoading = false,
   }) {
     if (onPrev == null) {
-      return AppButton(
-        text: nextText,
-        isLoading: isLoading,
-        onPressed: onNext,
-      );
+      return AppButton(text: nextText, isLoading: isLoading, onPressed: onNext);
     }
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -776,7 +831,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                 mapController: _locationMap,
                 options: MapOptions(
                   initialCenter: _reportLocation,
-                  initialZoom: 15.0,
+                  initialZoom: 17.0,
                   onTap: (position, point) => _chooseLocation(point),
                 ),
                 children: [
@@ -793,12 +848,16 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                         ? [
                             Marker(
                               point: _reportLocation,
-                              width: 40,
-                              height: 40,
-                              child: const Icon(
-                                Icons.location_pin,
-                                color: AppColors.accent,
-                                size: 40,
+                              width: ReportPinFrame.width,
+                              height: ReportPinFrame.height,
+                              alignment: Alignment.topCenter,
+                              child: Semantics(
+                                label: 'Selected report location',
+                                child: ReportPinFrame(
+                                  color: colorScheme.primary,
+                                  badge: const Icon(Icons.check, color: Colors.white, size: 14),
+                                  child: Icon(Icons.my_location, color: colorScheme.primary, size: 25),
+                                ),
                               ),
                             ),
                           ]
@@ -1060,9 +1119,19 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             'Video · Up to $reportMaxVideos',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const Text(
-            '$reportMinVideoDuration–$reportMaxVideoDuration seconds · MP4, MOV, WEBM',
+          Text(
+            _videoPolicy == null
+                ? 'Camera recording only. Video limits must load before recording.'
+                : '${VideoSubmissionPolicy.minSeconds}–${_videoPolicy!.maxSeconds} seconds · Camera recording only · MP4, MOV, WEBM',
           ),
+          if (_loadingVideoPolicy) const Text('Loading video limits…'),
+          if (_videoPolicyError != null) ...[
+            Text(_videoPolicyError!),
+            TextButton(
+              onPressed: _loadingVideoPolicy ? null : _loadVideoPolicy,
+              child: const Text('Retry video limits'),
+            ),
+          ],
           const SizedBox(height: 12),
           if (_capturedVideos.isNotEmpty) ...[
             Container(
@@ -1120,28 +1189,15 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          Row(
-            children: [
-              Expanded(
-                child: _buildMediaOption(
-                  icon: Icons.videocam,
-                  label: 'Record Video',
-                  onTap: _capturedVideos.isEmpty
-                      ? () => _pickVideo(ImageSource.camera)
-                      : null,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildMediaOption(
-                  icon: Icons.video_library,
-                  label: 'Select Video',
-                  onTap: _capturedVideos.isEmpty
-                      ? () => _pickVideo(ImageSource.gallery)
-                      : null,
-                ),
-              ),
-            ],
+          _buildMediaOption(
+            icon: Icons.videocam,
+            label: 'Record Video',
+            onTap:
+                _capturedVideos.isEmpty &&
+                    _videoPolicy != null &&
+                    !_loadingVideoPolicy
+                ? _pickVideo
+                : null,
           ),
           const SizedBox(height: 48),
           _buildStepBottomButtons(
@@ -1261,9 +1317,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ? 'On private property'
                       : 'Not marked as private property',
                 ),
-                Text(
-                  'Scale & Obstruction: Automated via AI verification',
-                ),
+                Text('Scale & Obstruction: Automated via AI verification'),
                 const SizedBox(height: 16),
 
                 Row(

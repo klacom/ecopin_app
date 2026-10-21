@@ -81,6 +81,7 @@ void main() {
         'id': 'existing-settings',
         'password_min_length': 12,
         'session_timeout_minutes': 30,
+        'report_video_max_seconds': 7,
         'role': 'admin',
         'unrelated': 'discard',
       });
@@ -90,6 +91,7 @@ void main() {
         'id': 'existing-settings',
         'password_min_length': 12,
         'session_timeout_minutes': 30,
+        'report_video_max_seconds': 7,
       });
     },
   );

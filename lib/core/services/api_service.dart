@@ -64,7 +64,8 @@ class ApiClient {
         },
         onError: (error, handler) async {
           if (error.response?.statusCode == 401 &&
-              error.requestOptions.extra['pendingPasswordChange'] != true) {
+              error.requestOptions.extra['pendingPasswordChange'] != true &&
+              error.requestOptions.extra['sessionRefreshRetried'] != true) {
             // Try to refresh the session
             try {
               await Supabase.instance.client.auth.refreshSession();
@@ -74,6 +75,7 @@ class ApiClient {
               if (newToken != null) {
                 // Retry the original request with new token
                 final opts = error.requestOptions;
+                opts.extra['sessionRefreshRetried'] = true;
                 opts.headers['Authorization'] = 'Bearer $newToken';
                 final response = await _dio.fetch(opts);
                 return handler.resolve(response);
@@ -144,7 +146,9 @@ class ApiClient {
     required String accessToken,
   }) async {
     if (accessToken.isEmpty || newPassword.isEmpty) {
-      throw ArgumentError('Password change requires pending sign-in credentials');
+      throw ArgumentError(
+        'Password change requires pending sign-in credentials',
+      );
     }
     return _dio.post(
       ApiConstants.forceChangePassword,
@@ -187,41 +191,51 @@ class ApiClient {
 
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult.contains(ConnectivityResult.none)) {
-      if (_db == null) throw Exception("Database not initialized for offline mode");
-      
+      if (_db == null)
+        throw Exception("Database not initialized for offline mode");
+
       final idempotencyKey = const Uuid().v4();
       final imageList = imagePaths?.join(',') ?? '';
-      
-      await _db.into(_db.offlineReports).insert(
-        OfflineReportsCompanion.insert(
-          idempotencyKey: idempotencyKey,
-          title: title,
-          description: description,
-          latitude: latitude,
-          longitude: longitude,
-          onPrivateProperty: drift.Value(onPrivateProperty),
-          scaleLevel: drift.Value(scaleLevel),
-          obstructionLevel: drift.Value(obstructionLevel),
-          imagePaths: drift.Value(imageList),
-          videoPath: drift.Value(videoPath),
-        ),
-      );
-      
+
+      await _db
+          .into(_db.offlineReports)
+          .insert(
+            OfflineReportsCompanion.insert(
+              idempotencyKey: idempotencyKey,
+              title: title,
+              description: description,
+              latitude: latitude,
+              longitude: longitude,
+              onPrivateProperty: drift.Value(onPrivateProperty),
+              scaleLevel: drift.Value(scaleLevel),
+              obstructionLevel: drift.Value(obstructionLevel),
+              imagePaths: drift.Value(imageList),
+              videoPath: drift.Value(videoPath),
+            ),
+          );
+
       // If we have media, insert into the new OfflineMedia table
       if (imageList.isNotEmpty || videoPath != null) {
-        await _db.into(_db.offlineMedia).insert(
-          OfflineMediaCompanion.insert(
-            idempotencyKey: idempotencyKey,
-            imagePaths: drift.Value(imageList.isEmpty ? null : imageList),
-            videoPath: drift.Value(videoPath),
-          )
-        );
+        await _db
+            .into(_db.offlineMedia)
+            .insert(
+              OfflineMediaCompanion.insert(
+                idempotencyKey: idempotencyKey,
+                imagePaths: drift.Value(imageList.isEmpty ? null : imageList),
+                videoPath: drift.Value(videoPath),
+              ),
+            );
       }
-      
+
       return dio.Response(
         requestOptions: dio.RequestOptions(),
         statusCode: 201,
-        data: {'message': 'You are offline. Your report has been saved locally and will be synced when you reconnect.', 'report': {}, 'saved_locally': true},
+        data: {
+          'message':
+              'You are offline. Your report has been saved locally and will be synced when you reconnect.',
+          'report': {},
+          'saved_locally': true,
+        },
       );
     }
 
@@ -235,12 +249,23 @@ class ApiClient {
     );
     formData.fields.add(MapEntry('scale_level', scaleLevel));
     formData.fields.add(MapEntry('obstruction_level', obstructionLevel));
-    if (photoLat != null) formData.fields.add(MapEntry('photo_lat', photoLat.toString()));
-    if (photoLng != null) formData.fields.add(MapEntry('photo_lng', photoLng.toString()));
-    if (photoAccuracy != null) formData.fields.add(MapEntry('photo_accuracy', photoAccuracy.toString()));
-    if (photoCapturedAt != null) formData.fields.add(MapEntry('photo_captured_at', photoCapturedAt.toUtc().toIso8601String()));
-    if (photoSource != null) formData.fields.add(MapEntry('photo_source', photoSource));
-    if (isMocked != null) formData.fields.add(MapEntry('is_mocked', isMocked.toString()));
+    if (photoLat != null)
+      formData.fields.add(MapEntry('photo_lat', photoLat.toString()));
+    if (photoLng != null)
+      formData.fields.add(MapEntry('photo_lng', photoLng.toString()));
+    if (photoAccuracy != null)
+      formData.fields.add(MapEntry('photo_accuracy', photoAccuracy.toString()));
+    if (photoCapturedAt != null)
+      formData.fields.add(
+        MapEntry(
+          'photo_captured_at',
+          photoCapturedAt.toUtc().toIso8601String(),
+        ),
+      );
+    if (photoSource != null)
+      formData.fields.add(MapEntry('photo_source', photoSource));
+    if (isMocked != null)
+      formData.fields.add(MapEntry('is_mocked', isMocked.toString()));
 
     if (imagePaths != null && imagePaths.isNotEmpty) {
       for (final imagePath in imagePaths) {
@@ -267,6 +292,9 @@ class ApiClient {
     return _dio.post(ApiConstants.createReport, data: formData);
   }
 
+  Future<dio.Response> getReportVideoPolicy() =>
+      _dio.get('/api/reports/media-policy');
+
   Future<dio.Response> validateImage(String imagePath) async {
     final formData = dio.FormData();
     formData.files.add(
@@ -281,7 +309,7 @@ class ApiClient {
     String? videoPath,
   ) async {
     final formData = dio.FormData();
-    
+
     if (imagePaths != null && imagePaths.isNotEmpty) {
       for (final path in imagePaths) {
         if (path.isNotEmpty) {
@@ -291,17 +319,14 @@ class ApiClient {
         }
       }
     }
-    
+
     if (videoPath != null && videoPath.isNotEmpty) {
       formData.files.add(
         MapEntry('video', await dio.MultipartFile.fromFile(videoPath)),
       );
     }
 
-    return _dio.post(
-      '/api/reports/sync/media/$idempotencyKey', 
-      data: formData
-    );
+    return _dio.post('/api/reports/sync/media/$idempotencyKey', data: formData);
   }
 
   Future<dio.Response> getMyReports() async {
@@ -422,18 +447,12 @@ class ApiClient {
     String? fieldCrewId,
     List<String>? assignedCrewIds,
   }) async {
-    final payload = <String, dynamic>{
-      'report_ids': reportIds,
-      'title': title,
-    };
+    final payload = <String, dynamic>{'report_ids': reportIds, 'title': title};
     if (description != null) payload['description'] = description;
     if (fieldCrewId != null) payload['field_crew_id'] = fieldCrewId;
     if (assignedCrewIds != null) payload['assigned_crew_ids'] = assignedCrewIds;
 
-    return _dio.post(
-      ApiConstants.createCustomCleanupTask,
-      data: payload,
-    );
+    return _dio.post(ApiConstants.createCustomCleanupTask, data: payload);
   }
 
   Future<dio.Response> uploadCleanupPhoto({
@@ -464,20 +483,26 @@ class ApiClient {
   Future<dio.Response> markCleanupTaskComplete(String taskId) async {
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult.contains(ConnectivityResult.none)) {
-      if (_db == null) throw Exception("Database not initialized for offline mode");
-      
-      await _db.into(_db.offlineTaskUpdates).insert(
-        OfflineTaskUpdatesCompanion.insert(
-          taskId: int.parse(taskId),
-          payloadJson: '{"status":"completed"}',
-          clientKnownUpdatedAt: DateTime.now(),
-        ),
-      );
-      
+      if (_db == null)
+        throw Exception("Database not initialized for offline mode");
+
+      await _db
+          .into(_db.offlineTaskUpdates)
+          .insert(
+            OfflineTaskUpdatesCompanion.insert(
+              taskId: int.parse(taskId),
+              payloadJson: '{"status":"completed"}',
+              clientKnownUpdatedAt: DateTime.now(),
+            ),
+          );
+
       return dio.Response(
         requestOptions: dio.RequestOptions(),
         statusCode: 200,
-        data: {'message': 'You are offline. Task update saved locally.', 'task': {}},
+        data: {
+          'message': 'You are offline. Task update saved locally.',
+          'task': {},
+        },
       );
     }
 
@@ -527,25 +552,33 @@ class ApiClient {
 
   // Sync methods
 
-  Future<dio.Response> batchSyncReports(List<Map<String, dynamic>> payload) async {
+  Future<dio.Response> batchSyncReports(
+    List<Map<String, dynamic>> payload,
+  ) async {
     return _dio.post('/api/reports/sync/batch', data: {'reports': payload});
   }
 
-  Future<dio.Response> batchSyncTaskUpdates(List<Map<String, dynamic>> payload) async {
-    return _dio.post('/api/cleanup-tasks/sync/batch', data: {'updates': payload});
+  Future<dio.Response> batchSyncTaskUpdates(
+    List<Map<String, dynamic>> payload,
+  ) async {
+    return _dio.post(
+      '/api/cleanup-tasks/sync/batch',
+      data: {'updates': payload},
+    );
   }
 
   Future<dio.Response> getCleanupTasks() async {
     return _dio.get(ApiConstants.cleanupTasks);
   }
 
-  Future<dio.Response> completeCleanupTask(String taskId, String outcome, String notes) async {
+  Future<dio.Response> completeCleanupTask(
+    String taskId,
+    String outcome,
+    String notes,
+  ) async {
     return _dio.post(
       '${ApiConstants.cleanupTasks}/$taskId/complete',
-      data: {
-        'outcome': outcome,
-        'notes': notes,
-      },
+      data: {'outcome': outcome, 'notes': notes},
     );
   }
 
@@ -648,17 +681,14 @@ class ApiClient {
   }
 
   // Spatial Scan (Forecast) methods
-  
+
   Future<dio.Response> generateSpatialForecast({
     String timeHorizon = 'weekly',
     Map<String, dynamic>? boundingBox,
   }) async {
     return _dio.post(
       ApiConstants.spatialForecastGenerate,
-      data: {
-        'time_horizon': timeHorizon,
-        'bounding_box': boundingBox,
-      },
+      data: {'time_horizon': timeHorizon, 'bounding_box': boundingBox},
     );
   }
 
@@ -691,11 +721,8 @@ class ApiClient {
   Future<dio.Response> getSpatialForecastAccuracy({String? timeHorizon}) async {
     final params = <String, dynamic>{};
     if (timeHorizon != null) params['time_horizon'] = timeHorizon;
-    
-    return _dio.get(
-      '/api/spatial-forecast/accuracy',
-      queryParameters: params,
-    );
+
+    return _dio.get('/api/spatial-forecast/accuracy', queryParameters: params);
   }
 
   Future<dio.Response> getAvailablePredictionDates() async {
@@ -735,16 +762,28 @@ class ApiClient {
     return _dio.get(ApiConstants.dispatchPlan(planId));
   }
 
-  Future<dio.Response> commitPlan(String planId, [Map<String, dynamic>? options]) async {
-    return _dio.post(ApiConstants.commitDispatchPlan(planId), data: options ?? {});
+  Future<dio.Response> commitPlan(
+    String planId, [
+    Map<String, dynamic>? options,
+  ]) async {
+    return _dio.post(
+      ApiConstants.commitDispatchPlan(planId),
+      data: options ?? {},
+    );
   }
 
   Future<dio.Response> previewPlanDisassembly(String planOrRunId) async {
     return _dio.get(ApiConstants.planDisassemblePreview(planOrRunId));
   }
 
-  Future<dio.Response> disassemblePlan(String planOrRunId, [Map<String, dynamic>? body]) async {
-    return _dio.post(ApiConstants.planDisassemble(planOrRunId), data: body ?? {});
+  Future<dio.Response> disassemblePlan(
+    String planOrRunId, [
+    Map<String, dynamic>? body,
+  ]) async {
+    return _dio.post(
+      ApiConstants.planDisassemble(planOrRunId),
+      data: body ?? {},
+    );
   }
 
   Future<dio.Response> getOptimizationTemplates() async {
@@ -764,7 +803,11 @@ class ApiClient {
     return _dio.get(ApiConstants.unassignedCrewMembers);
   }
 
-  Future<dio.Response> updateCrewMember(String crewId, String userId, String action) async {
+  Future<dio.Response> updateCrewMember(
+    String crewId,
+    String userId,
+    String action,
+  ) async {
     return _dio.patch(
       ApiConstants.crewMembers(crewId),
       data: {'user_id': userId, 'action': action},
@@ -777,10 +820,10 @@ class ApiClient {
   }
 
   // Account Deletion (Google Play User Data policy compliance)
-  Future<dio.Response> deleteAccount({String? password}) async {
+  Future<dio.Response> deleteAccount({required String confirmation}) async {
     return _dio.delete(
       ApiConstants.deleteAccount,
-      data: password != null ? {'password': password} : null,
+      data: {'confirmation': confirmation},
     );
   }
 }

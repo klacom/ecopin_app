@@ -22,6 +22,7 @@ const settingsFixture = <String, dynamic>{
   'password_require_numbers': true,
   'password_require_special_chars': true,
   'session_timeout_minutes': 60,
+  'report_video_max_seconds': 8,
 };
 
 class SyntheticSettingsRepository extends AdminRepository {
@@ -81,6 +82,28 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.text('Password rules'), findsOneWidget);
+        await tester.ensureVisible(
+          find.byKey(const Key('admin-video-maximum')),
+        );
+        await tester.enterText(
+          find.byKey(const Key('admin-video-maximum')),
+          '11',
+        );
+        await tester.ensureVisible(find.text('Save changes'));
+        await tester.tap(find.text('Save changes'));
+        await tester.pumpAndSettle();
+        expect(repository.saves, 0);
+        expect(find.text('Enter a whole number from 5 to 10.'), findsOneWidget);
+        await tester.ensureVisible(
+          find.byKey(const Key('admin-video-maximum')),
+        );
+        await tester.enterText(
+          find.byKey(const Key('admin-video-maximum')),
+          '8',
+        );
+        await tester.ensureVisible(find.text('Password rules'));
+        await tester.pumpAndSettle();
+
         final output = Platform.environment['ECOPIN_SCREENSHOT_DIR'];
         if (output != null) {
           final boundary = tester.renderObject<RenderRepaintBoundary>(
@@ -151,6 +174,7 @@ void main() {
           isNull,
         );
         expect(repository.submitted?['id'], 'existing');
+        expect(repository.submitted?['report_video_max_seconds'], 8);
         expect(repository.submitted?['password_min_length'], 12);
         repository.result.completeError(
           const FormatException('Synthetic save failure'),

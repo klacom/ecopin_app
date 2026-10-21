@@ -23,6 +23,7 @@ class ReportModel {
   final DateTime? citizenClosedAt;
   final bool isOverdue;
   final String? beforePhotoUrl;
+  final List<Map<String, dynamic>> beforePhotos;
   final String? afterPhotoUrl;
   final String? rejectionReason;
   final DateTime? rejectedAt;
@@ -62,6 +63,7 @@ class ReportModel {
     this.citizenClosedAt,
     this.isOverdue = false,
     this.beforePhotoUrl,
+    this.beforePhotos = const [],
     this.afterPhotoUrl,
     this.rejectionReason,
     this.rejectedAt,
@@ -136,7 +138,8 @@ class ReportModel {
       issueType: json['issue_type']?.toString(),
       location: latLng,
       locationPrecision: json['location_precision']?.toString() ?? 'exact',
-      validationStatus: json['validation_status']?.toString() ?? 'pending_ai_validation',
+      validationStatus:
+          json['validation_status']?.toString() ?? 'pending_ai_validation',
       status: json['status']?.toString() ?? 'unresolved',
       clusterId: json['cluster_id']?.toString(),
       createdAt:
@@ -151,19 +154,30 @@ class ReportModel {
           json['property_owner_consent_status']?.toString() ?? 'not_required',
       satisfactionRating: json['satisfaction_rating'] as int?,
       lguResolvedAt: json['lgu_resolved_at'] != null
-          ? DateTime.tryParse(json['lgu_resolved_at']?.toString() ?? '')?.toLocal()
+          ? DateTime.tryParse(
+              json['lgu_resolved_at']?.toString() ?? '',
+            )?.toLocal()
           : null,
       citizenClosedAt: json['citizen_closed_at'] != null
-          ? DateTime.tryParse(json['citizen_closed_at']?.toString() ?? '')?.toLocal()
+          ? DateTime.tryParse(
+              json['citizen_closed_at']?.toString() ?? '',
+            )?.toLocal()
           : null,
       isOverdue: json['is_overdue'] ?? false,
+      beforePhotos: (json['before_photos'] as List? ?? [])
+          .whereType<Map>()
+          .map((p) => Map<String, dynamic>.from(p))
+          .toList(),
       beforePhotoUrl: json['before_photo_url']?.toString(),
-      rejectionReason: json['rejection_reason']?.toString() ?? json['notes']?.toString(),
+      rejectionReason:
+          json['rejection_reason']?.toString() ?? json['notes']?.toString(),
       rejectedAt: json['rejected_at'] != null
           ? DateTime.tryParse(json['rejected_at']?.toString() ?? '')?.toLocal()
           : (json['validation_status'] == 'rejected'
-              ? DateTime.tryParse(json['updated_at']?.toString() ?? '')?.toLocal()
-              : null),
+                ? DateTime.tryParse(
+                    json['updated_at']?.toString() ?? '',
+                  )?.toLocal()
+                : null),
       scaleLevel: json['scale_level']?.toString() ?? 'medium',
       obstructionLevel: json['obstruction_level']?.toString() ?? 'none',
       severityScore: json['severity_score'] as int?,
@@ -171,11 +185,15 @@ class ReportModel {
       severityFactors: json['severity_factors'] as Map<String, dynamic>?,
       lifecycleStage: (json['stage'] ?? json['lifecycle_stage'])?.toString(),
       lifecycleState: json['lifecycle_state']?.toString(),
-      breachedAt: DateTime.tryParse(json['breached_at']?.toString() ?? '')?.toLocal(),
+      breachedAt: DateTime.tryParse(
+        json['breached_at']?.toString() ?? '',
+      )?.toLocal(),
       slaBreachDuration: json['sla_breach_duration']?.toString(),
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
-      reportClaimGeneration: int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,
-      locationVerificationStatus: json['location_verification_status']?.toString(),
+      reportClaimGeneration:
+          int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,
+      locationVerificationStatus: json['location_verification_status']
+          ?.toString(),
       photoDistanceMeters: (json['photo_distance_meters'] as num?)?.toDouble(),
       cleanupTaskId: json['cleanup_task_id']?.toString(),
     );
@@ -185,7 +203,10 @@ class ReportModel {
   bool get canBeWithdrawn {
     if (cleanupTaskId != null && cleanupTaskId!.isNotEmpty) return false;
     final stage = (lifecycleStage ?? '').toLowerCase().trim();
-    if (stage == 'assigned' || stage == 'in_progress' || stage == 'resolved' || stage == 'closed') {
+    if (stage == 'assigned' ||
+        stage == 'in_progress' ||
+        stage == 'resolved' ||
+        stage == 'closed') {
       return false;
     }
     final lifeState = (lifecycleState ?? '').toLowerCase().trim();
@@ -230,6 +251,7 @@ class ReportModel {
       'fc_version': fcVersion,
       'report_claim_generation': reportClaimGeneration,
       'cleanup_task_id': cleanupTaskId,
+      'before_photos': beforePhotos,
     };
   }
 }

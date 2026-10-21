@@ -19,6 +19,7 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
   final _form = GlobalKey<FormState>();
   final _minimum = TextEditingController();
   final _timeout = TextEditingController();
+  final _videoMaximum = TextEditingController();
   final _scroll = ScrollController();
   Map<String, dynamic>? _saved;
   final _rules = <String, bool>{};
@@ -36,12 +37,15 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
       (_minimum.text.trim() != _saved!['password_min_length'].toString() ||
           _timeout.text.trim() !=
               _saved!['session_timeout_minutes'].toString() ||
+          _videoMaximum.text.trim() !=
+              (_saved!['report_video_max_seconds'] ?? 10).toString() ||
           labels.keys.any((key) => _rules[key] != _saved![key]));
   @override
   void initState() {
     super.initState();
     _minimum.addListener(_edited);
     _timeout.addListener(_edited);
+    _videoMaximum.addListener(_edited);
     _load();
   }
 
@@ -49,6 +53,7 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
   void dispose() {
     _minimum.dispose();
     _timeout.dispose();
+    _videoMaximum.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -72,6 +77,8 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
     _saved = Map.of(settings);
     _minimum.text = settings['password_min_length'].toString();
     _timeout.text = settings['session_timeout_minutes'].toString();
+    _videoMaximum.text = (settings['report_video_max_seconds'] ?? 10)
+        .toString();
     for (final key in labels.keys) {
       _rules[key] = settings[key] as bool;
     }
@@ -136,6 +143,7 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
         ..._saved!,
         'password_min_length': int.parse(_minimum.text.trim()),
         'session_timeout_minutes': int.parse(_timeout.text.trim()),
+        'report_video_max_seconds': int.parse(_videoMaximum.text.trim()),
         ..._rules,
       });
       acknowledged = true;
@@ -224,7 +232,7 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Security settings'),
+      title: const Text('System settings'),
       toolbarHeight:
           MediaQuery.textScalerOf(
                 context,
@@ -306,6 +314,20 @@ class _AdminSettingsScreenState extends ConsumerState<AdminSettingsScreen> {
                           5,
                           1440,
                           '5–1440 minutes. Used by the existing web session flow.',
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Report videos',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 16),
+                        _numberField(
+                          'Maximum video duration (seconds)',
+                          'admin-video-maximum',
+                          _videoMaximum,
+                          5,
+                          10,
+                          'Choose 5–10 seconds. Every clip must be at least 5 seconds. Applies to new submissions, including previously recorded clips.',
                         ),
                         const SizedBox(height: 24),
                         if (_dirty) ...[

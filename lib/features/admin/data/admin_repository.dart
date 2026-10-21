@@ -63,6 +63,7 @@ class AdminRepository {
           'password_require_numbers',
           'password_require_special_chars',
           'session_timeout_minutes',
+          'report_video_max_seconds',
         ])
           if (settings.containsKey(key)) key: settings[key],
       },

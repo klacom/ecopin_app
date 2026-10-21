@@ -38,6 +38,8 @@ class SyntheticPicker extends ImagePicker {
   final String path;
   Object? failure;
   String? videoPath;
+  ImageSource? videoSource;
+  Duration? videoMaximum;
   var requests = 0;
   Completer<List<XFile>>? pendingSelection;
   @override
@@ -74,12 +76,25 @@ class SyntheticPicker extends ImagePicker {
     Duration? maxDuration,
   }) async {
     requests++;
+    videoSource = source;
+    videoMaximum = maxDuration;
     if (failure != null) throw failure!;
     return videoPath == null ? null : XFile(videoPath!);
   }
 }
 
 class SyntheticReportApi extends ApiClient {
+  int videoMaximum = 8;
+  bool failVideoPolicy = false;
+  @override
+  Future<dio.Response> getReportVideoPolicy() async {
+    if (failVideoPolicy) throw StateError('Settings unavailable');
+    return dio.Response(
+      requestOptions: dio.RequestOptions(path: '/api/reports/media-policy'),
+      data: {'min_seconds': 5, 'max_seconds': videoMaximum},
+    );
+  }
+
   final result = Completer<dio.Response>();
   var requests = 0;
   Map<String, Object?>? submitted;
@@ -120,7 +135,11 @@ class SyntheticReportApi extends ApiClient {
     return dio.Response(
       requestOptions: dio.RequestOptions(path: ''),
       statusCode: 200,
-      data: {'is_valid': true, 'confidence': 0.95, 'predicted_category': 'waste'},
+      data: {
+        'is_valid': true,
+        'confidence': 0.95,
+        'predicted_category': 'waste',
+      },
     );
   }
 }
@@ -129,7 +148,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
     dotenv.loadFromString(envString: 'SYNTHETIC_TEST=true');
-    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     const channel = MethodChannel('dev.fluttercommunity.plus/connectivity');
     messenger.setMockMethodCallHandler(channel, (call) async => ['wifi']);
   });
@@ -314,7 +334,9 @@ void main() {
         ..failure = PlatformException(code: 'camera_access_denied');
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [apiClientProvider.overrideWithValue(SyntheticReportApi())],
+          overrides: [
+            apiClientProvider.overrideWithValue(SyntheticReportApi()),
+          ],
           child: MaterialApp(
             theme: AppTheme.light,
             home: CreateReportScreen(
@@ -416,8 +438,10 @@ void main() {
       var duration = const Duration(milliseconds: 10900);
       final picker = SyntheticPicker('unused.png')
         ..videoPath = 'tiny-valid-video.mp4';
+      final api = SyntheticReportApi();
       await tester.pumpWidget(
         ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(api)],
           child: MaterialApp(
             theme: AppTheme.dark,
             home: CreateReportScreen(
@@ -441,16 +465,39 @@ void main() {
       await tester.ensureVisible(find.text('Next: Attach Media'));
       await tester.tap(find.text('Next: Attach Media'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Select Video'));
-      await tester.tap(find.text('Select Video'));
+      api.failVideoPolicy = true;
+      await tester.ensureVisible(find.text('Record Video'));
+      await tester.tap(find.text('Record Video'));
+      await tester.pumpAndSettle();
+      expect(picker.requests, 0);
+      expect(
+        find.text(
+          'Video limits could not load. Retry or attach photos instead.',
+        ),
+        findsOneWidget,
+      );
+      api.failVideoPolicy = false;
+      await tester.ensureVisible(find.text('Retry video limits'));
+      await tester.tap(find.text('Retry video limits'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Record Video'));
+      await tester.tap(find.text('Record Video'));
       await tester.pumpAndSettle();
       expect(find.textContaining('This video is 10.9 seconds'), findsOneWidget);
       expect(find.text('Preview selected video'), findsNothing);
-      duration = const Duration(seconds: 7);
-      await tester.ensureVisible(find.text('Select Video'));
-      await tester.tap(find.text('Select Video'));
+      duration = const Duration(milliseconds: 4900);
+      await tester.ensureVisible(find.text('Record Video'));
+      await tester.tap(find.text('Record Video'));
       await tester.pumpAndSettle();
-      expect(find.text('Duration: 00:07'), findsOneWidget);
+      expect(find.textContaining('This video is 4.9 seconds'), findsOneWidget);
+      duration = const Duration(milliseconds: 8026);
+      await tester.ensureVisible(find.text('Record Video'));
+      await tester.tap(find.text('Record Video'));
+      await tester.pumpAndSettle();
+      expect(find.text('Duration: 00:08'), findsOneWidget);
+      expect(picker.videoSource, ImageSource.camera);
+      expect(picker.videoMaximum, const Duration(seconds: 8));
+      expect(find.text('Select Video'), findsNothing);
       await tester.ensureVisible(find.text('Preview selected video'));
       await tester.tap(find.text('Preview selected video'));
       await tester.pumpAndSettle();
@@ -461,6 +508,20 @@ void main() {
       await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
       expect(find.byTooltip('Remove selected video'), findsOneWidget);
+      api.videoMaximum = 6;
+      await tester.ensureVisible(find.text('Next: Review'));
+      await tester.tap(find.text('Next: Review'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Submit Report'));
+      await tester.tap(find.text('Submit Report'));
+      await tester.pumpAndSettle();
+      expect(api.requests, 0);
+      expect(
+        find.text(
+          'The video limit changed. Record a video between 5 and 6 seconds.',
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );

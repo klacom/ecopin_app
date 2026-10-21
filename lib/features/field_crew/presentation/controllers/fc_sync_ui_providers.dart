@@ -1,4 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../../sync/fc_sync_trigger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_gate.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_settings.dart';
@@ -19,9 +20,13 @@ final fcSyncNetworkProvider = StreamProvider.autoDispose<FcNetworkType>((
   yield* connectivity.onConnectivityChanged.map(_network).distinct();
 });
 
-final fcPendingSummaryProvider = FutureProvider.autoDispose<FcPendingSummary>(
-  (ref) => ref.watch(fcSyncGateProvider).getPendingSummary(),
-);
+final fcPendingSummaryProvider = FutureProvider.autoDispose<FcPendingSummary>((
+  ref,
+) async {
+  final gate = ref.watch(fcSyncGateProvider);
+  await ref.watch(fcPendingWritesProvider.future);
+  return gate.getPendingSummary();
+});
 
 String fcSyncPolicy(FcSyncSettings settings, FcNetworkType? network) {
   if (settings.mode == FcSyncMode.offlineOnly) {

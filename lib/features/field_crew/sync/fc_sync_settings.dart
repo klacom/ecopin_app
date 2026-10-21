@@ -60,6 +60,8 @@ class FcSyncSettingsNotifier extends Notifier<FcSyncSettings> {
     return const FcSyncSettings();
   }
 
+  Future<void> get ready => _initialLoad;
+
   Future<void> _load() async {
     final prefs = await _preferences();
     if (!ref.mounted) return;

@@ -45,7 +45,7 @@ void main() {
         FieldCrewAppRoutes.reports,
         FieldCrewAppRoutes.profile,
       ],
-      ['Home', 'Route', 'Tasks', 'Reports', 'Account'],
+      ['Home', 'Route', 'Tasks', 'Reports', 'Profile'],
     ),
     'officer': (
       (child) => OfficerMainScreen(child: child),
@@ -141,6 +141,8 @@ void main() {
           expect(tester.takeException(), isNull);
           final navigation = role.key == 'citizen'
               ? find.byKey(const Key('citizen-navigation'))
+              : role.key == 'crew'
+              ? find.byKey(const Key('crew-navigation'))
               : find.byType(NavigationBar);
           if (role.key == 'citizen') {
             final action = tester.getRect(
@@ -196,7 +198,7 @@ void main() {
                   hint: index == 2 ? '123 unread notifications' : null,
                 ),
               );
-            } else {
+            } else if (role.key != 'crew') {
               expect(
                 tester.widget<NavigationBar>(navigation).selectedIndex,
                 index,

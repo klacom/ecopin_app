@@ -1,107 +1,93 @@
 import 'package:flutter/material.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
-import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_status_badge.dart';
+import '../../data/models/cleanup_task_model.dart';
+import '../controllers/fc_dashboard_presentation.dart';
+import '../controllers/fc_task_detail_presentation.dart';
+import 'fc_offline_ui.dart';
+import 'fc_task_status_badge.dart';
 
 class FcTaskSidebarCard extends StatelessWidget {
+  const FcTaskSidebarCard({super.key, required this.task, this.address});
   final CleanupTask task;
-
-  const FcTaskSidebarCard({super.key, required this.task});
-
+  final String? address;
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
-    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
-
-    return Container(
-      padding: const EdgeInsets.all(AppColors.spaceLG),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-        ],
-        border: Border.all(color: borderColor),
-      ),
+    final text = Theme.of(context).textTheme;
+    return FcOfflineCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FcTaskStatusBadge(status: task.status),
+              Text(
+                '${crewTaskLabel(task.priority)} priority',
+                style: text.bodySmall,
+              ),
+              if (task.dispatchKind == 'sweeper')
+                Text('Sweeper route', style: text.bodySmall),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(task.title, style: text.headlineSmall),
+          const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(task.title, style: AppTypography.h4.copyWith(color: textColor)),
-                    if (task.dispatchKind == 'sweeper')
-                      Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Sweeper Route',
-                          style: AppTypography.caption.copyWith(
-                            color: Colors.red.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppColors.spaceSM),
-              FcTaskStatusBadge(status: task.status),
-            ],
-          ),
-          const SizedBox(height: AppColors.spaceMD),
-          Row(
-            children: [
-              const Icon(Icons.location_on, size: 16, color: Colors.grey),
-              const SizedBox(width: 4),
+              const Icon(Icons.location_on_outlined, size: 20),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  task.location,
-                  style: AppTypography.caption.copyWith(color: Colors.grey),
-                  maxLines: 2,
+                  taskPlace(task, resolvedAddress: address),
+                  style: text.bodyMedium,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppColors.spaceMD),
-          Text(task.description, style: AppTypography.body.copyWith(color: textColor)),
-          const SizedBox(height: AppColors.spaceLG),
-          Text('Assigned Crew (${task.assignedCrewIds.length})', style: AppTypography.h6.copyWith(color: textColor)),
-          const SizedBox(height: AppColors.spaceSM),
-          if (task.assignedCrewIds.isEmpty)
-            Text('No crew assigned.', style: AppTypography.body.copyWith(color: Colors.grey))
-          else
+          if (task.description.trim().isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(task.description, style: text.bodyMedium),
+          ],
+          const Divider(height: 32),
+          Row(
+            children: [
+              const Icon(Icons.groups_outlined, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  task.assignedTeamName?.trim().isNotEmpty == true
+                      ? task.assignedTeamName!
+                      : 'Assigned crew',
+                  style: text.titleMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (task.assignedMembers.isNotEmpty)
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: task.assignedCrewIds.map((id) {
-                // Ideally fetch profile from a provider, but showing initials for now
-                return Tooltip(
-                  message: 'Crew $id',
-                  child: CircleAvatar(
-                    backgroundColor: AppColors.primaryDark.withValues(alpha: 0.2),
-                    foregroundColor: AppColors.primaryDark,
-                    child: Text(id.substring(0, 2).toUpperCase(), style: AppTypography.label),
+              children: [
+                for (final member in task.assignedMembers)
+                  Chip(
+                    avatar: const Icon(Icons.person_outline, size: 18),
+                    label: Text(
+                      member['full_name']?.toString().trim().isNotEmpty == true
+                          ? member['full_name'].toString()
+                          : 'Member name unavailable',
+                    ),
                   ),
-                );
-              }).toList(),
+              ],
+            )
+          else
+            Text(
+              task.assignedCrewIds.isEmpty
+                  ? 'No crew assigned'
+                  : '${task.assignedCrewIds.length} assigned ${task.assignedCrewIds.length == 1 ? 'member' : 'members'} · names unavailable',
+              style: text.bodyMedium,
             ),
         ],
       ),

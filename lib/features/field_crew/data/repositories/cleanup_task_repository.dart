@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:dio/dio.dart' as dio;
 import 'package:ecopin_app/core/constants/api_constants.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -24,23 +23,13 @@ class CleanupTaskRepository {
     this._localPhoto,
   );
 
-  bool _isNetworkError(Object e) {
-    if (e is dio.DioException) {
-      return e.type == dio.DioExceptionType.connectionTimeout ||
-          e.type == dio.DioExceptionType.sendTimeout ||
-          e.type == dio.DioExceptionType.receiveTimeout ||
-          e.type == dio.DioExceptionType.connectionError ||
-          e.type == dio.DioExceptionType.unknown;
-    }
-    return e is SocketException;
-  }
-
   // ── Fetch ────────────────────────────────────────────────────────────────
 
   Future<List<CleanupTask>> fetchAllTasks() async {
     try {
-      final response =
-          await _apiClient.dioClient.get(ApiConstants.cleanupTasks);
+      final response = await _apiClient.dioClient.get(
+        ApiConstants.cleanupTasks,
+      );
       final List<dynamic> data = response.data;
       final tasks = data.map((json) => CleanupTask.fromJson(json)).toList();
       await _cacheService.cacheTasks(tasks);
@@ -60,13 +49,16 @@ class CleanupTaskRepository {
   Future<List<CleanupTask>> fetchMyTasks() async {
     log.info('fetchMyTasks() called. Attempting network fetch...');
     try {
-      final response = await _apiClient.dioClient
-          .get('${ApiConstants.cleanupTasks}?assigned_to_me=true');
+      final response = await _apiClient.dioClient.get(
+        '${ApiConstants.cleanupTasks}?assigned_to_me=true',
+      );
       final List<dynamic> data = response.data;
       final tasks = data.map((json) => CleanupTask.fromJson(json)).toList();
       await _cacheService.cacheTasks(tasks);
       await _local.saveTasks(tasks);
-      log.info('Successfully fetched ${tasks.length} tasks from API (Online Mode). Cached locally.');
+      log.info(
+        'Successfully fetched ${tasks.length} tasks from API (Online Mode). Cached locally.',
+      );
       return tasks;
     } catch (e) {
       log.severe('Failed to fetch my tasks, loading from cache', e);
@@ -74,18 +66,26 @@ class CleanupTaskRepository {
       if (cached.isNotEmpty) {
         final currentUserId = Supabase.instance.client.auth.currentUser?.id;
         if (currentUserId != null) {
-          final userTasks = cached.where((task) => task.assignedCrewIds.contains(currentUserId)).toList();
-          log.info('Loaded ${userTasks.length} tasks for current user from Drift Local DB (Offline Mode).');
+          final userTasks = cached
+              .where((task) => task.assignedCrewIds.contains(currentUserId))
+              .toList();
+          log.info(
+            'Loaded ${userTasks.length} tasks for current user from Drift Local DB (Offline Mode).',
+          );
           return userTasks;
         }
-        log.info('Loaded ${cached.length} tasks from Drift Local DB (Offline Mode - No User ID).');
+        log.info(
+          'Loaded ${cached.length} tasks from Drift Local DB (Offline Mode - No User ID).',
+        );
         return cached;
       }
       final legacy = await _cacheService.getCachedTasks();
       if (legacy.isNotEmpty) {
         final currentUserId = Supabase.instance.client.auth.currentUser?.id;
         if (currentUserId != null) {
-          return legacy.where((task) => task.assignedCrewIds.contains(currentUserId)).toList();
+          return legacy
+              .where((task) => task.assignedCrewIds.contains(currentUserId))
+              .toList();
         }
         return legacy;
       }
@@ -93,22 +93,32 @@ class CleanupTaskRepository {
     }
   }
 
-  Future<CleanupTask> fetchTaskById(String id) async {
+  Future<CleanupTask> fetchTaskById(String id, {bool refresh = false}) async {
     // Prefer local cache so locally-modified state is immediately visible.
     final cached = await _local.getCachedTaskById(id);
-    if (cached != null) {
+    if (cached != null &&
+        (!refresh ||
+            ((await _local.getCachedTaskDbRow(id))?.localSyncState ?? 0) !=
+                0)) {
       _refreshTaskFromNetwork(id);
       return cached;
     }
     try {
-      final response =
-          await _apiClient.dioClient.get(ApiConstants.cleanupTaskById(id));
-      final task = CleanupTask.fromJson(response.data);
+      final response = await _apiClient.dioClient.get(
+        ApiConstants.cleanupTaskById(id),
+      );
+      final json = Map<String, dynamic>.from(response.data);
+      if (json['street_address'] == null &&
+          cached?.location == json['location']?.toString()) {
+        json['street_address'] = cached?.streetAddress;
+      }
+      final task = CleanupTask.fromJson(json);
       await _cacheService.cacheTasks([task]);
       await _local.saveTasks([task]);
       return task;
     } catch (e) {
       log.severe('Failed to fetch task $id, loading from cache', e);
+      if (cached != null) return cached;
       final legacy = await _cacheService.getCachedTaskById(id);
       if (legacy != null) return legacy;
       rethrow;
@@ -117,8 +127,9 @@ class CleanupTaskRepository {
 
   Future<void> _refreshTaskFromNetwork(String id) async {
     try {
-      final response =
-          await _apiClient.dioClient.get(ApiConstants.cleanupTaskById(id));
+      final response = await _apiClient.dioClient.get(
+        ApiConstants.cleanupTaskById(id),
+      );
       final task = CleanupTask.fromJson(response.data);
       // Only refresh if not locally modified.
       final dbRow = await _local.getCachedTaskDbRow(id);
@@ -136,7 +147,7 @@ class CleanupTaskRepository {
   /// Marks a cleanup task as complete.
   ///
   /// The local state is updated immediately so the UI reflects the change
-  /// even when offline. The backend call is attempted in the background.
+  /// even when offline. The mode-aware sync engine sends the queued change.
   Future<void> markTaskComplete(String id) async {
     final baseVersion = (await _local.getCachedTaskById(id))?.fcVersion ?? 0;
     // Step 1 — local
@@ -150,30 +161,6 @@ class CleanupTaskRepository {
       baseVersion: baseVersion.toString(),
     );
     // Step 3 — background push
-    _tryPushMarkTaskComplete(id, baseVersion);
-  }
-
-  Future<void> _tryPushMarkTaskComplete(String id, int baseVersion) async {
-    try {
-      final response = await _apiClient.dioClient.post(
-        ApiConstants.markCleanupTaskComplete(id),
-        data: {'outcome': 'completed', 'base_version': baseVersion},
-      );
-      if (response.data is Map && response.data['task'] is Map) {
-        await _local.applyLocalTaskPatch(
-          id, Map<String, dynamic>.from(response.data['task'] as Map),
-        );
-      }
-      await _local.markFcTaskSynced(id);
-      final item = await _local.findPendingOutboxItem(
-          FcOutboxOperationType.markTaskComplete, id);
-      if (item != null) await _local.deleteOutboxItem(item.operationId);
-    } catch (e) {
-      if (!_isNetworkError(e)) {
-        log.warning('markTaskComplete backend error (non-network): $e');
-      }
-      // Outbox entry persists for Phase 3 retry.
-    }
   }
 
   Future<void> uploadTaskPhoto(String id, File file, String photoType) async {
@@ -190,16 +177,11 @@ class CleanupTaskRepository {
     );
 
     // Step 2 — Patch cached task JSON with the local path for immediate UI.
-    final localPath = (await _localPhoto.getActivePhoto(
-      id,
-      'task',
-      photoType,
-    ))
-        ?.localPath ?? file.path;
+    final localPath =
+        (await _localPhoto.getActivePhoto(id, 'task', photoType))?.localPath ??
+        file.path;
 
-    await _local.applyLocalTaskPatch(id, {
-      '${photoType}_photo_url': localPath,
-    });
+    await _local.applyLocalTaskPatch(id, {'${photoType}_photo_url': localPath});
 
     // Step 3 — Queue outbox intent (idempotent).
     await _local.enqueueOutboxItem(
@@ -214,53 +196,6 @@ class CleanupTaskRepository {
     );
 
     // Step 4 — Background push.
-    _tryPushUploadTaskPhoto(id, file, photoType, opType, localPhotoId);
-  }
-
-  Future<void> _tryPushUploadTaskPhoto(
-    String id,
-    File file,
-    String photoType,
-    String opType,
-    String localPhotoId,
-  ) async {
-    await _localPhoto.markInFlight(localPhotoId);
-    try {
-      final fileName = file.path.split('/').last;
-      final formData = dio.FormData.fromMap({
-        'photo_type': photoType,
-        'file': await dio.MultipartFile.fromFile(file.path, filename: fileName),
-      });
-      final response = await _apiClient.dioClient.post(
-        ApiConstants.cleanupTaskUploadPhoto(id),
-        data: formData,
-      );
-
-      final remoteId = _extractString(response.data, 'id');
-      final remoteUrl = _extractString(response.data, 'url') ??
-          _extractString(response.data, '${photoType}_photo_url');
-
-      await _localPhoto.markSynced(
-        localPhotoId,
-        remoteId: remoteId,
-        remoteUrl: remoteUrl,
-      );
-
-      if (remoteUrl != null) {
-        await _local.applyLocalTaskPatch(id, {
-          '${photoType}_photo_url': remoteUrl,
-        });
-      }
-
-      await _local.markFcTaskSynced(id);
-      final item = await _local.findPendingOutboxItem(opType, id);
-      if (item != null) await _local.deleteOutboxItem(item.operationId);
-    } catch (e) {
-      await _localPhoto.markFailed(localPhotoId, e.toString());
-      if (!_isNetworkError(e)) {
-        log.warning('uploadTaskPhoto backend error (non-network): $e');
-      }
-    }
   }
 
   /// Deletes a before/after photo for a task.
@@ -271,9 +206,7 @@ class CleanupTaskRepository {
       await _localPhoto.deletePhoto(photoRow.localPhotoId);
     }
 
-    await _local.applyLocalTaskPatch(id, {
-      '${photoType}_photo_url': null,
-    });
+    await _local.applyLocalTaskPatch(id, {'${photoType}_photo_url': null});
 
     await _local.enqueueOutboxItem(
       operationType: FcOutboxOperationType.deletePhoto,
@@ -286,44 +219,14 @@ class CleanupTaskRepository {
       },
     );
 
-    if (photoRow?.syncStatus == FcLocalPhotoSyncStatus.synced) {
-      _tryPushDeleteTaskPhoto(id, photoType, photoRow!.localPhotoId);
-    } else {
+    if (photoRow?.syncStatus != FcLocalPhotoSyncStatus.synced) {
       final item = await _local.findPendingOutboxItem(
-          FcOutboxOperationType.deletePhoto, id);
-      if (item != null) await _local.deleteOutboxItem(item.operationId);
-    }
-  }
-
-  Future<void> _tryPushDeleteTaskPhoto(
-    String id,
-    String photoType,
-    String localPhotoId,
-  ) async {
-    try {
-      await _apiClient.dioClient.delete(
-        ApiConstants.cleanupTaskUploadPhoto(id),
-        data: {'photo_type': photoType},
+        FcOutboxOperationType.deletePhoto,
+        id,
       );
-      await _localPhoto.purgePhoto(localPhotoId);
-      await _local.markFcTaskSynced(id);
-      final item = await _local.findPendingOutboxItem(
-          FcOutboxOperationType.deletePhoto, id);
       if (item != null) await _local.deleteOutboxItem(item.operationId);
-    } catch (e) {
-      if (!_isNetworkError(e)) {
-        log.warning('deleteTaskPhoto backend error (non-network): $e');
-      }
     }
   }
 
   // ── Private helpers ────────────────────────────────────────────────────
-
-  String? _extractString(dynamic data, String key) {
-    if (data is Map<String, dynamic>) {
-      final v = data[key];
-      if (v is String && v.isNotEmpty) return v;
-    }
-    return null;
-  }
 }

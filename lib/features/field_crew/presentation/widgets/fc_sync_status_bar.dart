@@ -53,77 +53,92 @@ class FcSyncStatusBar extends ConsumerWidget {
         network.value == FcNetworkType.none ||
         (network.value == FcNetworkType.wifi && !settings.syncOverWifi) ||
         (network.value == FcNetworkType.mobile && !settings.syncOverMobileData);
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Theme.of(context).brightness == Brightness.dark
-            ? AppColors.linkDark
-            : AppColors.accent,
-        side: BorderSide(
-          color:
-              Theme.of(context).dividerTheme.color ??
-              Theme.of(context).dividerColor,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        ),
-      ),
-      onPressed: () => context.push(FieldCrewAppRoutes.syncCenter),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ExcludeSemantics(
+    final attention =
+        state.phase == FcSyncPhase.error ||
+        state.phase == FcSyncPhase.partialFailure ||
+        queue.hasError;
+    final description =
+        '$label. $connection · ${settings.mode.title}'
+        '${blocked ? '. ${fcSyncPolicy(settings, network.hasError ? null : network.value)}' : ''}'
+        '${queue.hasError && count != null ? '. Last loaded count: $count' : ''}';
+    return Semantics(
+      label: 'Open Sync Center. $description',
+      button: true,
+      onTap: () => context.push(FieldCrewAppRoutes.syncCenter),
+      child: Tooltip(
+        message: 'Open Sync Center\n$description',
+        child: ExcludeSemantics(
+          child: IconButton(
+            onPressed: () => context.push(FieldCrewAppRoutes.syncCenter),
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            color: attention
+                ? Theme.of(context).colorScheme.error
+                : Theme.of(context).brightness == Brightness.dark
+                ? AppColors.linkDark
+                : AppColors.accent,
+            icon: _SyncPulse(
+              active: (count ?? 0) > 0 || state.phase == FcSyncPhase.syncing,
               child: Icon(
-                state.phase == FcSyncPhase.syncing
-                    ? Icons.sync
-                    : state.phase == FcSyncPhase.error ||
-                          state.phase == FcSyncPhase.partialFailure
+                attention
                     ? Icons.sync_problem
+                    : state.phase == FcSyncPhase.syncing || (count ?? 0) > 0
+                    ? Icons.sync
+                    : count == 0
+                    ? Icons.cloud_done_outlined
                     : Icons.cloud_outlined,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      label,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$connection · ${settings.mode.title}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  if (queue.hasError && count != null)
-                    Text(
-                      'Last loaded count: $count. Open Sync Center to retry.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  if (blocked)
-                    Text(
-                      fcSyncPolicy(
-                        settings,
-                        network.hasError ? null : network.value,
-                      ),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Open Sync Center',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _SyncPulse extends StatefulWidget {
+  const _SyncPulse({required this.active, required this.child});
+  final bool active;
+  final Widget child;
+  @override
+  State<_SyncPulse> createState() => _SyncPulseState();
+}
+
+class _SyncPulseState extends State<_SyncPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+  void _update() {
+    if (widget.active && !MediaQuery.disableAnimationsOf(context)) {
+      if (!_controller.isAnimating) _controller.repeat(reverse: true);
+    } else {
+      _controller.stop();
+      _controller.value = 0;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _update();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SyncPulse oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _update();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: Tween<double>(begin: 1, end: .45).animate(_controller),
+    child: widget.child,
+  );
 }

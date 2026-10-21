@@ -1,4 +1,8 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/field_crew/data/models/route_model.dart';
@@ -7,6 +11,7 @@ import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_notifi
 import 'package:ecopin_app/features/field_crew/presentation/controllers/fc_sync_ui_providers.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_dashboard_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_current_objective_card.dart';
+import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_queue_card.dart';
 import 'package:ecopin_app/features/field_crew/providers/cleanup_tasks_provider.dart';
 import 'package:ecopin_app/features/field_crew/providers/my_route_provider.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_photo_sync_manager.dart';
@@ -85,6 +90,7 @@ Future<ProviderContainer> mountDashboard(
   SyntheticCrewGate? gate,
   bool dark = false,
   double scale = 2,
+  bool disableAnimations = true,
   GoRouter? router,
   FcNetworkType network = FcNetworkType.wifi,
   SyntheticCrewSettings? settings,
@@ -97,6 +103,7 @@ Future<ProviderContainer> mountDashboard(
   Widget wrap(BuildContext context, Widget? child) => MediaQuery(
     data: MediaQuery.of(context).copyWith(
       textScaler: TextScaler.linear(scale),
+      disableAnimations: disableAnimations,
       padding: const EdgeInsets.only(bottom: 24),
     ),
     child: RepaintBoundary(
@@ -107,6 +114,7 @@ Future<ProviderContainer> mountDashboard(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        fcPendingWritesProvider.overrideWith((ref) => Stream.value([])),
         myCleanupTasksProvider.overrideWith((ref) => data.readTasks()),
         myRouteProvider.overrideWith((ref) => data.readRoute()),
         profileProvider.overrideWith(
@@ -142,11 +150,127 @@ Future<ProviderContainer> mountDashboard(
 }
 
 void main() {
+  setUpAll(() async {
+    await (FontLoader('Outfit')
+          ..addFont(rootBundle.load('assets/fonts/Outfit-Regular.ttf'))
+          ..addFont(rootBundle.load('assets/fonts/Outfit-SemiBold.ttf')))
+        .load();
+    await (FontLoader(
+      'MaterialIcons',
+    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+  });
+  for (final size in [const Size(700, 360), const Size(768, 900)]) {
+    testWidgets('compact dashboard wraps in landscape and tablet at $size', (
+      tester,
+    ) async {
+      await mountDashboard(
+        tester,
+        data: SyntheticDashboard(),
+        dark: true,
+        scale: 2,
+        size: size,
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('View all assignments'));
+      expect(find.text('View all assignments'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+  for (final dark in [false, true]) {
+    testWidgets(
+      'compact dashboard keeps the primary action above secondary work / $dark',
+      (tester) async {
+        await mountDashboard(
+          tester,
+          data: SyntheticDashboard(),
+          dark: dark,
+          scale: 1,
+          size: const Size(390, 844),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.getBottomLeft(find.text('Open current task')).dy,
+          lessThan(500),
+        );
+        expect(
+          find.text(
+            'Review the task instructions and available response actions.',
+          ),
+          findsNothing,
+        );
+        expect(
+          find.textContaining('In-progress tasks come first'),
+          findsNothing,
+        );
+        expect(find.byType(FcTaskQueueCard), findsNWidgets(2));
+        expect(tester.takeException(), isNull);
+        final output = Platform.environment['ECOPIN_SCREENSHOT_DIR'];
+        if (output != null) {
+          final boundary = tester.renderObject<RenderRepaintBoundary>(
+            find.byKey(const Key('crew-dashboard-preview')),
+          );
+          await tester.runAsync(() async {
+            final image = await boundary.toImage();
+            final bytes = await image.toByteData(
+              format: ui.ImageByteFormat.png,
+            );
+            await File(
+              '$output/crew-dashboard-${dark ? 'dark' : 'light'}.png',
+            ).writeAsBytes(bytes!.buffer.asUint8List());
+            image.dispose();
+          });
+        }
+      },
+    );
+  }
+
+  testWidgets(
+    'pending sync pulses in a compact corner and respects reduced motion',
+    (tester) async {
+      final gate = SyntheticCrewGate()
+        ..summary = const FcPendingSummary(
+          mutationCount: 1,
+          photoCount: 0,
+          failedPhotoCount: 0,
+          pendingDeleteCount: 0,
+          estimatedBytes: 0,
+        );
+      await mountDashboard(
+        tester,
+        data: SyntheticDashboard(),
+        gate: gate,
+        disableAnimations: false,
+      );
+      final control = find.byTooltip(RegExp('^Open Sync Center'));
+      final fade = find.descendant(
+        of: control,
+        matching: find.byType(FadeTransition),
+      );
+      final start = tester.widget<FadeTransition>(fade).opacity.value;
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(
+        tester.widget<FadeTransition>(fade).opacity.value,
+        lessThan(start),
+      );
+      expect(tester.getSize(control), const Size(48, 48));
+      expect(tester.getTopLeft(control).dy, 24);
+      expect(tester.getTopRight(control).dx, 296);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mountDashboard(tester, data: SyntheticDashboard(), gate: gate);
+      await tester.pumpAndSettle();
+      final reduced = find.descendant(
+        of: find.byTooltip(RegExp('^Open Sync Center')),
+        matching: find.byType(FadeTransition),
+      );
+      expect(tester.widget<FadeTransition>(reduced).opacity.value, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'dashboard shortcuts keep the existing map, task, sync, and preparation destinations',
     (tester) async {
       final destinations = {
-        'Open route map': FieldCrewAppRoutes.map,
+        'Route overview': FieldCrewAppRoutes.map,
         'View all assignments': FieldCrewAppRoutes.tasks,
         'Open Sync Center': FieldCrewAppRoutes.syncCenter,
         'Offline package has gaps': FieldCrewAppRoutes.prepareOffline,
@@ -170,8 +294,11 @@ void main() {
       await mountDashboard(tester, data: SyntheticDashboard(), router: router);
       await tester.pumpAndSettle();
       for (final entry in destinations.entries) {
-        await tester.ensureVisible(find.text(entry.key));
-        await tester.tap(find.text(entry.key));
+        final target = entry.key == 'Open Sync Center'
+            ? find.byTooltip(RegExp('^Open Sync Center'))
+            : find.text(entry.key);
+        await tester.ensureVisible(target);
+        await tester.tap(target);
         await tester.pumpAndSettle();
         expect(find.text('Destination ${entry.value}'), findsOneWidget);
         router.go(FieldCrewAppRoutes.dashboard);
@@ -198,13 +325,15 @@ void main() {
         tester.widget<Text>(find.text(current.task.title)).maxLines,
         isNull,
       );
+      expect(find.text('Device records'), findsOneWidget);
+      expect(find.text('Recorded complete on this device'), findsNothing);
+      await tester.ensureVisible(find.text('Device records'));
+      await tester.tap(find.text('Device records'));
+      await tester.pumpAndSettle();
       expect(find.text('Recorded complete on this device'), findsOneWidget);
       expect(find.text('On hold on this device'), findsOneWidget);
-      expect(
-        find.text('1 of 8 loaded assignments are completed.'),
-        findsOneWidget,
-      );
-      expect(find.text('Stop 2'), findsOneWidget);
+      expect(find.text('1 of 8 loaded assignments completed'), findsOneWidget);
+      expect(find.textContaining('Stop 2 for current task'), findsOneWidget);
       expect(
         tester.getTopLeft(find.text('Open current task')).dy,
         lessThan(tester.getTopLeft(find.text('Assigned task progress')).dy),
@@ -300,7 +429,7 @@ void main() {
         dark: true,
       );
       await tester.pumpAndSettle();
-      expect(find.text('2 items waiting to sync'), findsOneWidget);
+      expect(find.byTooltip(RegExp('2 items waiting to sync')), findsOneWidget);
       container
           .read(fcSyncStateProvider.notifier)
           .setResult(
@@ -323,9 +452,9 @@ void main() {
             ),
           );
       await tester.pumpAndSettle();
-      expect(find.text('Sync needs attention'), findsOneWidget);
+      expect(find.byTooltip(RegExp('Sync needs attention')), findsOneWidget);
       await tester.pump(const Duration(seconds: 10));
-      expect(find.text('Sync needs attention'), findsOneWidget);
+      expect(find.byTooltip(RegExp('Sync needs attention')), findsOneWidget);
       expect(find.text('Synced'), findsNothing);
     },
   );
@@ -336,8 +465,11 @@ void main() {
     final data = SyntheticDashboard()..failRoute = true;
     await mountDashboard(tester, data: data, gate: gate);
     await tester.pumpAndSettle();
-    expect(find.text('Queue could not be checked'), findsOneWidget);
-    expect(find.text('No queued crew work'), findsNothing);
+    expect(
+      find.byTooltip(RegExp('Queue could not be checked')),
+      findsOneWidget,
+    );
+    expect(find.byTooltip(RegExp('No queued crew work')), findsNothing);
     expect(find.text('Retry route context'), findsOneWidget);
     expect(find.byType(FcCurrentObjectiveCard), findsOneWidget);
     data.failRoute = false;
@@ -345,7 +477,7 @@ void main() {
     await tester.tap(find.text('Retry route context'));
     await tester.pumpAndSettle();
     expect(find.text('Retry route context'), findsNothing);
-    expect(find.text('Stop 2'), findsOneWidget);
+    expect(find.textContaining('Stop 2 for current task'), findsOneWidget);
   });
   testWidgets('an empty assignment list does not announce a completed shift', (
     tester,

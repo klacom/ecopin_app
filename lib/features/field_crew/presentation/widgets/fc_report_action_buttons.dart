@@ -35,21 +35,40 @@ class _FcReportActionButtonsState extends State<FcReportActionButtons> {
     bool enabled = widget.isAssigned && !_isSubmitting;
     bool requiresPhotos = false;
 
-    final currentStatus = widget.report.status.toLowerCase();
+    final status = widget.report.status.toLowerCase();
+    final stage = widget.report.lifecycleStage?.toLowerCase();
+    final currentStatus =
+        {
+          'resolved',
+          'closed',
+          'rejected',
+          'waiting_for_feedback',
+        }.contains(status)
+        ? status
+        : status == 'in_progress' ||
+              status == 'responded' ||
+              stage == 'responded'
+        ? 'responded'
+        : stage == 'acknowledged'
+        ? 'acknowledged'
+        : status;
     final issueType = widget.report.issueType?.toLowerCase() ?? '';
-    final isScouting = issueType == 'scouting' || issueType == 'acknowledge_only';
-    
-    if (currentStatus == 'unresolved' || currentStatus == 'submitted' || currentStatus == 'pending') {
+    final isScouting =
+        issueType == 'scouting' || issueType == 'acknowledge_only';
+
+    if (currentStatus == 'unresolved' ||
+        currentStatus == 'submitted' ||
+        currentStatus == 'pending') {
       label = 'Mark as Acknowledged';
       nextStatus = 'acknowledged';
     } else if (currentStatus == 'acknowledged') {
-      label = 'Mark as Responded';
-      nextStatus = 'responded';
+      enabled = false;
     } else if (currentStatus == 'responded' || currentStatus == 'in_progress') {
       label = 'Cleanup Completed';
       nextStatus = 'resolved';
       requiresPhotos = !isScouting;
-    } else if (currentStatus == 'resolved' || currentStatus == 'waiting_for_feedback') {
+    } else if (currentStatus == 'resolved' ||
+        currentStatus == 'waiting_for_feedback') {
       label = 'Waiting for Citizen to Close';
       enabled = false;
     } else if (currentStatus == 'closed') {
@@ -69,40 +88,58 @@ class _FcReportActionButtonsState extends State<FcReportActionButtons> {
 
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: enabled && nextStatus != null ? () async {
-              setState(() => _isSubmitting = true);
-              try {
-                await widget.onStatusChange(nextStatus!);
-              } finally {
-                if (mounted) {
-                  setState(() => _isSubmitting = false);
-                }
-              }
-            } : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryDark,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: disabledBg,
-              disabledForegroundColor: Colors.grey,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
+        if (currentStatus == 'acknowledged')
+          const Padding(
+            padding: EdgeInsets.only(bottom: AppColors.spaceMD),
+            child: Text(
+              'Upload a Before photo in Evidence & Documentation to record your response.',
             ),
-            child: _isSubmitting
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : Text(label, style: AppTypography.button),
+          )
+        else
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: enabled && nextStatus != null
+                  ? () async {
+                      setState(() => _isSubmitting = true);
+                      try {
+                        await widget.onStatusChange(nextStatus!);
+                      } finally {
+                        if (mounted) {
+                          setState(() => _isSubmitting = false);
+                        }
+                      }
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryDark,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: disabledBg,
+                disabledForegroundColor: Colors.grey,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusButton),
+                ),
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(label, style: AppTypography.button),
+            ),
           ),
-        ),
         if (requiresPhotos && (!widget.hasBeforePhoto || !widget.hasAfterPhoto))
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
-            child: Text('Requires both Before and After photos.', style: AppTypography.caption.copyWith(color: AppColors.error)),
+            child: Text(
+              'Requires both Before and After photos.',
+              style: AppTypography.caption.copyWith(color: AppColors.error),
+            ),
           ),
         const SizedBox(height: AppColors.spaceMD),
         SizedBox(
@@ -115,7 +152,9 @@ class _FcReportActionButtonsState extends State<FcReportActionButtons> {
               foregroundColor: AppColors.primaryDark,
               side: const BorderSide(color: AppColors.primaryDark),
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusButton),
+              ),
             ),
           ),
         ),

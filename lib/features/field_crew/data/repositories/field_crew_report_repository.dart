@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:ecopin_app/core/constants/api_constants.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -25,20 +24,9 @@ class FieldCrewReportRepository {
     this._localPhoto,
   );
 
-  // ── Network helper ──────────────────────────────────────────────────────
+  // â”€â”€ Network helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  bool _isNetworkError(Object e) {
-    if (e is DioException) {
-      return e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.sendTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.unknown;
-    }
-    return e is SocketException;
-  }
-
-  // ── Fetch methods (network → local cache → UI) ─────────────────────────
+  // â”€â”€ Fetch methods (network â†’ local cache â†’ UI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<List<ReportModel>> fetchReportsByClusterId(String clusterId) async {
     try {
@@ -53,54 +41,108 @@ class FieldCrewReportRepository {
     } catch (e) {
       log.severe('Failed to fetch reports by cluster', e);
       final cached = await _local.getCachedReports();
-      if (cached.isNotEmpty) return cached;
-      return await _cacheService.getCachedReports();
+      if (cached.isNotEmpty) {
+        return cached.where((r) => r.clusterId == clusterId).toList();
+      }
+      return (await _cacheService.getCachedReports())
+          .where((r) => r.clusterId == clusterId)
+          .toList();
     }
   }
 
   Future<List<ReportModel>> fetchReportsByIds(List<String> ids) async {
     if (ids.isEmpty) return [];
+    final wanted = ids.toSet();
+    final found = <String, ReportModel>{};
     try {
-      final response = await _apiClient.dioClient.get(
-        ApiConstants.reports,
-        queryParameters: {'ids': ids.join(',')},
-      );
-      final List<dynamic> data = response.data;
-      final reports = data.map((json) => ReportModel.fromJson(json)).toList();
-      await _cacheService.cacheReports(reports);
-      await _local.saveReports(reports);
-      return reports;
-    } catch (e) {
-      log.severe('Failed to fetch reports by ids', e);
-      final cached = await _local.getCachedReports();
-      if (cached.isNotEmpty) {
-        return cached.where((r) => ids.contains(r.id)).toList();
+      final unique = wanted.toList();
+      for (var offset = 0; offset < unique.length; offset += 100) {
+        final chunk = unique.skip(offset).take(100).toSet();
+        final response = await _apiClient.dioClient.get(
+          ApiConstants.reports,
+          queryParameters: {'ids': chunk.join(','), 'limit': 100},
+        );
+        for (final raw in response.data as List) {
+          final report = ReportModel.fromJson(Map<String, dynamic>.from(raw));
+          if (chunk.contains(report.id)) found[report.id] = report;
+        }
       }
-      final legacy = await _cacheService.getCachedReports();
-      return legacy.where((r) => ids.contains(r.id)).toList();
+      await _cacheService.cacheReports(found.values.toList());
+      await _local.saveReports(found.values.toList());
+    } catch (e) {
+      log.warning('Linked report refresh unavailable', e);
     }
+    // Local edits remain authoritative until synchronized. Never return another task's cached reports.
+    for (final report in await _local.getCachedReports()) {
+      if (wanted.contains(report.id) &&
+          (!found.containsKey(report.id) ||
+              ((await _local.getCachedReportDbRow(report.id))?.localSyncState ??
+                      0) !=
+                  0)) {
+        found[report.id] = report;
+      }
+    }
+    if (found.isEmpty) {
+      for (final report in await _cacheService.getCachedReports()) {
+        if (wanted.contains(report.id)) found[report.id] = report;
+      }
+    }
+    return [
+      for (final id in wanted)
+        if (found[id] != null) found[id]!,
+    ];
+  }
+
+  Future<Map<String, List<dynamic>>> fetchEvidenceByReportIds(
+    List<String> ids,
+  ) async {
+    final result = <String, List<dynamic>>{};
+    final unique = ids.toSet().toList();
+    for (var offset = 0; offset < unique.length; offset += 10) {
+      final chunk = unique.skip(offset).take(10).toList();
+      final response = await _apiClient.dioClient.post(
+        '/api/reports/batch-evidence',
+        data: {'reportIds': chunk, 'strict': true},
+      );
+      final data = Map<String, dynamic>.from(response.data);
+      for (final id in chunk) {
+        if (data[id] is! List) throw StateError('Evidence response incomplete');
+        final rows = (data[id] as List)
+            .whereType<Map>()
+            .map((m) => Map<String, dynamic>.from(m))
+            .toList();
+        await _local.saveEvidences(id, rows);
+        result[id] = rows;
+      }
+    }
+    return result;
   }
 
   /// Returns a report. Prefers the local Drift cache so locally-modified
   /// data is always visible, then falls back to the network.
-  Future<ReportModel> fetchReportById(String id) async {
-    // 1. Try local cache first — returns locally-modified state immediately.
+  Future<ReportModel> fetchReportById(String id, {bool refresh = false}) async {
+    // 1. Try local cache first â€” returns locally-modified state immediately.
     final local = await _local.getCachedReportById(id);
-    if (local != null) {
-      // Refresh in background — don't await, don't block.
+    if (local != null &&
+        (!refresh ||
+            ((await _local.getCachedReportDbRow(id))?.localSyncState ?? 0) !=
+                0)) {
+      // Refresh in background â€” don't await, don't block.
       _refreshReportFromNetwork(id);
       return local;
     }
     // 2. Nothing cached; must go to network.
     try {
-      final response =
-          await _apiClient.dioClient.get(ApiConstants.getReportById(id));
+      final response = await _apiClient.dioClient.get(
+        ApiConstants.getReportById(id),
+      );
       final report = ReportModel.fromJson(response.data);
       await _cacheService.cacheReports([report]);
       await _local.saveReports([report]);
       return report;
     } catch (e) {
       log.severe('Failed to fetch report by id $id', e);
+      if (local != null) return local;
       final legacy = await _cacheService.getCachedReportById(id);
       if (legacy != null) return legacy;
       rethrow;
@@ -112,8 +154,9 @@ class FieldCrewReportRepository {
   /// don't overwrite optimistic changes with stale server data.
   Future<void> _refreshReportFromNetwork(String id) async {
     try {
-      final response =
-          await _apiClient.dioClient.get(ApiConstants.getReportById(id));
+      final response = await _apiClient.dioClient.get(
+        ApiConstants.getReportById(id),
+      );
       final report = ReportModel.fromJson(response.data);
       // Only update if not locally modified.
       final row = await _local.getCachedReportById(id);
@@ -129,7 +172,7 @@ class FieldCrewReportRepository {
         await _local.saveReports([report]);
       }
     } catch (_) {
-      // Silent — background refresh; errors are acceptable.
+      // Silent â€” background refresh; errors are acceptable.
     }
   }
 
@@ -144,25 +187,27 @@ class FieldCrewReportRepository {
       return list;
     } catch (e) {
       log.severe('Failed to fetch report evidence', e);
-      return await _local.getCachedEvidences(reportId);
+      final cached = await _local.getCachedEvidences(reportId);
+      if (cached.isNotEmpty) return cached;
+      rethrow;
     }
   }
 
-  // ── Local-first mutations ───────────────────────────────────────────────
+  // â”€â”€ Local-first mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // Pattern for every mutation:
   //   1. Apply patch to local DB immediately (offline-visible).
   //   2. Enqueue outbox item (idempotent).
-  //   3. Attempt backend call in background — do NOT await from callers.
+  //   3. Attempt backend call in background â€” do NOT await from callers.
   //   4. On network success: mark synced, remove outbox item.
   //   5. On network error: leave outbox item pending (Phase 3 will drain it).
 
   /// Acknowledges or otherwise updates the status of a report.
   Future<void> updateReportStatus(String id, String status) async {
-    // Step 1 — local
+    // Step 1 â€” local
     final baseVersion = (await _local.getCachedReportById(id))?.fcVersion ?? 0;
     await _local.applyLocalReportPatch(id, {'status': status});
-    // Step 2 — queue (idempotent; double-taps update payload, not create new)
+    // Step 2 â€” queue (idempotent; double-taps update payload, not create new)
     await _local.enqueueOutboxItem(
       operationType: FcOutboxOperationType.updateReportStatus,
       entityId: id,
@@ -170,29 +215,7 @@ class FieldCrewReportRepository {
       payload: {'status': status},
       baseVersion: baseVersion.toString(),
     );
-    // Step 3 — background network attempt
-    _tryPushReportStatus(id, status, baseVersion);
-  }
-
-  Future<void> _tryPushReportStatus(String id, String status, int baseVersion) async {
-    try {
-      final response = await _apiClient.dioClient.patch(
-        ApiConstants.updateReportStatus(id),
-        data: {'status': status, 'base_version': baseVersion},
-      );
-      if (response.data is Map && response.data['report'] is Map) {
-        await _local.applyLocalReportPatch(id, Map<String, dynamic>.from(response.data['report'] as Map));
-      }
-      await _local.markFcReportSynced(id);
-      // Remove the outbox entry on success so it is not replayed.
-      await _removeOutboxForEntity(
-          FcOutboxOperationType.updateReportStatus, id);
-    } catch (e) {
-      if (!_isNetworkError(e)) {
-        log.warning('updateReportStatus backend error (non-network): $e');
-      }
-      // Outbox entry stays — will be retried in Phase 3.
-    }
+    // Step 3 â€” background network attempt
   }
 
   /// Updates the lifecycle stage of a report.
@@ -206,26 +229,6 @@ class FieldCrewReportRepository {
       payload: {'stage': stage},
       baseVersion: baseVersion.toString(),
     );
-    _tryPushLifecycleStage(id, stage, baseVersion);
-  }
-
-  Future<void> _tryPushLifecycleStage(String id, String stage, int baseVersion) async {
-    try {
-      final response = await _apiClient.dioClient.patch(
-        ApiConstants.updateReportLifecycleStage(id),
-        data: {'stage': stage, 'base_version': baseVersion},
-      );
-      if (response.data is Map && response.data['report'] is Map) {
-        await _local.applyLocalReportPatch(id, Map<String, dynamic>.from(response.data['report'] as Map));
-      }
-      await _local.markFcReportSynced(id);
-      await _removeOutboxForEntity(
-          FcOutboxOperationType.updateLifecycleStage, id);
-    } catch (e) {
-      if (!_isNetworkError(e)) {
-        log.warning('updateLifecycleStage backend error (non-network): $e');
-      }
-    }
   }
 
   /// Updates validation status.
@@ -239,26 +242,6 @@ class FieldCrewReportRepository {
       payload: {'validation_status': status},
       baseVersion: baseVersion.toString(),
     );
-    _tryPushReportValidation(id, status, baseVersion);
-  }
-
-  Future<void> _tryPushReportValidation(String id, String status, int baseVersion) async {
-    try {
-      final response = await _apiClient.dioClient.patch(
-        ApiConstants.updateReportValidation(id),
-        data: {'validation_status': status, 'base_version': baseVersion},
-      );
-      if (response.data is Map && response.data['report'] is Map) {
-        await _local.applyLocalReportPatch(id, Map<String, dynamic>.from(response.data['report'] as Map));
-      }
-      await _local.markFcReportSynced(id);
-      await _removeOutboxForEntity(
-          FcOutboxOperationType.updateReportValidation, id);
-    } catch (e) {
-      if (!_isNetworkError(e)) {
-        log.warning('updateReportValidation backend error (non-network): $e');
-      }
-    }
   }
 
   /// Updates editable report details (notes field etc.).
@@ -272,30 +255,9 @@ class FieldCrewReportRepository {
       payload: body,
       baseVersion: baseVersion.toString(),
     );
-    _tryPushReportDetails(id, body, baseVersion);
   }
 
-  Future<void> _tryPushReportDetails(
-      String id, Map<String, dynamic> body, int baseVersion) async {
-    try {
-      final response = await _apiClient.dioClient.patch(
-        ApiConstants.updateReportDetails(id),
-        data: {'payload': body, 'base_version': baseVersion},
-      );
-      if (response.data is Map && response.data['report'] is Map) {
-        await _local.applyLocalReportPatch(id, Map<String, dynamic>.from(response.data['report'] as Map));
-      }
-      await _local.markFcReportSynced(id);
-      await _removeOutboxForEntity(
-          FcOutboxOperationType.updateReportDetails, id);
-    } catch (e) {
-      if (!_isNetworkError(e)) {
-        log.warning('updateReportDetails backend error (non-network): $e');
-      }
-    }
-  }
-
-  // ── Notes ───────────────────────────────────────────────────────────────
+  // â”€â”€ Notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /// Adds a Field Crew / LGU note.
   ///
@@ -319,22 +281,18 @@ class FieldCrewReportRepository {
       'created_at': now,
     };
 
-    // Step 1 — persist locally
+    // Step 1 â€” persist locally
     final localId = await _local.addLocalNote(reportId, noteData);
 
-    // Step 2 — queue (addNote is additive; always creates a new entry)
+    // Step 2 â€” queue (addNote is additive; always creates a new entry)
     await _local.enqueueOutboxItem(
       operationType: FcOutboxOperationType.addNote,
       entityId: reportId,
       entityType: 'report',
-      payload: {
-        ...body,
-        '_local_note_id': localId,
-      },
+      payload: {...body, '_local_note_id': localId},
     );
 
-    // Step 3 — background push
-    _tryPushNote(reportId, body, localId);
+    // Step 3 â€” background push
 
     // Return a synthetic AgencyResponse so the UI can append it immediately.
     return AgencyResponse(
@@ -347,37 +305,15 @@ class FieldCrewReportRepository {
     );
   }
 
-  Future<void> _tryPushNote(
-    String reportId,
-    Map<String, dynamic> body,
-    String localNoteId,
-  ) async {
-    try {
-      await _apiClient.dioClient.post(
-        ApiConstants.agencyResponses(reportId),
-        data: body,
-        options: Options(
-          sendTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
-        ),
-      );
-      // Remove from outbox using the localNoteId as entityId isn't unique
-      // for notes.  We'll just clear the first pending addNote for this report.
-      await _removeFirstNoteOutboxForReport(reportId, localNoteId);
-    } catch (e) {
-      if (!_isNetworkError(e)) {
-        log.warning('logAgencyResponse backend error (non-network): $e');
-      }
-    }
-  }
-
   Future<List<AgencyResponse>> fetchAgencyResponses(String reportId) async {
     try {
-      final response =
-          await _apiClient.dioClient.get(ApiConstants.agencyResponses(reportId));
+      final response = await _apiClient.dioClient.get(
+        ApiConstants.agencyResponses(reportId),
+      );
       final List<dynamic> data = response.data;
-      final responses =
-          data.map((json) => AgencyResponse.fromJson(json)).toList();
+      final responses = data
+          .map((json) => AgencyResponse.fromJson(json))
+          .toList();
       // Replace local note cache with authoritative server data.
       await _local.saveNotes(
         reportId,
@@ -392,7 +328,7 @@ class FieldCrewReportRepository {
     }
   }
 
-  // ── Photo operations (offline-first via FcLocalPhotoRepository) ──────────
+  // â”€â”€ Photo operations (offline-first via FcLocalPhotoRepository) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //
   // The local photo repo handles file copy + dedup.
   // We then patch the cached JSON so the report reflects the local path,
@@ -405,14 +341,48 @@ class FieldCrewReportRepository {
   ///
   /// Throws [FcPhotoSlotOccupiedException] or [FcPhotoDuplicateException]
   /// from [FcLocalPhotoRepository] if the slot is occupied or the file is a
-  /// duplicate — let these propagate so the UI can show a meaningful message.
+  /// duplicate â€” let these propagate so the UI can show a meaningful message.
   Future<String> uploadReportPhoto(
     String reportId,
     File file,
     String photoType,
   ) async {
-    final baseVersion = (await _local.getCachedReportById(reportId))?.fcVersion ?? 0;
-    // Step 1 — Copy file to permanent storage, check dedup/slot, insert DB row.
+    if (photoType == 'before') {
+      final cached = await _local.getCachedReportById(reportId);
+      final removed = (await _localPhoto.getPendingDeletes())
+          .where((p) => p.entityId == reportId && p.entityType == 'report')
+          .map((p) => p.remoteId ?? p.localPhotoId)
+          .toSet();
+      final entries = cached?.beforePhotos ?? <Map<String, dynamic>>[];
+      final keys = {
+        for (final p in entries)
+          if (!removed.contains(p['id'])) p['id'],
+      };
+      final urls = {
+        for (final p in entries)
+          if (!removed.contains(p['id'])) p['url'],
+      };
+      if (entries.isEmpty &&
+          !removed.contains('legacy') &&
+          cached?.beforePhotoUrl?.startsWith('https://') == true) {
+        keys.add('legacy');
+        urls.add(cached!.beforePhotoUrl);
+      }
+      for (final p in await _localPhoto.getPhotosForEntity(
+        reportId,
+        'report',
+      )) {
+        if (p.photoType == 'before' && !urls.contains(p.remoteUrl)) {
+          keys.add(p.remoteId ?? p.localPhotoId);
+        }
+      }
+      if (keys.length >= 5) {
+        throw const FcPhotoSlotOccupiedException(
+          'Maximum 5 Before photos reached.',
+        );
+      }
+    }
+    // Step 1 â€” Copy file to permanent storage, check dedup/slot, insert DB row.
     final localPhotoId = await _localPhoto.addPhoto(
       entityId: reportId,
       entityType: 'report',
@@ -420,24 +390,21 @@ class FieldCrewReportRepository {
       sourceFile: file,
     );
 
-    // Step 2 — Patch cached report JSON with the local path so the UI
+    // Step 2 â€” Patch cached report JSON with the local path so the UI
     //           renders the thumbnail immediately without a network round-trip.
-    final localPath = (await _localPhoto.getActivePhoto(
-      reportId,
-      'report',
-      photoType,
-    ))
-        ?.localPath ?? file.path;
+    final localPath =
+        (await _localPhoto.getPhotoById(localPhotoId))?.localPath ?? file.path;
 
     await _local.applyLocalReportPatch(reportId, {
       '${photoType}_photo_url': localPath,
+      if (photoType == 'before') 'stage': 'responded',
     });
 
     final opType = photoType == 'before'
         ? FcOutboxOperationType.uploadBeforePhoto
         : FcOutboxOperationType.uploadAfterPhoto;
 
-    // Step 3 — Queue outbox intent (idempotent).
+    // Step 3 â€” Queue outbox intent (idempotent).
     await _local.enqueueOutboxItem(
       operationType: opType,
       entityId: reportId,
@@ -449,69 +416,9 @@ class FieldCrewReportRepository {
       },
     );
 
-    // Step 4 — Background push; do NOT await.
-    _tryPushUploadReportPhoto(reportId, file, photoType, opType, localPhotoId, baseVersion);
+    // Step 4 â€” Background push; do NOT await.
 
     return localPhotoId;
-  }
-
-  Future<void> _tryPushUploadReportPhoto(
-    String reportId,
-    File file,
-    String photoType,
-    String opType,
-    String localPhotoId,
-    int baseVersion,
-  ) async {
-    await _localPhoto.markInFlight(localPhotoId);
-    try {
-      final fileName = file.path.split('/').last;
-      final formData = FormData.fromMap({
-        'photo_type': photoType,
-        'base_version': baseVersion.toString(),
-        'image': await MultipartFile.fromFile(file.path, filename: fileName),
-      });
-      final response = await _apiClient.dioClient.post(
-        ApiConstants.uploadReportPhoto(reportId),
-        data: formData,
-        options: Options(
-          sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 30),
-        ),
-      );
-
-      // Parse remote URL/id from response if the server returns them.
-      final remoteId = _extractString(response.data, 'id');
-      final reportData = response.data is Map ? response.data['report'] : null;
-      final remoteUrl = _extractString(response.data, 'url') ??
-          _extractString(response.data, '${photoType}_photo_url') ??
-          _extractString(reportData, '${photoType}_photo_url');
-
-      // Mark local photo row as synced with remote identifiers.
-      await _localPhoto.markSynced(
-        localPhotoId,
-        remoteId: remoteId,
-        remoteUrl: remoteUrl,
-      );
-
-      // Update cached JSON with the authoritative remote URL if available.
-      if (remoteUrl != null) {
-        await _local.applyLocalReportPatch(reportId, {
-          '${photoType}_photo_url': remoteUrl,
-        });
-      }
-
-      if (response.data is Map && response.data['report'] is Map) {
-        await _local.applyLocalReportPatch(reportId, Map<String, dynamic>.from(response.data['report'] as Map));
-      }
-      await _local.markFcReportSynced(reportId);
-      await _removeOutboxForEntity(opType, reportId);
-    } catch (e) {
-      await _localPhoto.markFailed(localPhotoId, e.toString());
-      if (!_isNetworkError(e)) {
-        log.warning('uploadReportPhoto backend error (non-network): $e');
-      }
-    }
   }
 
   /// Deletes a before/after photo for a report.
@@ -520,83 +427,63 @@ class FieldCrewReportRepository {
   /// uploaded the row is purged immediately.  If it was synced, the row is
   /// flagged as `pendingDelete` and the server DELETE is attempted in the
   /// background.
-  Future<void> deleteReportPhoto(String reportId, String photoType) async {
-    final baseVersion = (await _local.getCachedReportById(reportId))?.fcVersion ?? 0;
-    // Find the active local photo row for this slot.
-    final photoRow = await _localPhoto.getActivePhoto(
-      reportId,
-      'report',
-      photoType,
-    );
-
-    if (photoRow != null) {
-      // Step 1 — Mark row as pending-delete (or hard-delete if unsynced).
-      await _localPhoto.deletePhoto(photoRow.localPhotoId);
+  Future<void> deleteReportPhoto(
+    String reportId,
+    String photoType, {
+    String? photoId,
+  }) async {
+    final rows = await _localPhoto.getPhotosForEntity(reportId, 'report');
+    FcLocalPhoto? target;
+    for (final row in rows) {
+      if (row.photoType == photoType &&
+          (photoId == null ||
+              row.localPhotoId == photoId ||
+              row.remoteId == photoId)) {
+        target = row;
+        break;
+      }
     }
-
-    // Step 2 — Patch cached JSON to null the URL so the UI reflects deletion.
-    await _local.applyLocalReportPatch(reportId, {
-      '${photoType}_photo_url': null,
-    });
-
-    // Step 3 — Queue outbox intent (idempotent).
-    await _local.enqueueOutboxItem(
-      operationType: FcOutboxOperationType.deletePhoto,
-      entityId: reportId,
-      entityType: 'report',
-      payload: {
-        'photo_type': photoType,
-        if (photoRow != null) 'local_photo_id': photoRow.localPhotoId,
-        if (photoRow?.remoteId != null) 'remote_id': photoRow!.remoteId,
-      },
-    );
-    await _local.deletePhotoMetadata(reportId, 'report', photoType);
-
-    // Step 4 — Background push (only needed if the photo had reached the server).
-    if (photoRow?.syncStatus == FcLocalPhotoSyncStatus.synced) {
-      _tryPushDeleteReportPhoto(
+    if (target != null) {
+      await _localPhoto.deletePhoto(target.localPhotoId);
+    } else {
+      final cached = await _local.getCachedReportById(reportId);
+      final url = photoType == 'before'
+          ? cached?.beforePhotoUrl
+          : cached?.afterPhotoUrl;
+      await _localPhoto.queueRemoteDeletion(
         reportId,
         photoType,
-        photoRow!.localPhotoId,
-        baseVersion,
+        photoId ?? 'legacy',
+        url,
       );
+    }
+    final active = (await _localPhoto.getPhotosForEntity(
+      reportId,
+      'report',
+    )).where((p) => p.photoType == photoType).toList();
+    if (photoType == 'after') {
+      await _local.applyLocalReportPatch(reportId, {'after_photo_url': null});
     } else {
-      // Never reached the server — nothing to delete remotely; clean outbox.
-      await _removeOutboxForEntity(FcOutboxOperationType.deletePhoto, reportId);
+      final cached = await _local.getCachedReportById(reportId);
+      final removed = (await _localPhoto.getPendingDeletes())
+          .where((p) => p.entityId == reportId && p.entityType == 'report')
+          .map((p) => p.remoteId)
+          .toSet();
+      final remote =
+          cached?.beforePhotos
+              .where((p) => !removed.contains(p['id']))
+              .toList() ??
+          [];
+      await _local.applyLocalReportPatch(reportId, {
+        'before_photos': remote,
+        'before_photo_url': active.isNotEmpty
+            ? active.first.remoteUrl ?? active.first.localPath
+            : remote.firstOrNull?['url'],
+      });
     }
   }
 
-  Future<void> _tryPushDeleteReportPhoto(
-    String reportId,
-    String photoType,
-    String localPhotoId,
-    int baseVersion,
-  ) async {
-    try {
-      final response = await _apiClient.dioClient.delete(
-        ApiConstants.uploadReportPhoto(reportId),
-        data: {'photo_type': photoType, 'base_version': baseVersion},
-        options: Options(
-          sendTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
-        ),
-      );
-      // Confirmed deleted on server — purge local file and row.
-      await _localPhoto.purgePhoto(localPhotoId);
-      if (response.data is Map && response.data['report'] is Map) {
-        await _local.applyLocalReportPatch(reportId, Map<String, dynamic>.from(response.data['report'] as Map));
-      }
-      await _local.markFcReportSynced(reportId);
-      await _removeOutboxForEntity(FcOutboxOperationType.deletePhoto, reportId);
-    } catch (e) {
-      if (!_isNetworkError(e)) {
-        log.warning('deleteReportPhoto backend error (non-network): $e');
-      }
-      // Row stays as pendingDelete — outbox entry stays pending for retry.
-    }
-  }
-
-  // ── Bulk fetch helpers ─────────────────────────────────────────────────
+  // â”€â”€ Bulk fetch helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<List<ReportModel>> fetchFilteredReports() async {
     try {
@@ -626,8 +513,9 @@ class FieldCrewReportRepository {
       return reports;
     } catch (e) {
       log.severe(
-          'Failed to fetch reports from Supabase, falling back to Drift cache',
-          e);
+        'Failed to fetch reports from Supabase, falling back to Drift cache',
+        e,
+      );
       final localReports = await _local.getCachedReports();
       if (localReports.isNotEmpty) return localReports;
       return await _cacheService.getCachedReports();
@@ -641,12 +529,13 @@ class FieldCrewReportRepository {
           .select('issue_type')
           .not('issue_type', 'is', null);
 
-      final types = (response as List<dynamic>)
-          .map((row) => row['issue_type']?.toString())
-          .whereType<String>()
-          .toSet()
-          .toList()
-        ..sort();
+      final types =
+          (response as List<dynamic>)
+              .map((row) => row['issue_type']?.toString())
+              .whereType<String>()
+              .toSet()
+              .toList()
+            ..sort();
 
       return types;
     } catch (e) {
@@ -657,8 +546,7 @@ class FieldCrewReportRepository {
 
   Future<List<dynamic>> fetchAvailableCrew() async {
     try {
-      final response =
-          await _apiClient.dioClient.get('/api/admin/field-crews');
+      final response = await _apiClient.dioClient.get('/api/admin/field-crews');
       return response.data as List<dynamic>;
     } catch (e) {
       log.severe('Failed to fetch available crew', e);
@@ -666,43 +554,13 @@ class FieldCrewReportRepository {
     }
   }
 
-  // ── Private helpers ────────────────────────────────────────────────────
+  // â”€â”€ Private helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /// Removes the outbox entry for a given operation type + entity after a
   /// successful sync, so it is not replayed.
-  Future<void> _removeOutboxForEntity(
-      String operationType, String entityId) async {
-    try {
-      final item = await _local.findPendingOutboxItem(operationType, entityId);
-      if (item != null) {
-        await _local.deleteOutboxItem(item.operationId);
-      }
-    } catch (_) {}
-  }
 
   /// Removes the first pending addNote outbox entry that matches the
   /// given [localNoteId] in its payload.
-  Future<void> _removeFirstNoteOutboxForReport(
-      String reportId, String localNoteId) async {
-    try {
-      final items = await _local.getPendingOutboxItems();
-      for (final item in items) {
-        if (item.operationType == FcOutboxOperationType.addNote &&
-            item.entityId == reportId &&
-            item.payloadJson.contains(localNoteId)) {
-          await _local.deleteOutboxItem(item.operationId);
-          break;
-        }
-      }
-    } catch (_) {}
-  }
 
   /// Safely extracts a String value from a response data map.
-  String? _extractString(dynamic data, String key) {
-    if (data is Map<String, dynamic>) {
-      final v = data[key];
-      if (v is String && v.isNotEmpty) return v;
-    }
-    return null;
-  }
 }

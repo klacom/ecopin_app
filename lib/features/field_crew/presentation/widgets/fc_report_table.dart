@@ -1,206 +1,172 @@
 import 'package:flutter/material.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
+import '../controllers/fc_dashboard_presentation.dart';
+import '../controllers/fc_task_detail_presentation.dart';
 
-class FcReportTable extends StatelessWidget {
-  final List<ReportModel> reports;
-  final String taskId;
-  final void Function(ReportModel report, String outcome)? onOutcome;
-
+class FcReportTable extends StatefulWidget {
   const FcReportTable({
     super.key,
     required this.reports,
     required this.taskId,
     this.onOutcome,
+    this.onReturn,
   });
+  final List<ReportModel> reports;
+  final String taskId;
+  final Future<void> Function()? onReturn;
+  final void Function(ReportModel, String)? onOutcome;
+  @override
+  State<FcReportTable> createState() => _FcReportTableState();
+}
 
+class _FcReportTableState extends State<FcReportTable> {
+  String _filter = 'All';
   @override
   Widget build(BuildContext context) {
-    if (reports.isEmpty) {
-      return SliverPadding(
-        padding: const EdgeInsets.all(AppColors.spaceLG),
-        sliver: SliverToBoxAdapter(
-          child: Center(
-            child: Text(
-              'No reports in this task.',
-              style: AppTypography.body.copyWith(color: Colors.grey),
+    final handled = widget.reports.where(reportIsHandled).length;
+    final visible = widget.reports
+        .where(
+          (r) =>
+              _filter == 'All' ||
+              (_filter == 'Handled' ? reportIsHandled(r) : !reportIsHandled(r)),
+        )
+        .toList();
+    final text = Theme.of(context).textTheme;
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final label in ['All', 'Open', 'Handled'])
+                  FilterChip(
+                    selected: _filter == label,
+                    onSelected: (_) => setState(() => _filter = label),
+                    label: Text(
+                      '$label (${label == 'All'
+                          ? widget.reports.length
+                          : label == 'Open'
+                          ? widget.reports.length - handled
+                          : handled})',
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
-      );
-    }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
-    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
-
-    return SliverList(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        final report = reports[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: AppColors.spaceMD),
-          padding: const EdgeInsets.all(AppColors.spaceLG),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(AppColors.radiusCard),
-            boxShadow: [
-              if (!isDark)
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-            ],
-            border: Border.all(color: borderColor),
+        if (visible.isEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text('No reports in this view.'),
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      report.title,
-                      style: AppTypography.h6.copyWith(
-                        color: textColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  _buildStatusBadge(report.status),
-                ],
-              ),
-              const SizedBox(height: AppColors.spaceSM),
-              Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    report.issueType ?? 'General',
-                    style: AppTypography.caption.copyWith(color: Colors.grey),
-                  ),
-                  const SizedBox(width: AppColors.spaceMD),
-                  const Icon(Icons.verified, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    report.validationStatus.replaceAll('_', ' '),
-                    style: AppTypography.caption.copyWith(color: Colors.grey),
-                  ),
-                  if (report.breachedAt != null) ...[
-                    const SizedBox(width: AppColors.spaceMD),
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      size: 14,
-                      color: AppColors.error,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      report.slaBreachDuration == null
-                          ? 'SLA breached'
-                          : 'SLA breached: ${report.slaBreachDuration}',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.error,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: AppColors.spaceMD),
-              Text(
-                report.description ?? 'No description provided.',
-                style: AppTypography.body.copyWith(
-                  color: textColor,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: AppColors.spaceMD),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    context.push(
-                      '/field-crew/tasks/$taskId/reports/${report.id}',
+        SliverList.builder(
+          itemCount: visible.length,
+          itemBuilder: (context, index) {
+            final report = visible[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Card(
+                margin: EdgeInsets.zero,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () async {
+                    await context.push(
+                      '/field-crew/tasks/${Uri.encodeComponent(widget.taskId)}/reports/${Uri.encodeComponent(report.id)}',
                     );
+                    if (context.mounted) await widget.onReturn?.call();
                   },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primaryDark,
-                    side: const BorderSide(color: AppColors.primaryDark),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppColors.radiusButton,
-                      ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                report.title,
+                                style: text.titleMedium,
+                              ),
+                            ),
+                            if (widget.onOutcome != null &&
+                                !reportIsHandled(report))
+                              PopupMenuButton<String>(
+                                tooltip: 'Actions for ${report.title}',
+                                onSelected: (value) =>
+                                    widget.onOutcome!(report, value),
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'already_resolved',
+                                    child: Text('Already clear on arrival'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'cleaned',
+                                    child: Text('Record cleanup'),
+                                  ),
+                                ],
+                              )
+                            else
+                              const Icon(Icons.chevron_right),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 6,
+                          children: [
+                            Text(
+                              crewTaskLabel(report.status),
+                              style: text.labelMedium,
+                            ),
+                            Text(
+                              report.issueType ?? 'General concern',
+                              style: text.bodySmall,
+                            ),
+                            Text(
+                              crewTaskLabel(report.validationStatus),
+                              style: text.bodySmall,
+                            ),
+                            if (report.breachedAt != null)
+                              Text(
+                                'SLA overdue',
+                                style: text.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (report.description?.trim().isNotEmpty == true) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            report.description!,
+                            style: text.bodyMedium,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        Text(
+                          'Open report',
+                          style: text.labelLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: const Text('View Detail', style: AppTypography.button),
                 ),
               ),
-              if (onOutcome != null) ...[
-                const SizedBox(height: AppColors.spaceSM),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () => onOutcome!(report, 'already_resolved'),
-                      icon: const Icon(Icons.visibility_outlined),
-                      label: const Text('Already clear on arrival'),
-                    ),
-                    if (![
-                      'resolved',
-                      'completed',
-                      'closed',
-                      'rejected',
-                    ].contains(report.status.toLowerCase()))
-                      OutlinedButton.icon(
-                        onPressed: () => onOutcome!(report, 'cleaned'),
-                        icon: const Icon(Icons.cleaning_services_outlined),
-                        label: const Text('Cleaned here'),
-                      ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        );
-      }, childCount: reports.length),
-    );
-  }
-
-  Widget _buildStatusBadge(String status) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'resolved':
-      case 'closed':
-        color = AppColors.success;
-        break;
-      case 'acknowledged':
-      case 'responded':
-        color = AppColors.info;
-        break;
-      default:
-        color = AppColors.warning;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppColors.radiusChip),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: AppTypography.caption.copyWith(
-          color: color,
-          fontWeight: FontWeight.bold,
+            );
+          },
         ),
-      ),
+      ],
     );
   }
 }

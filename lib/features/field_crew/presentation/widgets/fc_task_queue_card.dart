@@ -30,7 +30,7 @@ class FcTaskQueueCard extends ConsumerWidget {
           if (context.mounted) ref.invalidate(fcPendingSummaryProvider);
         },
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -52,15 +52,6 @@ class FcTaskQueueCard extends ConsumerWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Open task details',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.linkDark
-                      : AppColors.accent,
-                ),
               ),
             ],
           ),

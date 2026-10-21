@@ -11,6 +11,7 @@ class FcReportDetailState {
   final List<dynamic> evidence;
   final bool isLoading;
   final String? errorMessage;
+  final String? evidenceError;
 
   const FcReportDetailState({
     this.report,
@@ -18,6 +19,7 @@ class FcReportDetailState {
     this.evidence = const [],
     this.isLoading = false,
     this.errorMessage,
+    this.evidenceError,
   });
 
   FcReportDetailState copyWith({
@@ -26,6 +28,7 @@ class FcReportDetailState {
     List<dynamic>? evidence,
     bool? isLoading,
     String? errorMessage,
+    String? evidenceError,
   }) {
     return FcReportDetailState(
       report: report ?? this.report,
@@ -33,6 +36,7 @@ class FcReportDetailState {
       evidence: evidence ?? this.evidence,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
+      evidenceError: evidenceError,
     );
   }
 }
@@ -58,15 +62,32 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
   Future<void> _load() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final report = await _repo.fetchReportById(reportId);
-      final results = await Future.wait([
-        _repo.fetchAgencyResponses(reportId),
-        _repo.fetchReportEvidence(reportId),
+      final report = await _repo.fetchReportById(reportId, refresh: true);
+      if (!ref.mounted) return;
+      state = state.copyWith(report: report, isLoading: true);
+      List<AgencyResponse> notes = [];
+      List<dynamic> evidence = state.evidence;
+      String? evidenceError;
+      await Future.wait([
+        _repo.fetchAgencyResponses(reportId).then((value) {
+          notes = value;
+        }),
+        _repo
+            .fetchReportEvidence(reportId)
+            .then((value) {
+              evidence = value;
+            })
+            .catchError((Object _) {
+              evidenceError =
+                  'Citizen evidence could not load. Refresh to try again.';
+            }),
       ]);
+      if (!ref.mounted) return;
       state = FcReportDetailState(
         report: report,
-        notes: results[0] as List<AgencyResponse>,
-        evidence: results[1] as List<dynamic>,
+        notes: notes,
+        evidence: evidence,
+        evidenceError: evidenceError,
         isLoading: false,
       );
     } catch (e) {
@@ -81,8 +102,9 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
   Future<void> updateStatus(String newStatus) async {
     final current = state.report;
     if (current == null) return;
-    state =
-        state.copyWith(report: _patchReport(current, {'status': newStatus}));
+    state = state.copyWith(
+      report: _patchReport(current, {'status': newStatus}),
+    );
     await _repo.updateReportStatus(reportId, newStatus);
   }
 
@@ -90,9 +112,15 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
   Future<void> updateLifecycleStage(String stage) async {
     final current = state.report;
     if (current == null) return;
-    state = state.copyWith(
-        report: _patchReport(current, {'lifecycle_stage': stage}));
     await _repo.updateLifecycleStage(reportId, stage);
+    if (ref.mounted) {
+      state = state.copyWith(
+        report: _patchReport(current, {
+          'stage': stage,
+          'lifecycle_stage': stage,
+        }),
+      );
+    }
   }
 
   /// Optimistically updates validation status.
@@ -100,8 +128,8 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
     final current = state.report;
     if (current == null) return;
     state = state.copyWith(
-        report:
-            _patchReport(current, {'validation_status': validationStatus}));
+      report: _patchReport(current, {'validation_status': validationStatus}),
+    );
     await _repo.updateReportValidation(reportId, validationStatus);
   }
 
@@ -140,9 +168,10 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
   }
 }
 
-/// Family provider — one notifier per reportId.
+/// Family provider â€” one notifier per reportId.
 final fcReportDetailNotifierProvider =
-    NotifierProvider.family<FcReportDetailNotifier, FcReportDetailState,
-        String>(
-  (reportId) => FcReportDetailNotifier(reportId),
-);
+    NotifierProvider.family<
+      FcReportDetailNotifier,
+      FcReportDetailState,
+      String
+    >((reportId) => FcReportDetailNotifier(reportId));

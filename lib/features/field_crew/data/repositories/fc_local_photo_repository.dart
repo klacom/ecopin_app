@@ -13,7 +13,7 @@ import 'package:uuid/uuid.dart';
 /// Responsibilities:
 ///   1. Copy an image-picker temp file into permanent app-internal storage.
 ///   2. Compute the file's SHA-256 hash for duplicate detection.
-///   3. Check whether the slot (entity + photoType) is already occupied.
+///   3. Enforce five report Before photos; other slots remain single-photo.
 ///   4. Insert / delete rows in [FcLocalPhotos].
 ///   5. Provide read helpers the UI needs to render pending photos.
 ///
@@ -36,7 +36,7 @@ class FcLocalPhotoRepository {
   /// Steps:
   ///   1. Hash the source file.
   ///   2. Check for duplicate within the same entity/type slot.
-  ///   3. Check whether the slot is already occupied (one URL per slot rule).
+  ///   3. Check the slot capacity (five report Before photos, one otherwise).
   ///   4. Copy the file to permanent storage under `<appDocuments>/fc_photos/`.
   ///   5. Insert a [FcLocalPhotos] row with `syncStatus = pending`.
   ///
@@ -67,15 +67,17 @@ class FcLocalPhotoRepository {
     }
 
     // 3 — Slot occupancy check
-    final existing = await _db.getActiveFcLocalPhoto(entityId, entityType, photoType);
-    if (existing != null) {
+    final existing = (await getPhotosForEntity(
+      entityId,
+      entityType,
+    )).where((p) => p.photoType == photoType).length;
+    final limit = entityType == 'report' && photoType == 'before' ? 5 : 1;
+    if (existing >= limit) {
       throw FcPhotoSlotOccupiedException(
-        'The $photoType photo slot for entity $entityId is already occupied '
-        '(localPhotoId: ${existing.localPhotoId}). Delete it first.',
+        'Maximum $limit $photoType photos reached.',
       );
     }
 
-    // 4 — Copy to permanent storage
     final localPhotoId = _uuid.v4();
     final destPath = await _buildDestPath(localPhotoId, sourceFile.path);
     await _copyFile(sourceFile, destPath);
@@ -101,7 +103,9 @@ class FcLocalPhotoRepository {
       rethrow;
     }
 
-    _log.info('addPhoto: added $localPhotoId ($photoType) for $entityType:$entityId');
+    _log.info(
+      'addPhoto: added $localPhotoId ($photoType) for $entityType:$entityId',
+    );
     return localPhotoId;
   }
 
@@ -128,6 +132,23 @@ class FcLocalPhotoRepository {
       // Was never uploaded (pending / inFlight / failed) — purge entirely.
       await _db.deleteFcLocalPhoto(localPhotoId);
       await _safeDelete(row.localPath);
+      final remaining = await getPhotosForEntity(row.entityId, row.entityType);
+      if (!remaining.any(
+        (p) =>
+            p.photoType == row.photoType &&
+            p.syncStatus != FcLocalPhotoSyncStatus.synced,
+      )) {
+        final operation = row.photoType == 'before'
+            ? FcOutboxOperationType.uploadBeforePhoto
+            : FcOutboxOperationType.uploadAfterPhoto;
+        final queued = await _db.getPendingOutboxItemForEntity(
+          operationType: operation,
+          entityId: row.entityId,
+        );
+        if (queued != null && queued.entityType == row.entityType) {
+          await _db.deleteOutboxItem(queued.operationId);
+        }
+      }
       _log.info('deletePhoto: hard-deleted $localPhotoId (was never uploaded)');
     }
   }
@@ -140,6 +161,26 @@ class FcLocalPhotoRepository {
     await _db.deleteFcLocalPhoto(localPhotoId);
     await _safeDelete(row.localPath);
     _log.info('purgePhoto: purged $localPhotoId');
+  }
+
+  Future<void> queueRemoteDeletion(
+    String reportId,
+    String type,
+    String remoteId,
+    String? url,
+  ) async {
+    await _db.insertFcLocalPhoto(
+      FcLocalPhotosCompanion.insert(
+        localPhotoId: _uuid.v4(),
+        entityId: reportId,
+        entityType: 'report',
+        photoType: type,
+        localPath: '',
+        remoteId: Value(remoteId),
+        remoteUrl: Value(url),
+        syncStatus: const Value(FcLocalPhotoSyncStatus.pendingDelete),
+      ),
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -162,8 +203,9 @@ class FcLocalPhotoRepository {
     String entityId,
     String entityType,
     String photoType,
-  ) =>
-      _db.getActiveFcLocalPhoto(entityId, entityType, photoType);
+  ) => _db.getActiveFcLocalPhoto(entityId, entityType, photoType);
+
+  Future<FcLocalPhoto?> getPhotoById(String id) => _db.getFcLocalPhotoById(id);
 
   /// Returns all photos pending upload (pending | failed).
   Future<List<FcLocalPhoto>> getPendingUploads() =>
@@ -184,23 +226,20 @@ class FcLocalPhotoRepository {
     String localPhotoId, {
     String? remoteId,
     String? remoteUrl,
-  }) =>
-      _db.markFcLocalPhotoSynced(
-        localPhotoId,
-        remoteId: remoteId,
-        remoteUrl: remoteUrl,
-      );
+  }) => _db.markFcLocalPhotoSynced(
+    localPhotoId,
+    remoteId: remoteId,
+    remoteUrl: remoteUrl,
+  );
 
   Future<void> markFailed(String localPhotoId, String error) =>
       _db.markFcLocalPhotoFailed(localPhotoId, error);
 
   /// Resets any in-flight photos back to pending (called on app startup).
-  Future<void> recoverInFlightPhotos() =>
-      _db.resetInFlightFcLocalPhotos();
+  Future<void> recoverInFlightPhotos() => _db.resetInFlightFcLocalPhotos();
 
   /// Resets failed photos so they can be retried.
-  Future<void> resetFailedPhotoRetries() =>
-      _db.resetFailedFcLocalPhotos();
+  Future<void> resetFailedPhotoRetries() => _db.resetFailedFcLocalPhotos();
 
   // ─────────────────────────────────────────────────────────────────────────
   // Private helpers

@@ -39,8 +39,11 @@ class _FieldCrewReportsScreenState
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: Text(
-          'Raw Data',
-          style: AppTypography.h5.copyWith(color: textColor, fontWeight: FontWeight.bold),
+          'Reports',
+          style: AppTypography.h5.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: Column(
@@ -90,25 +93,49 @@ class _FieldCrewReportsScreenState
               child: assignedReportsAsync.when(
                 data: (data) {
                   final filteredReports = data.reports.where((report) {
-                    final searchMatch = _searchQuery.isEmpty ||
-                        report.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                        (report.description?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+                    final searchMatch =
+                        _searchQuery.isEmpty ||
+                        report.title.toLowerCase().contains(
+                          _searchQuery.toLowerCase(),
+                        ) ||
+                        (report.description?.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ) ??
+                            false);
 
-                    final statusMatch = _selectedStatus == 'All Status' || report.status == _selectedStatus;
-                    final typeMatch = _selectedType == 'All Types' || report.issueType == _selectedType;
+                    final displayStatus =
+                        report.status == 'unresolved' &&
+                            [
+                              'acknowledged',
+                              'responded',
+                            ].contains(report.lifecycleStage)
+                        ? report.lifecycleStage
+                        : report.status;
+                    final statusMatch =
+                        _selectedStatus == 'All Status' ||
+                        displayStatus == _selectedStatus;
+                    final typeMatch =
+                        _selectedType == 'All Types' ||
+                        report.issueType == _selectedType;
 
-                    bool validationMatch = _selectedValidation == 'All Validation';
+                    bool validationMatch =
+                        _selectedValidation == 'All Validation';
                     if (!validationMatch) {
                       if (_selectedValidation == 'pending') {
-                        validationMatch = report.validationStatus == 'pending' ||
+                        validationMatch =
+                            report.validationStatus == 'pending' ||
                             report.validationStatus == 'manual_review' ||
                             report.validationStatus == 'Manual_Review';
                       } else {
-                        validationMatch = report.validationStatus == _selectedValidation;
+                        validationMatch =
+                            report.validationStatus == _selectedValidation;
                       }
                     }
 
-                    return searchMatch && statusMatch && typeMatch && validationMatch;
+                    return searchMatch &&
+                        statusMatch &&
+                        typeMatch &&
+                        validationMatch;
                   }).toList();
 
                   if (filteredReports.isEmpty) {
@@ -128,7 +155,8 @@ class _FieldCrewReportsScreenState
                       vertical: AppColors.spaceMD,
                     ),
                     itemCount: filteredReports.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: AppColors.spaceMD),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: AppColors.spaceMD),
                     itemBuilder: (context, index) {
                       final report = filteredReports[index];
                       return FcReportListTile(
@@ -144,9 +172,7 @@ class _FieldCrewReportsScreenState
                     },
                   );
                 },
-                loading: () => ListView(
-                  children: const [FcShimmerList()],
-                ),
+                loading: () => ListView(children: const [FcShimmerList()]),
                 error: (error, stack) => ListView(
                   children: [
                     SizedBox(

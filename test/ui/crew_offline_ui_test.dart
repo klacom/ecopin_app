@@ -140,6 +140,9 @@ FcOfflinePackageState crewPackage({
   reportCount: 8,
   evidenceCount: 12,
   noteCount: 3,
+  routeCount: 1,
+  taskTitles: const ['Saved cleanup task'],
+  reportTitles: const ['Saved assigned report'],
   preparedAt: DateTime.utc(2026, 10, 14, 1, 30),
   estimatedBytes: 102400,
   steps: receiptOnly
@@ -176,6 +179,7 @@ Future<ProviderContainer> mountCrew(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        fcPendingWritesProvider.overrideWith((ref) => Stream.value([])),
         fcSyncGateProvider.overrideWithValue(gate ?? SyntheticCrewGate()),
         fcSyncTriggerProvider.overrideWithValue(
           trigger ?? SyntheticCrewTrigger(),
@@ -405,6 +409,23 @@ void main() {
       package.completion.complete(crewPackage(partial: false));
       await tester.pumpAndSettle();
       expect(find.text('Offline data prepared'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'saved offline inventory lists actual prepared tasks and reports',
+    (tester) async {
+      await mountCrew(
+        tester,
+        const FieldCrewPrepareOfflineScreen(),
+        package: SyntheticCrewPackage(crewPackage(partial: false)),
+      );
+      await tester.ensureVisible(find.text('Saved on this device'));
+      await tester.tap(find.text('Saved on this device'));
+      await tester.pumpAndSettle();
+      expect(find.text('Saved cleanup task'), findsOneWidget);
+      expect(find.text('Saved assigned report'), findsOneWidget);
+      expect(find.text('Routes cached'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

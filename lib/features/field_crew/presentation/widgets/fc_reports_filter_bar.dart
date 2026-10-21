@@ -60,16 +60,19 @@ class FcReportsFilterBar extends StatelessWidget {
             ),
             const SizedBox(width: AppColors.spaceSM),
             IconButton(
+              tooltip: 'Filter reports',
               onPressed: () {
                 _showFilterBottomSheet(context);
               },
               icon: Icon(Icons.filter_list, color: officerColor),
               style: IconButton.styleFrom(
                 backgroundColor: fillColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusInput)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusInput),
+                ),
                 padding: const EdgeInsets.all(12),
               ),
-            )
+            ),
           ],
         ),
         const SizedBox(height: AppColors.spaceSM),
@@ -77,11 +80,17 @@ class FcReportsFilterBar extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              if (searchQuery.isNotEmpty || selectedStatus != 'All Status' || selectedType != 'All Types' || selectedValidation != 'All Validation')
+              if (searchQuery.isNotEmpty ||
+                  selectedStatus != 'All Status' ||
+                  selectedType != 'All Types' ||
+                  selectedValidation != 'All Validation')
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: ActionChip(
-                    label: const Text('Reset', style: TextStyle(color: Colors.white)),
+                    label: const Text(
+                      'Reset',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     backgroundColor: officerColor,
                     onPressed: onReset,
                   ),
@@ -90,7 +99,10 @@ class FcReportsFilterBar extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Chip(
-                    label: Text(_formatDisplay(selectedStatus), style: TextStyle(color: textColor)),
+                    label: Text(
+                      _formatDisplay(selectedStatus),
+                      style: TextStyle(color: textColor),
+                    ),
                     backgroundColor: fillColor,
                     side: BorderSide(color: officerColor),
                     onDeleted: () => onStatusChanged('All Status'),
@@ -101,7 +113,10 @@ class FcReportsFilterBar extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Chip(
-                    label: Text(selectedType, style: TextStyle(color: textColor)),
+                    label: Text(
+                      selectedType,
+                      style: TextStyle(color: textColor),
+                    ),
                     backgroundColor: fillColor,
                     side: BorderSide(color: officerColor),
                     onDeleted: () => onTypeChanged('All Types'),
@@ -112,7 +127,10 @@ class FcReportsFilterBar extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Chip(
-                    label: Text(_formatDisplay(selectedValidation), style: TextStyle(color: textColor)),
+                    label: Text(
+                      _formatDisplay(selectedValidation),
+                      style: TextStyle(color: textColor),
+                    ),
                     backgroundColor: fillColor,
                     side: BorderSide(color: officerColor),
                     onDeleted: () => onValidationChanged('All Validation'),
@@ -136,11 +154,23 @@ class FcReportsFilterBar extends StatelessWidget {
     final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
 
     final statusOptions = [
-      'All Status', 'unresolved', 'in_progress', 'resolved', 'closed', 'pending_owner_consent', 'waiting_for_feedback'
+      'All Status',
+      'unresolved',
+      'acknowledged',
+      'responded',
+      'in_progress',
+      'resolved',
+      'closed',
+      'pending_owner_consent',
+      'waiting_for_feedback',
     ];
-    
+
     final validationOptions = [
-      'All Validation', 'pending', 'automatically_valid', 'manual_review', 'validated', 'rejected'
+      'All Validation',
+      'pending',
+      'automatically_valid',
+      'manual_review',
+      'validated',
     ];
 
     showModalBottomSheet(
@@ -149,142 +179,132 @@ class FcReportsFilterBar extends StatelessWidget {
       useSafeArea: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       isScrollControlled: true,
+      showDragHandle: false,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusDialog)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppColors.radiusDialog),
+        ),
       ),
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return StatefulBuilder(
-              builder: (ctx, setModalState) {
-                return Padding(
-                  padding: const EdgeInsets.all(AppColors.spaceLG),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Filters', style: AppTypography.h4.copyWith(color: textColor)),
-                      const SizedBox(height: AppColors.spaceLG),
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          children: [
-                            Text('Status', style: AppTypography.label.copyWith(color: Colors.grey)),
-                            const SizedBox(height: AppColors.spaceSM),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: statusOptions.map((status) {
-                                final isSelected = tempStatus == status;
-                                return ChoiceChip(
-                                  label: Text(
-                                    _formatDisplay(status),
-                                    style: TextStyle(color: isSelected ? Colors.white : textColor),
-                                  ),
-                                  selected: isSelected,
-                                  selectedColor: officerColor,
-                                  backgroundColor: fillColor,
-                                  onSelected: (val) {
-                                    if (val) setModalState(() => tempStatus = status);
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: AppColors.spaceLG),
-                            Text('Issue Type', style: AppTypography.label.copyWith(color: Colors.grey)),
-                            const SizedBox(height: AppColors.spaceSM),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: ['All Types', ...availableTypes].map((type) {
-                                final isSelected = tempType == type;
-                                return ChoiceChip(
-                                  label: Text(
-                                    type,
-                                    style: TextStyle(color: isSelected ? Colors.white : textColor),
-                                  ),
-                                  selected: isSelected,
-                                  selectedColor: officerColor,
-                                  backgroundColor: fillColor,
-                                  onSelected: (val) {
-                                    if (val) setModalState(() => tempType = type);
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: AppColors.spaceLG),
-                            Text('Validation', style: AppTypography.label.copyWith(color: Colors.grey)),
-                            const SizedBox(height: AppColors.spaceSM),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: validationOptions.map((valOpt) {
-                                final isSelected = tempValidation == valOpt;
-                                return ChoiceChip(
-                                  label: Text(
-                                    _formatDisplay(valOpt),
-                                    style: TextStyle(color: isSelected ? Colors.white : textColor),
-                                  ),
-                                  selected: isSelected,
-                                  selectedColor: officerColor,
-                                  backgroundColor: fillColor,
-                                  onSelected: (val) {
-                                    if (val) setModalState(() => tempValidation = valOpt);
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppColors.spaceLG),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            onStatusChanged(tempStatus);
-                            onTypeChanged(tempType);
-                            onValidationChanged(tempValidation);
-                            Navigator.pop(ctx);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: officerColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          Widget choices(
+            String title,
+            List<String> values,
+            String selected,
+            void Function(String) select,
+          ) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(ctx).textTheme.titleSmall),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: values
+                    .toSet()
+                    .map(
+                      (value) => ChoiceChip(
+                        label: Text(
+                          _formatDisplay(value),
+                          style: TextStyle(
+                            color: selected == value ? Colors.white : textColor,
                           ),
-                          child: Text('Apply Filters', style: AppTypography.button.copyWith(color: Colors.white)),
                         ),
-                      )
-                    ],
+                        selected: selected == value,
+                        selectedColor: officerColor,
+                        checkmarkColor: Colors.white,
+                        backgroundColor: fillColor,
+                        onSelected: (active) {
+                          if (active) setModalState(() => select(value));
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 20),
+            ],
+          );
+          return SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Filters', style: Theme.of(ctx).textTheme.headlineSmall),
+                  const SizedBox(height: 20),
+                  choices(
+                    'Status',
+                    statusOptions,
+                    tempStatus,
+                    (value) => tempStatus = value,
                   ),
-                );
-              }
-            );
-          }
-        );
-      },
+                  choices(
+                    'Issue Type',
+                    ['All Types', ...availableTypes],
+                    tempType,
+                    (value) => tempType = value,
+                  ),
+                  choices(
+                    'Validation',
+                    validationOptions,
+                    tempValidation,
+                    (value) => tempValidation = value,
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      onStatusChanged(tempStatus);
+                      onTypeChanged(tempType);
+                      onValidationChanged(tempValidation);
+                      Navigator.pop(ctx);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: officerColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Apply Filters'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
   String _formatDisplay(String key) {
     switch (key) {
-      case 'unresolved': return 'Unresolved';
-      case 'in_progress': return 'In Progress';
-      case 'resolved': return 'Resolved';
-      case 'closed': return 'Closed';
-      case 'pending_owner_consent': return 'Pending Owner Consent';
-      case 'waiting_for_feedback': return 'Waiting for Feedback';
-      case 'pending': return 'Pending';
-      case 'automatically_valid': return 'Automatically Valid';
-      case 'manual_review': return 'Manual Review';
-      case 'validated': return 'Validated';
-      case 'rejected': return 'Rejected';
-      default: return key;
+      case 'acknowledged':
+        return 'Acknowledged';
+      case 'responded':
+        return 'Responded';
+      case 'unresolved':
+        return 'Unresolved';
+      case 'in_progress':
+        return 'In Progress';
+      case 'resolved':
+        return 'Resolved';
+      case 'closed':
+        return 'Closed';
+      case 'pending_owner_consent':
+        return 'Pending Owner Consent';
+      case 'waiting_for_feedback':
+        return 'Waiting for Feedback';
+      case 'pending':
+        return 'Pending';
+      case 'automatically_valid':
+        return 'Automatically Valid';
+      case 'manual_review':
+        return 'Manual Review';
+      case 'validated':
+        return 'Validated';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return key;
     }
   }
 }

@@ -77,8 +77,11 @@ class FcCannotWorkButton extends ConsumerWidget {
     final notes = TextEditingController();
 
     try {
-      final confirmed = await showDialog<bool>(
+      final navigator = Navigator.of(context, rootNavigator: true);
+      if (!navigator.mounted) return;
+      final route = DialogRoute<bool>(
         context: context,
+        themes: InheritedTheme.capture(from: context, to: navigator.context),
         builder: (dialogContext) => StatefulBuilder(
           builder: (dialogCtx, setDialogState) {
             final hasPhoto = localPickedEvidence != null || existingEvidenceRef != null;
@@ -90,7 +93,7 @@ class FcCannotWorkButton extends ConsumerWidget {
                   source: source,
                   imageQuality: 80,
                 );
-                if (picked == null) return;
+                if (picked == null || !dialogCtx.mounted) return;
                 setDialogState(() {
                   localPickedEvidence = File(picked.path);
                 });
@@ -129,6 +132,7 @@ class FcCannotWorkButton extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: reason,
                       dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                       style: TextStyle(
@@ -339,6 +343,9 @@ class FcCannotWorkButton extends ConsumerWidget {
         ),
       );
 
+      final confirmed = await navigator.push(route);
+      // A pop result arrives before the reverse animation unmounts the text field.
+      await route.completed;
       if (confirmed != true || !context.mounted) return;
 
       final currentUserId = Supabase.instance.client.auth.currentUser?.id;

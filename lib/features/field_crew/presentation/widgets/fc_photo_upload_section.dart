@@ -1,11 +1,14 @@
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 import 'dart:io';
+import '../controllers/fc_task_detail_presentation.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/fullscreen_image_view.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_video_player.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model passed into the widget
@@ -20,6 +23,7 @@ import 'package:url_launcher/url_launcher.dart';
 class FcPhotoSlot {
   /// Remote CDN URL (non-null once the photo has been synced).
   final String? remoteUrl;
+  final String? remoteId;
 
   /// Absolute local filesystem path (non-null for pending/failed photos).
   final String? localPath;
@@ -33,6 +37,7 @@ class FcPhotoSlot {
 
   const FcPhotoSlot({
     this.remoteUrl,
+    this.remoteId,
     this.localPath,
     this.localPhotoId,
     this.syncStatus,
@@ -74,10 +79,13 @@ class FcPhotoSlot {
 ///                    [FcPhotoSlot] that should be deleted.
 class FcPhotoUploadSection extends StatefulWidget {
   final List<dynamic> evidencePhotos;
+  final String? evidenceError;
+  final VideoPlayerController Function(Uri)? videoControllerFactory;
 
   /// Current state of the before-photo slot.  Pass `null` when there is no
   /// photo for that slot.
   final FcPhotoSlot? beforeSlot;
+  final List<FcPhotoSlot> beforeSlots;
 
   /// Current state of the after-photo slot.
   final FcPhotoSlot? afterSlot;
@@ -96,7 +104,10 @@ class FcPhotoUploadSection extends StatefulWidget {
   const FcPhotoUploadSection({
     super.key,
     required this.evidencePhotos,
+    this.evidenceError,
+    this.videoControllerFactory,
     this.beforeSlot,
+    this.beforeSlots = const [],
     this.afterSlot,
     required this.isAssigned,
     this.isBeforeEnabled = true,
@@ -110,8 +121,11 @@ class FcPhotoUploadSection extends StatefulWidget {
 }
 
 class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
-  // The backend schema has one URL column per slot; maximum is 1.
-  static const int _maxPerSlot = 1;
+  // Reports allow five Before photos and one After photo.
+  List<FcPhotoSlot> get _beforePhotos => widget.beforeSlots.isNotEmpty
+      ? widget.beforeSlots
+      : [if (widget.beforeSlot?.hasPhoto == true) widget.beforeSlot!];
+  int _limit(String type) => type == 'before' ? 5 : 1;
 
   // Per-slot upload-in-progress flags to prevent double-taps.
   bool _uploadingBefore = false;
@@ -120,12 +134,14 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   // ── Image picking ─────────────────────────────────────────────────────────
 
   Future<void> _pickImage(BuildContext context, String type) async {
-    final isUploading =
-        type == 'before' ? _uploadingBefore : _uploadingAfter;
+    final isUploading = type == 'before' ? _uploadingBefore : _uploadingAfter;
     if (isUploading) return;
 
     final slot = type == 'before' ? widget.beforeSlot : widget.afterSlot;
-    if (slot != null && slot.hasPhoto) {
+    if ((type == 'before'
+            ? _beforePhotos.length
+            : (slot?.hasPhoto == true ? 1 : 0)) >=
+        _limit(type)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Maximum number of photos reached.')),
@@ -156,9 +172,9 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
     } catch (e) {
       if (context.mounted) {
         final msg = _friendlyError(e);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {
       if (mounted) {
@@ -199,18 +215,25 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
             ),
             const SizedBox(height: 12),
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppColors.primaryDark),
-              title: Text('Take a photo',
-                  style: AppTypography.body
-                      .copyWith(color: textColor)),
+              leading: const Icon(
+                Icons.camera_alt,
+                color: AppColors.primaryDark,
+              ),
+              title: Text(
+                'Take a photo',
+                style: AppTypography.body.copyWith(color: textColor),
+              ),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
-              leading:
-                  const Icon(Icons.photo_library, color: AppColors.primaryDark),
-              title: Text('Choose from gallery',
-                  style: AppTypography.body
-                      .copyWith(color: textColor)),
+              leading: const Icon(
+                Icons.photo_library,
+                color: AppColors.primaryDark,
+              ),
+              title: Text(
+                'Choose from gallery',
+                style: AppTypography.body.copyWith(color: textColor),
+              ),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
             const SizedBox(height: 8),
@@ -243,8 +266,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child:
-                const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () async {
@@ -253,14 +275,16 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
                 await widget.onDelete(slot, type);
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Delete failed: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
                 }
               }
             },
-            child: const Text('Delete',
-                style: TextStyle(color: AppColors.error)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -303,8 +327,13 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
 
           _buildCitizenEvidence(),
 
-          Divider(
-              color: dividerColor, height: AppColors.spaceXL * 2),
+          Divider(color: dividerColor, height: AppColors.spaceXL * 2),
+
+          const Text(
+            'If you will clean this site: take a Before photo before starting, then an After photo when finished.\n\n'
+            'Already clear when you arrive? Take one current photo in After Photos. A Before photo is not required for this observation. Do not upload the same photo twice. Return to Task Details and select Already clear on arrival; this records an observation, not cleanup credit.',
+          ),
+          const SizedBox(height: AppColors.spaceLG),
 
           _buildFieldCrewPhotoSection(
             context,
@@ -328,64 +357,107 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   // ── Citizen evidence section ──────────────────────────────────────────────
 
   Widget _buildCitizenEvidence() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final slotFill = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
-    final borderColor = isDark ? Colors.white10 : Colors.grey.shade200;
-
-    if (widget.evidencePhotos.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Citizen Evidence',
-              style: AppTypography.label.copyWith(color: Colors.grey)),
-          const SizedBox(height: AppColors.spaceSM),
+    final colors = Theme.of(context).colorScheme;
+    final media = widget.evidencePhotos
+        .where((row) => citizenEvidenceUrl(row) != null)
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Citizen Evidence', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        if (widget.evidenceError != null || media.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppColors.radiusCard),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.perm_media_outlined,
+                  size: 32,
+                  color: colors.onSurfaceVariant,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Citizen evidence unavailable',
+                  style: Theme.of(context).textTheme.titleSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.evidenceError ??
+                      'Submitted photos or videos could not be found. Refresh this report to try again.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          )
+        else
           SizedBox(
             height: 110,
-            child: ListView.builder(
+            child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: widget.evidencePhotos.length,
+              itemCount: media.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
-                final url =
-                    widget.evidencePhotos[index]['file_url'] as String? ??
-                        widget.evidencePhotos[index]['evidence_url'] as String?;
-                if (url == null || url.isEmpty) return const SizedBox.shrink();
-                return GestureDetector(
-                  onTap: () async {
-                    final uri = Uri.tryParse(url);
-                    if (uri != null && await canLaunchUrl(uri)) {
-                      await launchUrl(uri,
-                          mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  child: Container(
-                    margin:
-                        const EdgeInsets.only(right: AppColors.spaceSM),
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(AppColors.radiusCard),
-                      color: slotFill,
-                    ),
+                final url = citizenEvidenceUrl(media[index])!;
+                final video = citizenEvidenceIsVideo(media[index]);
+                return SizedBox(
+                  width: 110,
+                  child: Material(
+                    color: colors.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(AppColors.radiusCard),
                     clipBehavior: Clip.antiAlias,
-                    child: PrivateMediaImage(
-                      url,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.primaryDark),
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stack) => const Center(
-                        child: Icon(Icons.broken_image,
-                            color: Colors.grey, size: 28),
+                    child: InkWell(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => video
+                              ? Scaffold(
+                                  appBar: AppBar(
+                                    title: const Text('Citizen video'),
+                                  ),
+                                  body: Center(
+                                    child: ReportVideoPlayer(
+                                      videoUrl: url,
+                                      extent:
+                                          MediaQuery.sizeOf(
+                                            context,
+                                          ).shortestSide -
+                                          32,
+                                      createController:
+                                          widget.videoControllerFactory,
+                                    ),
+                                  ),
+                                )
+                              : FullScreenImageView(imageUrl: url),
+                        ),
+                      ),
+                      child: Semantics(
+                        button: true,
+                        label: video
+                            ? 'View citizen video ${index + 1}'
+                            : 'View citizen photo ${index + 1}',
+                        child: ExcludeSemantics(
+                          child: video
+                              ? const Center(
+                                  child: Icon(
+                                    Icons.play_circle_outline,
+                                    size: 48,
+                                  ),
+                                )
+                              : PrivateMediaImage(
+                                  url,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => const Center(
+                                    child: Icon(Icons.broken_image_outlined),
+                                  ),
+                                ),
+                        ),
                       ),
                     ),
                   ),
@@ -393,31 +465,6 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
               },
             ),
           ),
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Citizen Evidence',
-            style: AppTypography.label.copyWith(color: Colors.grey)),
-        const SizedBox(height: AppColors.spaceSM),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: AppColors.spaceMD),
-          decoration: BoxDecoration(
-            color: slotFill,
-            borderRadius: BorderRadius.circular(AppColors.radiusCard),
-            border: Border.all(color: borderColor),
-          ),
-          child: Center(
-            child: Text(
-              'No citizen photos provided',
-              style: AppTypography.caption.copyWith(color: Colors.grey),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -431,28 +478,36 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
     bool isUploading,
   ) {
     final title = type == 'before' ? 'Before Photos' : 'After Photos';
-    final int count = (slot != null && slot.hasPhoto) ? 1 : 0;
-    final bool isEnabled = type == 'before' ? widget.isBeforeEnabled : widget.isAfterEnabled;
+    final photos = type == 'before'
+        ? _beforePhotos
+        : [if (slot?.hasPhoto == true) slot!];
+    final count = photos.length;
+    final maxPerSlot = _limit(type);
+    final bool isEnabled = type == 'before'
+        ? widget.isBeforeEnabled
+        : widget.isAfterEnabled;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          spacing: 12,
+          runSpacing: 4,
           children: [
             Text(
-              '$title ($count/$_maxPerSlot)',
+              '$title ($count/$maxPerSlot)',
               style: AppTypography.label.copyWith(color: Colors.grey),
             ),
-            if (widget.isAssigned && count < _maxPerSlot && isEnabled)
+            if (widget.isAssigned && count < maxPerSlot && isEnabled)
               Text(
-                '${_maxPerSlot - count} slot remaining',
-                style: AppTypography.caption
-                    .copyWith(color: AppColors.primaryDark),
+                '${maxPerSlot - count} slot remaining',
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.primaryDark,
+                ),
               ),
-            if (widget.isAssigned && count < _maxPerSlot && !isEnabled)
+            if (widget.isAssigned && count < maxPerSlot && !isEnabled)
               Text(
-                type == 'before' ? 'Acknowledge report first' : 'Requires acknowledged report & before photo',
+                'Acknowledge report first',
                 style: AppTypography.caption.copyWith(color: Colors.grey),
               ),
           ],
@@ -464,10 +519,10 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
             scrollDirection: Axis.horizontal,
             children: [
               // Show existing photo thumbnail if slot is occupied.
-              if (slot != null && slot.hasPhoto)
-                _buildPhotoThumbnail(context, slot, type, isEnabled),
+              for (final photo in photos)
+                _buildPhotoThumbnail(context, photo, type, isEnabled),
               // Show add button if slot is empty and user is assigned.
-              if (count < _maxPerSlot && widget.isAssigned && isEnabled)
+              if (count < maxPerSlot && widget.isAssigned && isEnabled)
                 isUploading
                     ? _buildUploadingIndicator()
                     : _buildAddButton(context, type),
@@ -496,9 +551,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
         children: [
           // Image
           GestureDetector(
-            onTap: displayPath != null
-                ? () => _openPhoto(context, slot)
-                : null,
+            onTap: displayPath != null ? () => _openPhoto(context, slot) : null,
             child: Container(
               width: 120,
               height: 120,
@@ -534,8 +587,11 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
                     color: Colors.black.withValues(alpha: 0.7),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.delete_outline,
-                      size: 16, color: Colors.white),
+                  child: const Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -559,13 +615,14 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
               width: 24,
               height: 24,
               child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppColors.primaryDark),
+                strokeWidth: 2,
+                color: AppColors.primaryDark,
+              ),
             ),
           );
         },
         errorBuilder: (context, error, stack) => const Center(
-          child:
-              Icon(Icons.broken_image, color: Colors.grey, size: 28),
+          child: Icon(Icons.broken_image, color: Colors.grey, size: 28),
         ),
       );
     }
@@ -587,13 +644,13 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   }
 
   void _openPhoto(BuildContext context, FcPhotoSlot slot) async {
-    // Prefer opening the remote URL in an external browser.
     if (slot.remoteUrl != null) {
-      final uri = Uri.tryParse(slot.remoteUrl!);
-      if (uri != null && await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        return;
-      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => FullScreenImageView(imageUrl: slot.remoteUrl!),
+        ),
+      );
+      return;
     }
     // Fallback: show local file in a full-screen dialog.
     if (slot.localPath != null && context.mounted) {
@@ -602,10 +659,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
         builder: (_) => Dialog(
           backgroundColor: Colors.black,
           child: InteractiveViewer(
-            child: Image.file(
-              File(slot.localPath!),
-              fit: BoxFit.contain,
-            ),
+            child: Image.file(File(slot.localPath!), fit: BoxFit.contain),
           ),
         ),
       );
@@ -637,8 +691,9 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
             const SizedBox(height: AppColors.spaceSM),
             Text(
               'Add Photo',
-              style: AppTypography.caption
-                  .copyWith(color: AppColors.primaryDark),
+              style: AppTypography.caption.copyWith(
+                color: AppColors.primaryDark,
+              ),
             ),
           ],
         ),

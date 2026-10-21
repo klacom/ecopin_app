@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'fc_sync_settings.dart';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -28,6 +29,10 @@ final fcPhotoSyncManagerProvider = Provider<FcPhotoSyncManager>((ref) {
   return FcPhotoSyncManager(api, photoRepo, local);
 });
 
+final fcPendingWritesProvider = StreamProvider<List<String>>(
+  (ref) => ref.watch(fcLocalRepositoryProvider).watchPendingWrites(),
+);
+
 final fcSyncTriggerProvider = Provider<FcSyncTrigger>((ref) {
   final trigger = FcSyncTrigger(
     syncManager: ref.watch(fcSyncManagerProvider),
@@ -41,6 +46,11 @@ final fcSyncTriggerProvider = Provider<FcSyncTrigger>((ref) {
       ref.invalidate(myRouteProvider);
     },
   );
+  ref.listen(fcPendingWritesProvider, (_, next) {
+    if (next.hasValue) trigger.observeWrites(next.value!);
+  }, fireImmediately: true);
+  ref.listen(fcSyncSettingsProvider, (_, _) => trigger.requestSync());
+  trigger.start();
   ref.onDispose(trigger.dispose);
   return trigger;
 });
@@ -85,6 +95,7 @@ class FcSyncState {
   bool get hasPendingWork =>
       (lastMutationResult?.retryable ?? 0) > 0 ||
       (lastPhotoResult?.uploadFailed ?? 0) > 0 ||
+      (lastPhotoResult?.uploadSkipped ?? 0) > 0 ||
       (lastPhotoResult?.deleteFailed ?? 0) > 0;
 }
 
@@ -100,7 +111,7 @@ class FcSyncStateNotifier extends Notifier<FcSyncState> {
 
   void setResult(FcSyncRunResult mutation, FcPhotoSyncRunResult photo) {
     final allGood = mutation.allSucceeded && photo.allSucceeded;
-    state = state.copyWith(
+    state = FcSyncState(
       phase: allGood ? FcSyncPhase.success : FcSyncPhase.partialFailure,
       lastMutationResult: mutation,
       lastPhotoResult: photo,
@@ -130,9 +141,15 @@ class FcSyncTrigger {
 
   final _log = Logger('FcSyncTrigger');
   bool _running = false;
+  bool _started = false;
+  bool _disposed = false;
+  bool _rerun = false;
+  Set<String> _writes = {};
+  Timer? _editTimer;
   Timer? _periodicTimer;
+  Timer? _connectivityTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
-  bool _wasOnline = true;
+  FcNetworkType _lastNetwork = FcNetworkType.none;
 
   FcSyncTrigger({
     required this.syncManager,
@@ -143,13 +160,18 @@ class FcSyncTrigger {
   });
 
   void start() {
+    if (_started || _disposed) return;
+    _started = true;
     _startPeriodicTimer();
     _subscribeToConnectivity();
     _log.info('FcSyncTrigger started');
   }
 
   void dispose() {
+    _disposed = true;
+    _editTimer?.cancel();
     _periodicTimer?.cancel();
+    _connectivityTimer?.cancel();
     _connectivitySub?.cancel();
     _log.info('FcSyncTrigger disposed');
   }
@@ -157,36 +179,56 @@ class FcSyncTrigger {
   // ── Public API ─────────────────────────────────────────────────────────────
 
   /// Automatic sync — respects gate (mode + connectivity settings).
-  Future<FcSyncState?> syncNow() async {
-    if (_running) return null;
-
-    final decision = await gate.checkAutoSync();
-    if (!decision.allowed) {
-      _log.fine('syncNow: blocked — ${decision.reason}');
-      return null;
-    }
-
-    return _runSync();
+  void observeWrites(List<String> fingerprints) {
+    final next = fingerprints.toSet();
+    final hasNew = next.difference(_writes).isNotEmpty;
+    _writes = next;
+    if (hasNew) requestSync();
   }
 
-  /// Manual commit — bypasses auto-sync mode check but still respects
-  /// offlineOnly and no-network blocks.
-  Future<FcSyncState?> manualCommit() async {
-    if (_running) return null;
+  void requestSync() {
+    if (_disposed) return;
+    if (_running) {
+      _rerun = true;
+      return;
+    }
+    _editTimer?.cancel();
+    _editTimer = Timer(const Duration(milliseconds: 150), () {
+      unawaited(syncNow());
+    });
+  }
 
-    final decision = await gate.checkManualCommit();
-    if (!decision.allowed) {
-      _log.info('manualCommit: blocked — ${decision.reason}');
+  Future<FcSyncState?> syncNow() => _checkAndRun(manual: false);
+  Future<FcSyncState?> manualCommit() => _checkAndRun(manual: true);
+
+  Future<FcSyncState?> _checkAndRun({required bool manual}) async {
+    if (_disposed) return null;
+    if (_running) {
+      _rerun = true;
       return null;
     }
-
-    return _runSync();
+    _running = true;
+    try {
+      final decision = manual
+          ? await gate.checkManualCommit()
+          : await gate.checkAutoSync();
+      if (!decision.allowed || _disposed) return null;
+      return await _runSync();
+    } catch (error) {
+      if (!_disposed) stateNotifier.setError('Sync could not start: $error');
+      return null;
+    } finally {
+      _running = false;
+      if (_rerun) {
+        _rerun = false;
+        requestSync();
+      }
+    }
   }
 
   // ── Internal ───────────────────────────────────────────────────────────────
 
   Future<FcSyncState?> _runSync() async {
-    _running = true;
     stateNotifier.setSyncing();
 
     FcSyncRunResult mutationResult;
@@ -212,12 +254,11 @@ class FcSyncTrigger {
       );
     } catch (e) {
       _log.severe('FcSyncTrigger: unhandled sync error', e);
-      stateNotifier.setError(e.toString());
-      _running = false;
+      if (!_disposed) stateNotifier.setError(e.toString());
       return null;
     }
 
-    _running = false;
+    if (_disposed) return null;
     stateNotifier.setResult(mutationResult, photoResult);
     onSynced();
 
@@ -241,16 +282,25 @@ class FcSyncTrigger {
 
   void _subscribeToConnectivity() {
     _connectivitySub?.cancel();
-    _connectivitySub = Connectivity().onConnectivityChanged.listen((
-      results,
-    ) async {
-      final isOnline = !results.contains(ConnectivityResult.none);
-      if (isOnline && !_wasOnline) {
-        await Future<void>.delayed(_kConnectivityDebounce);
-        await syncNow();
-      }
-      _wasOnline = isOnline;
-    });
+    _connectivitySub = Connectivity().onConnectivityChanged.listen(
+      networkChanged,
+    );
+  }
+
+  void networkChanged(List<ConnectivityResult> results) {
+    final network = results.contains(ConnectivityResult.wifi)
+        ? FcNetworkType.wifi
+        : results.contains(ConnectivityResult.mobile)
+        ? FcNetworkType.mobile
+        : FcNetworkType.none;
+    if (network == _lastNetwork) return;
+    _lastNetwork = network;
+    _connectivityTimer?.cancel();
+    if (network != FcNetworkType.none && !_disposed) {
+      _connectivityTimer = Timer(_kConnectivityDebounce, () {
+        if (_writes.isNotEmpty) unawaited(syncNow());
+      });
+    }
   }
 }
 

@@ -74,10 +74,16 @@ class FieldCrewDashboardScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: 20,
+              spacing: 16,
               children: [
-                const FcMetricsHeader(),
-                const FcSyncStatusBar(),
+                const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: FcMetricsHeader()),
+                    SizedBox(width: 8),
+                    FcSyncStatusBar(),
+                  ],
+                ),
                 if (assignments.isLoading)
                   const LinearProgressIndicator(
                     semanticsLabel: 'Loading assigned tasks',
@@ -148,49 +154,54 @@ class FieldCrewDashboardScreen extends ConsumerWidget {
                     'Up next',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  Text(
-                    'In-progress tasks come first, then the supplied route order and existing priority order.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  for (final task in active.skip(1).take(3))
+                  for (final task in active.skip(1).take(2))
                     FcTaskQueueCard(task: task),
-                  if (active.length > 4)
+                  if (active.length > 3)
                     Text(
-                      '${active.length - 4} additional active assignments are available in the full task list.',
+                      '${active.length - 3} more in Tasks',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                 ],
-                if (localTasks.isNotEmpty) ...[
-                  Text(
-                    'Recorded complete on this device',
-                    style: Theme.of(context).textTheme.titleLarge,
+                if (localTasks.isNotEmpty || heldTasks.isNotEmpty)
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(bottom: 8),
+                    title: const Text('Device records'),
+                    subtitle: Text(
+                      '${localTasks.length} recorded complete · ${heldTasks.length} on hold',
+                    ),
+                    children: [
+                      if (localTasks.isNotEmpty) ...[
+                        const Text('Recorded complete on this device'),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'Local receipts; check Sync Center for server results.',
+                          ),
+                        ),
+                        for (final task in localTasks.take(3))
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: FcTaskQueueCard(task: task),
+                          ),
+                      ],
+                      if (heldTasks.isNotEmpty) ...[
+                        const Text('On hold on this device'),
+                        for (final task in heldTasks.take(3))
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: FcTaskQueueCard(task: task),
+                          ),
+                      ],
+                    ],
                   ),
-                  Text(
-                    'These completion receipts were recorded on this device in this session. They may already be synced; review Sync Center for server results.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  for (final task in localTasks.take(3))
-                    FcTaskQueueCard(task: task),
-                ],
-                if (heldTasks.isNotEmpty) ...[
-                  Text(
-                    'On hold on this device',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  Text(
-                    'These assignments are not selected as the next task. Open details to review their instructions.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  for (final task in heldTasks.take(3))
-                    FcTaskQueueCard(task: task),
-                ],
                 TextButton(
                   onPressed: () => context.go(FieldCrewAppRoutes.tasks),
                   child: const Text('View all assignments'),
                 ),
                 const _PreparationLink(),
                 Text(
-                  'Loaded assignments may include cached records. Refresh when connected to check for updates.',
+                  'May include cached records. Pull to refresh.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -215,7 +226,8 @@ class _PreparationLink extends ConsumerWidget {
               ? 'Offline package has gaps'
               : 'Review offline preparation'
         : 'Prepare assigned work for offline use';
-    return OutlinedButton.icon(
+    return TextButton.icon(
+      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
       onPressed: () => context.push(FieldCrewAppRoutes.prepareOffline),
       icon: const Icon(Icons.download_for_offline_outlined),
       label: Text(label),

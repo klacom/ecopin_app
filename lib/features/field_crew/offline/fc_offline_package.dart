@@ -28,10 +28,10 @@
 /// Phase of the offline package download.
 enum FcOfflinePackagePhase {
   idle,
-  estimating,   // calculating storage requirement
-  downloading,  // actively fetching data
-  ready,        // all data cached; safe to go offline
-  failed,       // download encountered a fatal error
+  estimating, // calculating storage requirement
+  downloading, // actively fetching data
+  ready, // attempt finished; inspect section errors before going offline
+  failed, // download encountered a fatal error
 }
 
 /// One step in the download sequence shown to the user.
@@ -43,21 +43,17 @@ class FcDownloadStep {
 
   const FcDownloadStep({
     required this.label,
-    this.completed  = false,
+    this.completed = false,
     this.inProgress = false,
     this.error,
   });
 
-  FcDownloadStep copyWith({
-    bool? completed,
-    bool? inProgress,
-    String? error,
-  }) =>
+  FcDownloadStep copyWith({bool? completed, bool? inProgress, String? error}) =>
       FcDownloadStep(
-        label:      label,
-        completed:  completed  ?? this.completed,
+        label: label,
+        completed: completed ?? this.completed,
         inProgress: inProgress ?? this.inProgress,
-        error:      error,
+        error: error,
       );
 }
 
@@ -73,6 +69,9 @@ class FcOfflinePackageState {
   final int reportCount;
   final int evidenceCount;
   final int noteCount;
+  final int routeCount;
+  final List<String> taskTitles;
+  final List<String> reportTitles;
 
   // Download progress steps (ordered).
   final List<FcDownloadStep> steps;
@@ -83,18 +82,21 @@ class FcOfflinePackageState {
   final String? errorMessage;
 
   const FcOfflinePackageState({
-    this.phase         = FcOfflinePackagePhase.idle,
+    this.phase = FcOfflinePackagePhase.idle,
     this.estimatedBytes = 0,
-    this.taskCount     = 0,
-    this.reportCount   = 0,
+    this.taskCount = 0,
+    this.reportCount = 0,
     this.evidenceCount = 0,
-    this.noteCount     = 0,
-    this.steps         = const [],
+    this.noteCount = 0,
+    this.routeCount = 0,
+    this.taskTitles = const [],
+    this.reportTitles = const [],
+    this.steps = const [],
     this.preparedAt,
     this.errorMessage,
   });
 
-  bool get isReady     => phase == FcOfflinePackagePhase.ready;
+  bool get isReady => phase == FcOfflinePackagePhase.ready;
   bool get isDownloading =>
       phase == FcOfflinePackagePhase.downloading ||
       phase == FcOfflinePackagePhase.estimating;
@@ -116,21 +118,26 @@ class FcOfflinePackageState {
     int? reportCount,
     int? evidenceCount,
     int? noteCount,
+    int? routeCount,
+    List<String>? taskTitles,
+    List<String>? reportTitles,
     List<FcDownloadStep>? steps,
     DateTime? preparedAt,
     String? errorMessage,
-  }) =>
-      FcOfflinePackageState(
-        phase:           phase           ?? this.phase,
-        estimatedBytes:  estimatedBytes  ?? this.estimatedBytes,
-        taskCount:       taskCount       ?? this.taskCount,
-        reportCount:     reportCount     ?? this.reportCount,
-        evidenceCount:   evidenceCount   ?? this.evidenceCount,
-        noteCount:       noteCount       ?? this.noteCount,
-        steps:           steps           ?? this.steps,
-        preparedAt:      preparedAt      ?? this.preparedAt,
-        errorMessage:    errorMessage,
-      );
+  }) => FcOfflinePackageState(
+    phase: phase ?? this.phase,
+    estimatedBytes: estimatedBytes ?? this.estimatedBytes,
+    taskCount: taskCount ?? this.taskCount,
+    reportCount: reportCount ?? this.reportCount,
+    evidenceCount: evidenceCount ?? this.evidenceCount,
+    noteCount: noteCount ?? this.noteCount,
+    routeCount: routeCount ?? this.routeCount,
+    taskTitles: taskTitles ?? this.taskTitles,
+    reportTitles: reportTitles ?? this.reportTitles,
+    steps: steps ?? this.steps,
+    preparedAt: preparedAt ?? this.preparedAt,
+    errorMessage: errorMessage,
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,20 +145,20 @@ class FcOfflinePackageState {
 // ─────────────────────────────────────────────────────────────────────────────
 
 abstract class FcOfflineStepLabel {
-  static const String tasks      = 'Assigned cleanup tasks';
-  static const String reports    = 'Assigned reports';
-  static const String evidence   = 'Citizen evidence metadata';
-  static const String notes      = 'Field notes';
+  static const String tasks = 'Assigned cleanup tasks';
+  static const String reports = 'Assigned reports';
+  static const String evidence = 'Citizen evidence metadata';
+  static const String notes = 'Field notes';
   static const String issueTypes = 'Reference data';
-  static const String routes     = 'Active routes';
+  static const String routes = 'Active routes';
 }
 
 /// Constructs the initial (all pending) steps list.
 List<FcDownloadStep> buildInitialSteps() => [
-      const FcDownloadStep(label: FcOfflineStepLabel.tasks),
-      const FcDownloadStep(label: FcOfflineStepLabel.reports),
-      const FcDownloadStep(label: FcOfflineStepLabel.evidence),
-      const FcDownloadStep(label: FcOfflineStepLabel.notes),
-      const FcDownloadStep(label: FcOfflineStepLabel.issueTypes),
-      const FcDownloadStep(label: FcOfflineStepLabel.routes),
-    ];
+  const FcDownloadStep(label: FcOfflineStepLabel.tasks),
+  const FcDownloadStep(label: FcOfflineStepLabel.reports),
+  const FcDownloadStep(label: FcOfflineStepLabel.evidence),
+  const FcDownloadStep(label: FcOfflineStepLabel.notes),
+  const FcDownloadStep(label: FcOfflineStepLabel.issueTypes),
+  const FcDownloadStep(label: FcOfflineStepLabel.routes),
+];

@@ -8,6 +8,8 @@ class CleanupTask {
   final String priority;
   final String location;
   final String? streetAddress;
+  final String? assignedTeamName;
+  final List<Map<String, dynamic>> assignedMembers;
   final String taskType;
   final bool isCustom;
   final String? clusterId;
@@ -36,6 +38,8 @@ class CleanupTask {
     required this.priority,
     required this.location,
     this.streetAddress,
+    this.assignedTeamName,
+    this.assignedMembers = const [],
     required this.taskType,
     required this.isCustom,
     this.clusterId,
@@ -65,9 +69,10 @@ class CleanupTask {
 
   static Map<String, int> _parseClaimGenerations(dynamic value) {
     if (value is! Map) return const {};
-    return value.map((key, generation) => MapEntry(
-      key.toString(), int.tryParse(generation.toString()) ?? 0,
-    ));
+    return value.map(
+      (key, generation) =>
+          MapEntry(key.toString(), int.tryParse(generation.toString()) ?? 0),
+    );
   }
 
   factory CleanupTask.fromJson(Map<String, dynamic> json) {
@@ -78,7 +83,13 @@ class CleanupTask {
       status: json['status']?.toString() ?? 'pending',
       priority: json['priority']?.toString() ?? 'normal',
       location: json['location']?.toString() ?? 'Unknown Location',
-      streetAddress: json['street_address']?.toString() ?? json['address']?.toString(),
+      streetAddress:
+          json['street_address']?.toString() ?? json['address']?.toString(),
+      assignedTeamName: json['assigned_team']?['name']?.toString(),
+      assignedMembers: (json['assigned_members'] as List? ?? [])
+          .whereType<Map>()
+          .map((m) => Map<String, dynamic>.from(m))
+          .toList(),
       taskType: json['task_type']?.toString() ?? 'cleanup',
       isCustom: json['is_custom'] == true || json['is_custom'] == 'true',
       clusterId: json['cluster_id']?.toString(),
@@ -88,23 +99,36 @@ class CleanupTask {
       beforePhotoUrl: json['before_photo_url']?.toString(),
       afterPhotoUrl: json['after_photo_url']?.toString(),
       reportSequence: _parseStringList(json['report_sequence']),
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
-      reports: (json['reports'] as List<dynamic>?)?.whereType<Map<String, dynamic>>().map((e) {
-        try {
-          return ReportModel.fromJson(e);
-        } catch (err) {
-          // Ignore individual report parse failures so the whole task doesn't crash
-          return null;
-        }
-      }).whereType<ReportModel>().toList(),
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+          DateTime.now(),
+      reports: (json['reports'] as List<dynamic>?)
+          ?.whereType<Map<String, dynamic>>()
+          .map((e) {
+            try {
+              return ReportModel.fromJson(e);
+            } catch (err) {
+              // Ignore individual report parse failures so the whole task doesn't crash
+              return null;
+            }
+          })
+          .whereType<ReportModel>()
+          .toList(),
       dispatchKind: json['dispatch_kind']?.toString() ?? 'standard',
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
-      assignmentGeneration: int.tryParse(json['assignment_generation']?.toString() ?? '') ?? 0,
+      assignmentGeneration:
+          int.tryParse(json['assignment_generation']?.toString() ?? '') ?? 0,
       assignedFieldCrewId: json['assigned_field_crew_id']?.toString(),
-      reportClaimGenerations: _parseClaimGenerations(json['report_claim_generations']),
+      reportClaimGenerations: _parseClaimGenerations(
+        json['report_claim_generations'],
+      ),
       satelliteReportIds: _parseStringList(json['satellite_report_ids']),
-      bundleDetourMin: num.tryParse(json['bundle_detour_min']?.toString() ?? ''),
+      bundleDetourMin: num.tryParse(
+        json['bundle_detour_min']?.toString() ?? '',
+      ),
     );
   }
 
@@ -117,6 +141,8 @@ class CleanupTask {
       'priority': priority,
       'location': location,
       'street_address': streetAddress,
+      'assigned_team': {'id': assignedFieldCrewId, 'name': assignedTeamName},
+      'assigned_members': assignedMembers,
       'task_type': taskType,
       'is_custom': isCustom,
       'cluster_id': clusterId,

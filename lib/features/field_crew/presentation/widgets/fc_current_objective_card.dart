@@ -36,8 +36,8 @@ class FcCurrentObjectiveCard extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        Text(task.title, style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 12),
+        Text(task.title, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,18 +54,13 @@ class FcCurrentObjectiveCard extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         AppButton(
           text: 'Open current task',
           onPressed: () async {
             await context.push(crewTaskPath(task.id));
             if (context.mounted) ref.invalidate(fcPendingSummaryProvider);
           },
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Review the task instructions and available response actions.',
-          style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
     ),

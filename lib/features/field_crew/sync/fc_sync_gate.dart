@@ -13,10 +13,10 @@ enum FcNetworkType { wifi, mobile, none }
 
 extension FcNetworkTypeLabel on FcNetworkType {
   String get label => switch (this) {
-        FcNetworkType.wifi   => 'Wi-Fi',
-        FcNetworkType.mobile => 'Mobile Data',
-        FcNetworkType.none   => 'Offline',
-      };
+    FcNetworkType.wifi => 'Wi-Fi',
+    FcNetworkType.mobile => 'Mobile Data',
+    FcNetworkType.none => 'Offline',
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -38,11 +38,12 @@ class FcPendingSummary {
     required this.estimatedBytes,
   });
 
-  bool get isEmpty => mutationCount == 0 && photoCount == 0 && pendingDeleteCount == 0;
+  bool get isEmpty =>
+      mutationCount == 0 && photoCount == 0 && pendingDeleteCount == 0;
 
   String get formattedSize {
     if (estimatedBytes <= 0) return '';
-    if (estimatedBytes < 1024) return '${estimatedBytes} B';
+    if (estimatedBytes < 1024) return '$estimatedBytes B';
     if (estimatedBytes < 1024 * 1024) {
       return '${(estimatedBytes / 1024).toStringAsFixed(1)} KB';
     }
@@ -92,10 +93,12 @@ class FcGateDecision {
   factory FcGateDecision.block(FcNetworkType type, String reason) =>
       FcGateDecision(allowed: false, networkType: type, reason: reason);
 
-  factory FcGateDecision.allow(FcNetworkType type,
-          {bool confirm = false}) =>
+  factory FcGateDecision.allow(FcNetworkType type, {bool confirm = false}) =>
       FcGateDecision(
-          allowed: true, networkType: type, requiresConfirmation: confirm);
+        allowed: true,
+        networkType: type,
+        requiresConfirmation: confirm,
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,20 +109,30 @@ class FcGateDecision {
 /// and network type.
 ///
 /// This is a plain Dart class — not a [Notifier]. The Riverpod provider
-/// reconstructs it whenever [FcSyncSettings] changes.
+/// supplies the latest persisted policy for each decision.
 class FcSyncGate {
   final FcSyncSettings settings;
   final FcLocalRepository _localRepo;
   final FcLocalPhotoRepository _photoRepo;
 
-  const FcSyncGate(this.settings, this._localRepo, this._photoRepo);
+  final Future<FcSyncSettings> Function()? readSettings;
+  const FcSyncGate(
+    this.settings,
+    this._localRepo,
+    this._photoRepo, {
+    this.readSettings,
+  });
+  Future<FcSyncSettings> _policy() async =>
+      readSettings == null ? settings : await readSettings!();
 
   // ── Network detection ──────────────────────────────────────────────────────
 
   Future<FcNetworkType> _networkType() async {
     final results = await Connectivity().checkConnectivity();
     if (results.contains(ConnectivityResult.wifi)) return FcNetworkType.wifi;
-    if (results.contains(ConnectivityResult.mobile)) return FcNetworkType.mobile;
+    if (results.contains(ConnectivityResult.mobile)) {
+      return FcNetworkType.mobile;
+    }
     return FcNetworkType.none;
   }
 
@@ -127,16 +140,22 @@ class FcSyncGate {
 
   /// Called before each automatic (periodic / connectivity-restore) sync.
   Future<FcGateDecision> checkAutoSync() async {
-    if (settings.syncBlocked) {
-      return FcGateDecision.block(FcNetworkType.none, 'Offline Only mode is enabled');
+    final policy = await _policy();
+    if (policy.syncBlocked) {
+      return FcGateDecision.block(
+        FcNetworkType.none,
+        'Offline Only mode is enabled',
+      );
     }
-    if (!settings.autoSyncEnabled) {
-      return FcGateDecision.block(FcNetworkType.none,
-          'Manual Commit mode — tap "Commit Changes" to upload');
+    if (!policy.autoSyncEnabled) {
+      return FcGateDecision.block(
+        FcNetworkType.none,
+        'Manual Commit mode — tap "Commit Changes" to upload',
+      );
     }
 
     final type = await _networkType();
-    return _evaluateNetwork(type, forManualCommit: false);
+    return _evaluateNetwork(type, forManualCommit: false, policy: policy);
   }
 
   // ── Manual-commit gate ─────────────────────────────────────────────────────
@@ -146,34 +165,44 @@ class FcSyncGate {
   /// Offline Only and no-network still block.  Manual Commit mode is allowed
   /// (that is the whole point of the button).
   Future<FcGateDecision> checkManualCommit() async {
-    if (settings.syncBlocked) {
-      return FcGateDecision.block(FcNetworkType.none, 'Offline Only mode is enabled');
+    final policy = await _policy();
+    if (policy.syncBlocked) {
+      return FcGateDecision.block(
+        FcNetworkType.none,
+        'Offline Only mode is enabled',
+      );
     }
     final type = await _networkType();
-    return _evaluateNetwork(type, forManualCommit: true);
+    return _evaluateNetwork(type, forManualCommit: true, policy: policy);
   }
 
-  FcGateDecision _evaluateNetwork(FcNetworkType type,
-      {required bool forManualCommit}) {
+  FcGateDecision _evaluateNetwork(
+    FcNetworkType type, {
+    required bool forManualCommit,
+    required FcSyncSettings policy,
+  }) {
     switch (type) {
       case FcNetworkType.none:
         return FcGateDecision.block(type, 'No network connection');
 
       case FcNetworkType.wifi:
-        if (!settings.syncOverWifi) {
+        if (!policy.syncOverWifi) {
           return FcGateDecision.block(
-              type, 'Wi-Fi sync is disabled in settings');
+            type,
+            'Wi-Fi sync is disabled in settings',
+          );
         }
         return FcGateDecision.allow(type);
 
       case FcNetworkType.mobile:
-        if (!settings.syncOverMobileData) {
+        if (!policy.syncOverMobileData) {
           return FcGateDecision.block(
-              type, 'Mobile data sync is disabled in settings');
+            type,
+            'Mobile data sync is disabled in settings',
+          );
         }
         // Mobile data is allowed but show confirmation on manual commits.
-        return FcGateDecision.allow(type,
-            confirm: forManualCommit);
+        return FcGateDecision.allow(type, confirm: forManualCommit);
     }
   }
 
@@ -181,7 +210,7 @@ class FcSyncGate {
 
   /// Returns pending mutation count, photo count, and estimated upload size.
   Future<FcPendingSummary> getPendingSummary() async {
-    final mutations      = await _localRepo.getPendingOutboxItems();
+    final mutations = await _localRepo.getPendingOutboxItems();
     final pendingUploads = await _photoRepo.getPendingUploads();
     final pendingDeletes = await _photoRepo.getPendingDeletes();
 
@@ -193,11 +222,11 @@ class FcSyncGate {
     }
 
     return FcPendingSummary(
-      mutationCount:    mutations.length,
-      photoCount:       pendingUploads.length,
+      mutationCount: mutations.length,
+      photoCount: pendingUploads.length,
       failedPhotoCount: failedPhotos,
       pendingDeleteCount: pendingDeletes.length,
-      estimatedBytes:   estimatedBytes,
+      estimatedBytes: estimatedBytes,
     );
   }
 }
@@ -207,8 +236,16 @@ class FcSyncGate {
 // ─────────────────────────────────────────────────────────────────────────────
 
 final fcSyncGateProvider = Provider<FcSyncGate>((ref) {
-  final settings   = ref.watch(fcSyncSettingsProvider);
-  final localRepo  = ref.watch(fcLocalRepositoryProvider);
-  final photoRepo  = ref.watch(fcLocalPhotoRepositoryProvider);
-  return FcSyncGate(settings, localRepo, photoRepo);
+  const settings = FcSyncSettings();
+  final localRepo = ref.watch(fcLocalRepositoryProvider);
+  final photoRepo = ref.watch(fcLocalPhotoRepositoryProvider);
+  return FcSyncGate(
+    settings,
+    localRepo,
+    photoRepo,
+    readSettings: () async {
+      await ref.read(fcSyncSettingsProvider.notifier).ready;
+      return ref.read(fcSyncSettingsProvider);
+    },
+  );
 });

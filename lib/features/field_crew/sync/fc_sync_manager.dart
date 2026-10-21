@@ -358,6 +358,15 @@ class FcSyncManager {
     Map<String, dynamic> serverRecord,
   ) async {
     try {
+      if (item.operationType == FcOutboxOperationType.addNote) {
+        final payload = jsonDecode(item.payloadJson) as Map<String, dynamic>;
+        await _local.reconcileSyncedNote(
+          item.entityId,
+          payload['_local_note_id'] as String?,
+          serverRecord,
+        );
+        return;
+      }
       if (item.entityType == 'report') {
         await _local.applyLocalReportPatch(item.entityId, serverRecord);
         await _local.markFcReportSynced(item.entityId);

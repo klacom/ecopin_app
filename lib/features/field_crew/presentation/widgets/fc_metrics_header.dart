@@ -17,13 +17,8 @@ class FcMetricsHeader extends ConsumerWidget {
           header: true,
           child: Text(
             firstName == null ? 'Your assigned work' : 'Hello, $firstName',
-            style: Theme.of(context).textTheme.headlineSmall,
+            style: Theme.of(context).textTheme.titleLarge,
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Review your current task, route, and work saved on this device.',
-          style: Theme.of(context).textTheme.bodyMedium,
         ),
       ],
     );

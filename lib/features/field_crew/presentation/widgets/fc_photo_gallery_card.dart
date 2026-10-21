@@ -1,140 +1,146 @@
 import 'package:flutter/material.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/fullscreen_image_view.dart';
+import '../controllers/fc_task_detail_presentation.dart';
+import 'fc_offline_ui.dart';
 
 class FcPhotoGalleryCard extends StatelessWidget {
+  const FcPhotoGalleryCard({
+    super.key,
+    required this.reports,
+    this.evidenceByReport = const {},
+    this.isLoading = false,
+    this.error,
+    this.onRetry,
+  });
   final List<ReportModel> reports;
-
-  const FcPhotoGalleryCard({super.key, required this.reports});
-
+  final Map<String, List<dynamic>> evidenceByReport;
+  final bool isLoading;
+  final String? error;
+  final VoidCallback? onRetry;
   @override
   Widget build(BuildContext context) {
-    final List<String> beforePhotos = reports.map((r) => r.beforePhotoUrl).whereType<String>().toList();
-    final List<String> afterPhotos = reports.map((r) => r.afterPhotoUrl).whereType<String>().toList();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
-    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
-
-    if (beforePhotos.isEmpty && afterPhotos.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppColors.spaceLG),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(AppColors.radiusCard),
-          boxShadow: [
-            if (!isDark)
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-          ],
-          border: Border.all(color: borderColor),
-        ),
-        child: Center(
-          child: Text('No photos uploaded yet.', style: AppTypography.body.copyWith(color: Colors.grey)),
-        ),
-      );
+    final photos = <(ReportModel, String)>[];
+    var videos = 0;
+    for (final report in reports) {
+      for (final row in evidenceByReport[report.id] ?? []) {
+        final url = citizenEvidenceUrl(row);
+        if (url == null) continue;
+        if (citizenEvidenceIsVideo(row)) {
+          videos++;
+        } else {
+          photos.add((report, url));
+        }
+      }
     }
-
-    return Container(
-      padding: const EdgeInsets.all(AppColors.spaceLG),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-        ],
-        border: Border.all(color: borderColor),
-      ),
+    final known = reports.every((r) => evidenceByReport.containsKey(r.id));
+    final text = Theme.of(context).textTheme;
+    return FcOfflineCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Task Gallery', style: AppTypography.h5.copyWith(color: textColor)),
-          const SizedBox(height: AppColors.spaceMD),
-          if (beforePhotos.isNotEmpty) ...[
-            Text('Before', style: AppTypography.label.copyWith(color: Colors.grey)),
-            const SizedBox(height: AppColors.spaceSM),
-            _buildPhotoGrid(context, beforePhotos),
-            const SizedBox(height: AppColors.spaceMD),
+          Text('Citizen evidence', style: text.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            'Submitted with the linked reports. Cleanup photos stay in each report.',
+            style: text.bodySmall,
+          ),
+          if (isLoading) ...[
+            const SizedBox(height: 12),
+            const LinearProgressIndicator(
+              semanticsLabel: 'Loading citizen evidence',
+            ),
           ],
-          if (afterPhotos.isNotEmpty) ...[
-            Text('After', style: AppTypography.label.copyWith(color: Colors.grey)),
-            const SizedBox(height: AppColors.spaceSM),
-            _buildPhotoGrid(context, afterPhotos),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(error!, style: text.bodyMedium),
           ],
+          if (photos.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${photos.length} ${photos.length == 1 ? 'photo' : 'photos'}',
+              style: text.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 120 + MediaQuery.textScalerOf(context).scale(14) * 3.2,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: photos.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final (report, url) = photos[index];
+                  return SizedBox(
+                    width: 148,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Semantics(
+                          button: true,
+                          label: 'View citizen photo from ${report.title}',
+                          child: Material(
+                            clipBehavior: Clip.antiAlias,
+                            borderRadius: BorderRadius.circular(12),
+                            child: InkWell(
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      FullScreenImageView(imageUrl: url),
+                                ),
+                              ),
+                              child: ExcludeSemantics(
+                                child: PrivateMediaImage(
+                                  url,
+                                  width: 148,
+                                  height: 112,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stack) =>
+                                      const Center(child: Text('Photo unavailable')),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          report.title,
+                          style: text.bodySmall,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ] else if (!isLoading && error == null) ...[
+            const SizedBox(height: 16),
+            Text(
+              known
+                  ? (reports.isEmpty
+                        ? 'No linked reports to preview.'
+                        : 'No citizen photo evidence on these reports.')
+                  : 'Citizen evidence has not been loaded yet.',
+              style: text.bodyMedium,
+            ),
+          ],
+          if (videos > 0)
+            Text(
+              '$videos ${videos == 1 ? 'video' : 'videos'} · open the corresponding report to view.',
+              style: text.bodySmall,
+            ),
+          if (onRetry != null && (error != null || (!known && !isLoading)))
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: isLoading ? null : onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry citizen evidence'),
+              ),
+            ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPhotoGrid(BuildContext context, List<String> urls) {
-    return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: urls.length,
-        itemBuilder: (context, index) {
-          final url = urls[index];
-          return GestureDetector(
-            onTap: () => _showLightbox(context, url),
-            child: Container(
-              margin: const EdgeInsets.only(right: AppColors.spaceSM),
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppColors.radiusCard),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: PrivateMediaImage(
-                url,
-                fit: BoxFit.cover,
-                width: 100,
-                height: 100,
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showLightbox(BuildContext context, String url) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.zero,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            InteractiveViewer(
-              child: PrivateMediaImage(
-                url,
-                fit: BoxFit.contain,
-                width: double.infinity,
-                height: double.infinity,
-              ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

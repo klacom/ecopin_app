@@ -1,112 +1,93 @@
 import 'package:flutter/material.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../controllers/fc_task_detail_presentation.dart';
 
 class FcMarkCompleteButton extends StatefulWidget {
-  final CleanupTask task;
-  final List<ReportModel> reports;
-  final Future<void> Function() onComplete;
-
   const FcMarkCompleteButton({
     super.key,
     required this.task,
     required this.reports,
     required this.onComplete,
+    this.isRefreshing = false,
   });
-
+  final CleanupTask task;
+  final List<ReportModel> reports;
+  final Future<void> Function() onComplete;
+  final bool isRefreshing;
   @override
   State<FcMarkCompleteButton> createState() => _FcMarkCompleteButtonState();
 }
 
 class _FcMarkCompleteButtonState extends State<FcMarkCompleteButton> {
-  bool _isSubmitting = false;
-
+  bool _saving = false;
   @override
   Widget build(BuildContext context) {
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    final isAssigned = currentUserId != null && widget.task.assignedCrewIds.contains(currentUserId);
-    
-    if (!isAssigned) {
+    final actor = Supabase.instance.client.auth.currentUser?.id;
+    if (actor == null || !widget.task.assignedCrewIds.contains(actor)) {
       return const SizedBox.shrink();
     }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surfaceDark : Colors.grey.shade200;
-
-    if (widget.task.status == 'completed') {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: null,
-          icon: const Icon(Icons.check_circle, color: AppColors.success),
-          label: Text('Task Completed', style: AppTypography.button.copyWith(color: AppColors.success)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: surfaceColor,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
-            disabledBackgroundColor: surfaceColor,
+    final terminal = {
+      'completed',
+      'cancelled',
+    }.contains(widget.task.status.toLowerCase());
+    final canComplete =
+        !terminal &&
+        !widget.isRefreshing &&
+        widget.reports.length == taskReportIds(widget.task).length &&
+        widget.reports.every(reportIsHandled);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FilledButton(
+          onPressed: canComplete && !_saving
+              ? () async {
+                  setState(() => _saving = true);
+                  try {
+                    await widget.onComplete();
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Completion could not be saved. Refresh the task and try again.',
+                          ),
+                        ),
+                      );
+                    }
+                  } finally {
+                    if (mounted) setState(() => _saving = false);
+                  }
+                }
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    terminal
+                        ? (widget.task.status == 'completed'
+                              ? 'Task completed'
+                              : 'Task cancelled')
+                        : 'Mark task complete',
+                  ),
           ),
         ),
-      );
-    }
-
-    bool allReportsResolved = true;
-    bool hasBefore = widget.task.beforePhotoUrl != null;
-    bool hasAfter = widget.task.afterPhotoUrl != null;
-
-    for (var r in widget.reports) {
-      bool isScouting = r.issueType == 'scouting' || r.issueType == 'acknowledge_only';
-      bool isResolved = r.status.toLowerCase() == 'resolved' || r.status.toLowerCase() == 'completed';
-      
-      if (isScouting) {
-        if (r.validationStatus.toLowerCase() != 'validated' && !isResolved) {
-          allReportsResolved = false;
-        }
-      } else {
-        if (!isResolved) {
-          allReportsResolved = false;
-        }
-      }
-      
-      if (r.beforePhotoUrl != null) hasBefore = true;
-      if (r.afterPhotoUrl != null) hasAfter = true;
-    }
-
-    bool canComplete = allReportsResolved && hasBefore && hasAfter;
-
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: canComplete && !_isSubmitting ? () async {
-          setState(() => _isSubmitting = true);
-          try {
-            await widget.onComplete();
-          } finally {
-            if (mounted) setState(() => _isSubmitting = false);
-          }
-        } : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryDark,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: surfaceColor,
-          disabledForegroundColor: Colors.grey,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusButton)),
-        ),
-        child: _isSubmitting
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              )
-            : Text(
-                canComplete ? 'Mark Task Complete' : 'Cannot Complete Yet',
-                style: AppTypography.button,
-              ),
-      ),
+        if (!terminal) ...[
+          const SizedBox(height: 8),
+          Text(
+            canComplete
+                ? 'Completion is saved locally, then checked by the server during sync.'
+                : 'Handle every linked report before completing this task.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ],
     );
   }
 }

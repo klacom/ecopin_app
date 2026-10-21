@@ -61,11 +61,30 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
   Widget build(BuildContext context) {
     final profile = ref.watch(profileProvider);
     final avatar = profile.value?['avatar_url'] as String?;
+    final theme = Theme.of(context);
+    final canvas = theme.brightness == Brightness.light
+        ? Color(
+            Color.alphaBlend(
+              (theme.dividerTheme.color ?? theme.colorScheme.outlineVariant)
+                  .withValues(alpha: .5),
+              theme.scaffoldBackgroundColor,
+            ).toARGB32(),
+          )
+        : theme.scaffoldBackgroundColor;
     return Scaffold(
-      body: widget.child,
+      backgroundColor: canvas,
+      body: Theme(
+        data: theme.copyWith(
+          scaffoldBackgroundColor: canvas,
+          appBarTheme: theme.appBarTheme.copyWith(backgroundColor: canvas),
+        ),
+        child: widget.child,
+      ),
       bottomNavigationBar: _isDetailRoute(context)
           ? null
           : AppNavigationBar(
+              key: const Key('crew-navigation'),
+              compact: true,
               selectedIndex: _calculateSelectedIndex(context),
               onSelected: (index) => _onItemTapped(index, context),
               destinations: [
@@ -92,7 +111,7 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
                 NavigationDestination(
                   icon: AppNavAvatar(source: avatar),
                   selectedIcon: AppNavAvatar(source: avatar),
-                  label: 'Account',
+                  label: 'Profile',
                 ),
               ],
             ),

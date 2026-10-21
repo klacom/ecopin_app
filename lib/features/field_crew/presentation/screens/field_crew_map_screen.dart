@@ -886,7 +886,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
           );
         },
         loading: () => const _MapSkeleton(),
-        error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.error))),
+        error: (err, _) => _buildEmptyState(unavailable: true),
       ),
     );
   }
@@ -1234,27 +1234,36 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({bool unavailable = false}) {
+    final theme = Theme.of(context);
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.map_outlined, size: 64, color: AppColors.primaryDark.withValues(alpha: 0.5)),
-          const SizedBox(height: AppColors.spaceLG),
-          Text(
-            '[ NO ACTIVE ROUTE ASSIGNED ]',
-            style: AppTypography.h5.copyWith(color: AppColors.textPrimaryDark),
-          ),
-          const SizedBox(height: AppColors.spaceSM),
-          Text(
-            'You do not have an active route assigned for today,\nor it has not been approved yet.',
-            textAlign: TextAlign.center,
-            style: AppTypography.body.copyWith(color: Colors.grey),
-          ),
-        ],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.map_outlined, size: 64, color: theme.colorScheme.primary),
+            const SizedBox(height: 24),
+            Text(unavailable ? 'Route could not load' : 'No published route available',
+              textAlign: TextAlign.center, style: theme.textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(unavailable
+                ? 'Check your connection and refresh. Your assigned tasks are still available in Tasks.'
+                : 'Assigned tasks can exist without a published route. Review your Tasks, or ask your officer to publish a route for your crew.',
+              textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () {
+                ref.invalidate(activeRoutesProvider);
+                ref.invalidate(myRouteProvider);
+              },
+              icon: const Icon(Icons.refresh), label: const Text('Refresh route')),
+          ],
+        ),
       ),
     );
   }
+
 }
 
 class _MapSkeleton extends StatelessWidget {

@@ -16,6 +16,7 @@ class FcPhotoSyncRunResult {
   final int deleteAttempted;
   final int deleteSucceeded;
   final int deleteFailed;
+  final int uploadSkipped;
 
   const FcPhotoSyncRunResult({
     required this.uploadAttempted,
@@ -24,10 +25,11 @@ class FcPhotoSyncRunResult {
     required this.deleteAttempted,
     required this.deleteSucceeded,
     required this.deleteFailed,
+    this.uploadSkipped = 0,
   });
 
   bool get allSucceeded =>
-      uploadFailed == 0 && deleteFailed == 0;
+      uploadFailed == 0 && deleteFailed == 0 && uploadSkipped == 0;
 
   @override
   String toString() =>
@@ -88,13 +90,27 @@ class FcPhotoSyncManager {
 
   /// Runs both upload and delete passes.
   Future<FcPhotoSyncRunResult> sync() async {
+    int uploadSkipped = 0;
     int uploadAttempted = 0, uploadSucceeded = 0, uploadFailed = 0;
     int deleteAttempted = 0, deleteSucceeded = 0, deleteFailed = 0;
 
-    // ── Pass 1: Uploads ──────────────────────────────────────────────────────
+    // ── Pass 1: Deletions (free capacity before replacement uploads) ────────────────────────────────────────────────────
+    final pendingDeletes = await _photoRepo.getPendingDeletes();
+    for (final photo in pendingDeletes) {
+      deleteAttempted++;
+      final success = await _deletePhoto(photo);
+      if (success) {
+        deleteSucceeded++;
+      } else {
+        deleteFailed++;
+      }
+    }
+
+    // ── Pass 2: Uploads ──────────────────────────────────────────────────────
     final pendingUploads = await _photoRepo.getPendingUploads();
     for (final photo in pendingUploads) {
       if (photo.retryCount >= _kMaxRetries) {
+        uploadSkipped++;
         _log.warning(
           'Skipping ${photo.localPhotoId}: max retries (${photo.retryCount}) exceeded',
         );
@@ -110,19 +126,8 @@ class FcPhotoSyncManager {
       }
     }
 
-    // ── Pass 2: Deletions ────────────────────────────────────────────────────
-    final pendingDeletes = await _photoRepo.getPendingDeletes();
-    for (final photo in pendingDeletes) {
-      deleteAttempted++;
-      final success = await _deletePhoto(photo);
-      if (success) {
-        deleteSucceeded++;
-      } else {
-        deleteFailed++;
-      }
-    }
-
     return FcPhotoSyncRunResult(
+      uploadSkipped: uploadSkipped,
       uploadAttempted: uploadAttempted,
       uploadSucceeded: uploadSucceeded,
       uploadFailed: uploadFailed,
@@ -153,6 +158,7 @@ class FcPhotoSyncManager {
           : null;
       final formData = FormData.fromMap({
         'photo_type': photo.photoType,
+        'photo_id': photo.localPhotoId,
         if (reportVersion != null) 'base_version': reportVersion.toString(),
         'image': await MultipartFile.fromFile(
           photo.localPath,
@@ -174,8 +180,14 @@ class FcPhotoSyncManager {
       );
 
       // Parse the remote URL and id from the response.
-      final remoteUrl = _extractUrl(response.data, photo.entityType, photo.photoType);
-      final remoteId = _extractId(response.data);
+      final remoteUrl = _extractUrl(
+        response.data,
+        photo.entityType,
+        photo.photoType,
+      );
+      final remoteId = response.data is Map && response.data['photo_id'] != null
+          ? response.data['photo_id'] as String
+          : _extractId(response.data);
 
       await _photoRepo.markSynced(
         photo.localPhotoId,
@@ -184,12 +196,20 @@ class FcPhotoSyncManager {
       );
 
       // Retain the server version for the next offline write.
-      final record = response.data is Map ? response.data[photo.entityType] : null;
+      final record = response.data is Map
+          ? response.data[photo.entityType]
+          : null;
       if (record is Map) {
         if (photo.entityType == 'report') {
-          await _local.applyLocalReportPatch(photo.entityId, Map<String, dynamic>.from(record));
+          await _local.applyLocalReportPatch(
+            photo.entityId,
+            Map<String, dynamic>.from(record),
+          );
         } else {
-          await _local.applyLocalTaskPatch(photo.entityId, Map<String, dynamic>.from(record));
+          await _local.applyLocalTaskPatch(
+            photo.entityId,
+            Map<String, dynamic>.from(record),
+          );
         }
       } else if (remoteUrl != null) {
         await _patchEntityCache(photo, remoteUrl);
@@ -204,15 +224,33 @@ class FcPhotoSyncManager {
       );
       return true;
     } on DioException catch (e, st) {
+      if (photo.entityType == 'report' && e.response?.statusCode == 409) {
+        try {
+          final fresh = await _api.dioClient.get(
+            ApiConstants.getReportById(photo.entityId),
+          );
+          if (fresh.data is Map) {
+            await _local.applyLocalReportPatch(
+              photo.entityId,
+              Map<String, dynamic>.from(fresh.data as Map),
+            );
+          }
+        } catch (_) {
+          /* Retry keeps the photo on this device. */
+        }
+      }
       final isPermanent = _isPermanentError(e);
-      final msg = 'HTTP ${e.response?.statusCode}: ${e.message} | Data: ${e.response?.data}';
+      final msg =
+          'HTTP ${e.response?.statusCode}: ${e.message} | Data: ${e.response?.data}';
 
       if (isPermanent) {
         // Exhaust retry count so this photo is never retried.
         for (int i = photo.retryCount; i < _kMaxRetries; i++) {
           await _photoRepo.markFailed(photo.localPhotoId, 'permanent: $msg');
         }
-        _log.warning('Permanent upload failure for ${photo.localPhotoId}: $msg\n$st');
+        _log.warning(
+          'Permanent upload failure for ${photo.localPhotoId}: $msg\n$st',
+        );
       } else {
         await _photoRepo.markFailed(photo.localPhotoId, msg);
         _log.warning(
@@ -241,16 +279,25 @@ class FcPhotoSyncManager {
           : null;
       final response = await _api.dioClient.delete(
         endpoint,
-        data: {'photo_type': photo.photoType, 'base_version': ?reportVersion},
+        data: {
+          'photo_type': photo.photoType,
+          'base_version': ?reportVersion,
+          'photo_id': photo.remoteId ?? photo.localPhotoId,
+        },
         options: Options(
           sendTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
         ),
       );
 
-      final record = response.data is Map ? response.data[photo.entityType] : null;
+      final record = response.data is Map
+          ? response.data[photo.entityType]
+          : null;
       if (record is Map && photo.entityType == 'report') {
-        await _local.applyLocalReportPatch(photo.entityId, Map<String, dynamic>.from(record));
+        await _local.applyLocalReportPatch(
+          photo.entityId,
+          Map<String, dynamic>.from(record),
+        );
       }
       await _photoRepo.purgePhoto(photo.localPhotoId);
       await _removePhotoOutboxEntry(photo);
@@ -271,9 +318,7 @@ class FcPhotoSyncManager {
         );
         return true;
       }
-      _log.warning(
-        'Delete failed for ${photo.localPhotoId}: ${e.message}',
-      );
+      _log.warning('Delete failed for ${photo.localPhotoId}: ${e.message}');
       return false;
     } catch (e) {
       _log.severe('Unexpected delete error for ${photo.localPhotoId}', e);
@@ -284,12 +329,9 @@ class FcPhotoSyncManager {
   // ── Private: helpers ───────────────────────────────────────────────────────
 
   /// Extracts the CDN URL from the server response.
-  String? _extractUrl(
-    dynamic data,
-    String entityType,
-    String photoType,
-  ) {
+  String? _extractUrl(dynamic data, String entityType, String photoType) {
     if (data is! Map<String, dynamic>) return null;
+    if (data['url'] is String) return data['url'] as String;
     // Report upload: { report: { before_photo_url: '...' } }
     if (entityType == 'report') {
       final record = data['report'] as Map<String, dynamic>?;
@@ -324,18 +366,33 @@ class FcPhotoSyncManager {
   /// the upload or deletion has been confirmed on the server.
   Future<void> _removePhotoOutboxEntry(FcLocalPhoto photo) async {
     try {
+      if (photo.syncStatus != FcLocalPhotoSyncStatus.pendingDelete) {
+        final remaining = await _photoRepo.getPhotosForEntity(
+          photo.entityId,
+          photo.entityType,
+        );
+        if (remaining.any(
+          (p) =>
+              p.photoType == photo.photoType &&
+              p.syncStatus != FcLocalPhotoSyncStatus.synced,
+        )) {
+          return;
+        }
+      }
       final opType = photo.syncStatus == FcLocalPhotoSyncStatus.pendingDelete
           ? FcOutboxOperationType.deletePhoto
           : (photo.photoType == 'before'
-              ? FcOutboxOperationType.uploadBeforePhoto
-              : FcOutboxOperationType.uploadAfterPhoto);
+                ? FcOutboxOperationType.uploadBeforePhoto
+                : FcOutboxOperationType.uploadAfterPhoto);
 
       final item = await _local.findPendingOutboxItem(opType, photo.entityId);
       if (item != null) {
         await _local.deleteOutboxItem(item.operationId);
       }
     } catch (e) {
-      _log.warning('_removePhotoOutboxEntry failed for ${photo.localPhotoId}: $e');
+      _log.warning(
+        '_removePhotoOutboxEntry failed for ${photo.localPhotoId}: $e',
+      );
     }
   }
 
@@ -344,6 +401,10 @@ class FcPhotoSyncManager {
   bool _isPermanentError(DioException e) {
     final code = e.response?.statusCode;
     if (code == null) return false;
-    return code >= 400 && code < 500 && code != 401 && code != 429;
+    return code >= 400 &&
+        code < 500 &&
+        code != 401 &&
+        code != 409 &&
+        code != 429;
   }
 }

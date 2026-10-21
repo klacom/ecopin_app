@@ -79,6 +79,24 @@ class FcOfflinePackageDetails extends StatelessWidget {
               '${state.evidenceCount}',
             ),
             FcOfflineFact('Notes cached', '${state.noteCount}'),
+            FcOfflineFact('Routes cached', '${state.routeCount}'),
+            if (state.taskTitles.isNotEmpty || state.reportTitles.isNotEmpty)
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('Saved on this device'),
+                children: [
+                  for (final title in state.taskTitles)
+                    ListTile(
+                      leading: const Icon(Icons.task_outlined),
+                      title: Text(title),
+                    ),
+                  for (final title in state.reportTitles)
+                    ListTile(
+                      leading: const Icon(Icons.description_outlined),
+                      title: Text(title),
+                    ),
+                ],
+              ),
           ],
           if (state.preparedAt != null)
             Padding(
@@ -105,7 +123,7 @@ class _DownloadStep extends StatelessWidget {
         ? 'Needs another attempt'
         : step.completed
         ? step.label == FcOfflineStepLabel.issueTypes
-              ? 'Reference service checked'
+              ? 'Available in the app'
               : 'Downloaded'
         : step.inProgress
         ? 'Downloading'

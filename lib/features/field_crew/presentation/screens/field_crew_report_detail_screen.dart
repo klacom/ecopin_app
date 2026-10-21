@@ -1,3 +1,4 @@
+import '../../sync/fc_sync_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,14 +24,23 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
   final String reportId;
   final String? taskId;
 
-  const FieldCrewReportDetailScreen(
-      {super.key, required this.reportId, this.taskId});
+  const FieldCrewReportDetailScreen({
+    super.key,
+    required this.reportId,
+    this.taskId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(fcSyncStateProvider, (previous, next) {
+      if (next.lastSyncAt != null && previous?.lastSyncAt != next.lastSyncAt) {
+        ref.read(fcReportDetailNotifierProvider(reportId).notifier).refresh();
+      }
+    });
     final detailState = ref.watch(fcReportDetailNotifierProvider(reportId));
-    final taskAsync =
-        taskId != null ? ref.watch(cleanupTaskDetailProvider(taskId!)) : null;
+    final taskAsync = taskId != null
+        ? ref.watch(cleanupTaskDetailProvider(taskId!))
+        : null;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
@@ -47,11 +57,13 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
         ),
         title: Text(
           'Report Details',
-          style: AppTypography.h5.copyWith(color: textColor, fontWeight: FontWeight.bold),
+          style: AppTypography.h5.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
-          if (detailState.report != null)
-            _PendingSyncBadge(reportId: reportId),
+          if (detailState.report != null) _PendingSyncBadge(reportId: reportId),
         ],
       ),
       body: _buildBody(context, ref, detailState, taskAsync),
@@ -77,21 +89,26 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
               const SizedBox(height: 16),
-              Text('Could not load report.',
-                  style: AppTypography.h5
-                      .copyWith(color: AppColors.textPrimaryDark)),
+              Text(
+                'Could not load report.',
+                style: AppTypography.h5.copyWith(
+                  color: AppColors.textPrimaryDark,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(detailState.errorMessage!,
-                  style:
-                      AppTypography.caption.copyWith(color: AppColors.error),
-                  textAlign: TextAlign.center),
+              Text(
+                detailState.errorMessage!,
+                style: AppTypography.caption.copyWith(color: AppColors.error),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref
                     .read(fcReportDetailNotifierProvider(reportId).notifier)
                     .refresh(),
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryDark),
+                  backgroundColor: AppColors.primaryDark,
+                ),
                 child: const Text('Retry'),
               ),
             ],
@@ -108,15 +125,17 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
 
     if (taskAsync != null) {
       taskAsync.whenData((task) {
-        isAssigned = currentUserId != null &&
+        isAssigned =
+            currentUserId != null &&
             task.assignedCrewIds.contains(currentUserId);
         taskBanner = Container(
           padding: const EdgeInsets.all(AppColors.spaceMD),
           decoration: BoxDecoration(
             color: AppColors.primaryDark.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(AppColors.radiusCard),
-            border:
-                Border.all(color: AppColors.primaryDark.withValues(alpha: 0.5)),
+            border: Border.all(
+              color: AppColors.primaryDark.withValues(alpha: 0.5),
+            ),
           ),
           child: Row(
             children: [
@@ -125,8 +144,9 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
               Expanded(
                 child: Text(
                   'Part of Task: ${taskAsync.value?.title ?? ""}',
-                  style: AppTypography.caption
-                      .copyWith(color: AppColors.primaryDark),
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.primaryDark,
+                  ),
                 ),
               ),
             ],
@@ -135,8 +155,9 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
       });
     }
 
-    final notifier =
-        ref.read(fcReportDetailNotifierProvider(reportId).notifier);
+    final notifier = ref.read(
+      fcReportDetailNotifierProvider(reportId).notifier,
+    );
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
@@ -168,16 +189,32 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                   // Action buttons (status transitions)
                   FutureBuilder<List<FcLocalPhoto?>>(
                     future: Future.wait([
-                      ref.read(fcLocalPhotoRepositoryProvider).getActivePhoto(report.id, 'report', 'before'),
-                      ref.read(fcLocalPhotoRepositoryProvider).getActivePhoto(report.id, 'report', 'after'),
+                      ref
+                          .read(fcLocalPhotoRepositoryProvider)
+                          .getActivePhoto(report.id, 'report', 'before'),
+                      ref
+                          .read(fcLocalPhotoRepositoryProvider)
+                          .getActivePhoto(report.id, 'report', 'after'),
                     ]),
                     builder: (context, snapshot) {
-                      final localBefore = snapshot.data != null && snapshot.data!.isNotEmpty ? snapshot.data![0] : null;
-                      final localAfter = snapshot.data != null && snapshot.data!.length > 1 ? snapshot.data![1] : null;
-                      final hasBefore = (report.beforePhotoUrl != null && report.beforePhotoUrl!.isNotEmpty) ||
-                          (localBefore != null && localBefore.localPath.isNotEmpty);
-                      final hasAfter = (report.afterPhotoUrl != null && report.afterPhotoUrl!.isNotEmpty) ||
-                          (localAfter != null && localAfter.localPath.isNotEmpty);
+                      final localBefore =
+                          snapshot.data != null && snapshot.data!.isNotEmpty
+                          ? snapshot.data![0]
+                          : null;
+                      final localAfter =
+                          snapshot.data != null && snapshot.data!.length > 1
+                          ? snapshot.data![1]
+                          : null;
+                      final hasBefore =
+                          (report.beforePhotoUrl != null &&
+                              report.beforePhotoUrl!.isNotEmpty) ||
+                          (localBefore != null &&
+                              localBefore.localPath.isNotEmpty);
+                      final hasAfter =
+                          (report.afterPhotoUrl != null &&
+                              report.afterPhotoUrl!.isNotEmpty) ||
+                          (localAfter != null &&
+                              localAfter.localPath.isNotEmpty);
 
                       return FcReportActionButtons(
                         report: report,
@@ -187,8 +224,10 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                         onViewOnMap: () => context.push('/field-crew/map'),
                         onStatusChange: (newStatus) async {
                           if (newStatus.toLowerCase() == 'resolved') {
-                            final issueType = report.issueType?.toLowerCase() ?? '';
-                            final isScouting = issueType == 'scouting' ||
+                            final issueType =
+                                report.issueType?.toLowerCase() ?? '';
+                            final isScouting =
+                                issueType == 'scouting' ||
                                 issueType == 'acknowledge_only';
                             if (!isScouting && (!hasBefore || !hasAfter)) {
                               if (context.mounted) {
@@ -205,19 +244,38 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                             }
                           }
 
-                          await notifier.updateStatus(newStatus);
-                          if (report.breachedAt != null && (newStatus.toLowerCase() == 'resolved' || newStatus.toLowerCase() == 'closed')) {
-                            if (context.mounted && taskAsync != null && taskAsync.value != null) {
+                          if (newStatus == 'acknowledged') {
+                            await notifier.updateLifecycleStage('acknowledged');
+                          } else {
+                            await notifier.updateStatus(newStatus);
+                          }
+                          if (report.breachedAt != null &&
+                              (newStatus.toLowerCase() == 'resolved' ||
+                                  newStatus.toLowerCase() == 'closed')) {
+                            if (context.mounted &&
+                                taskAsync != null &&
+                                taskAsync.value != null) {
                               final task = taskAsync.value!;
-                              final currentIndex = task.reports?.indexWhere((r) => r.id == report.id) ?? -1;
-                              
+                              final currentIndex =
+                                  task.reports?.indexWhere(
+                                    (r) => r.id == report.id,
+                                  ) ??
+                                  -1;
+
                               if (currentIndex != -1 && task.reports != null) {
                                 // Find next unresolved report
                                 try {
-                                  final nextReport = task.reports!.skip(currentIndex + 1).firstWhere(
-                                    (r) => r.status.toLowerCase() != 'resolved' && r.status.toLowerCase() != 'closed'
+                                  final nextReport = task.reports!
+                                      .skip(currentIndex + 1)
+                                      .firstWhere(
+                                        (r) =>
+                                            r.status.toLowerCase() !=
+                                                'resolved' &&
+                                            r.status.toLowerCase() != 'closed',
+                                      );
+                                  context.pushReplacement(
+                                    '/field-crew/tasks/${task.id}/reports/${nextReport.id}',
                                   );
-                                  context.pushReplacement('/field-crew/tasks/${task.id}/reports/${nextReport.id}');
                                 } catch (_) {
                                   // No next report found (all done or at end of list)
                                   context.pop();
@@ -233,15 +291,17 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppColors.spaceXL),
 
-                  // Photo Verification — offline-first with local photo slots
+                  // Photo Verification â€” offline-first with local photo slots
                   _ReportPhotoSection(
                     report: report,
                     isAssigned: isAssigned,
                     evidencePhotos: detailState.evidence,
+                    evidenceError: detailState.evidenceError,
                     onUpload: (file, type) async {
                       try {
-                        final repo =
-                            ref.read(fieldCrewReportRepositoryProvider);
+                        final repo = ref.read(
+                          fieldCrewReportRepositoryProvider,
+                        );
                         await repo.uploadReportPhoto(reportId, file, type);
                         await notifier.refresh();
                       } catch (e) {
@@ -250,9 +310,14 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                     },
                     onDelete: (slot, type) async {
                       try {
-                        final repo =
-                            ref.read(fieldCrewReportRepositoryProvider);
-                        await repo.deleteReportPhoto(reportId, type);
+                        final repo = ref.read(
+                          fieldCrewReportRepositoryProvider,
+                        );
+                        await repo.deleteReportPhoto(
+                          reportId,
+                          type,
+                          photoId: slot.remoteId ?? slot.localPhotoId,
+                        );
                         await notifier.refresh();
                       } catch (e) {
                         rethrow;
@@ -261,7 +326,7 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppColors.spaceXL),
 
-                  // Notes input — local-first
+                  // Notes input â€” local-first
                   FcLguNotesSection(
                     isAssigned: isAssigned,
                     onSubmit: (note) async {
@@ -283,9 +348,9 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Photo section — resolves FcLocalPhoto rows then renders FcPhotoUploadSection
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Photo section â€” resolves FcLocalPhoto rows then renders FcPhotoUploadSection
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /// Queries [FcLocalPhotos] for local pending rows, then merges with the remote
 /// URL fallback from [ReportModel] to produce [FcPhotoSlot] objects.
@@ -298,6 +363,7 @@ class _ReportPhotoSection extends ConsumerStatefulWidget {
   final ReportModel report;
   final bool isAssigned;
   final List<dynamic> evidencePhotos;
+  final String? evidenceError;
   final Future<void> Function(dynamic file, String type) onUpload;
   final Future<void> Function(FcPhotoSlot slot, String type) onDelete;
 
@@ -305,6 +371,7 @@ class _ReportPhotoSection extends ConsumerStatefulWidget {
     required this.report,
     required this.isAssigned,
     required this.evidencePhotos,
+    this.evidenceError,
     required this.onUpload,
     required this.onDelete,
   });
@@ -316,6 +383,7 @@ class _ReportPhotoSection extends ConsumerStatefulWidget {
 
 class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
   FcPhotoSlot? _beforeSlot;
+  List<FcPhotoSlot> _beforeSlots = [];
   FcPhotoSlot? _afterSlot;
 
   @override
@@ -329,7 +397,8 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
     super.didUpdateWidget(oldWidget);
     // Re-resolve when parent refreshes (remote URL may have changed or new
     // local row may have been inserted).
-    if (oldWidget.report.beforePhotoUrl != widget.report.beforePhotoUrl ||
+    if (oldWidget.report.beforePhotos != widget.report.beforePhotos ||
+        oldWidget.report.beforePhotoUrl != widget.report.beforePhotoUrl ||
         oldWidget.report.afterPhotoUrl != widget.report.afterPhotoUrl ||
         oldWidget.report.id != widget.report.id) {
       _resolveSlots();
@@ -338,11 +407,39 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
 
   Future<void> _resolveSlots() async {
     final photoRepo = ref.read(fcLocalPhotoRepositoryProvider);
-    final before = await photoRepo.getActivePhoto(
+    final rows = (await photoRepo.getPhotosForEntity(
       widget.report.id,
       'report',
-      'before',
-    );
+    )).where((p) => p.photoType == 'before').toList();
+    final pendingDeletes = (await photoRepo.getPendingDeletes())
+        .where(
+          (p) => p.entityId == widget.report.id && p.entityType == 'report',
+        )
+        .map((p) => p.remoteId ?? p.localPhotoId)
+        .toSet();
+    final photos = rows.map((p) => _buildSlot(p, null)!).toList();
+    final urls = photos.map((p) => p.remoteUrl).toSet();
+    for (final photo in widget.report.beforePhotos) {
+      final url = photo['url'] as String?;
+      if (url != null &&
+          !pendingDeletes.contains(photo['id']) &&
+          urls.add(url)) {
+        photos.add(
+          FcPhotoSlot(remoteUrl: url, remoteId: photo['id'] as String?),
+        );
+      }
+    }
+    if (photos.isEmpty &&
+        widget.report.beforePhotos.isEmpty &&
+        !pendingDeletes.contains('legacy') &&
+        widget.report.beforePhotoUrl?.isNotEmpty == true) {
+      photos.add(
+        FcPhotoSlot(
+          remoteUrl: widget.report.beforePhotoUrl,
+          remoteId: 'legacy',
+        ),
+      );
+    }
     final after = await photoRepo.getActivePhoto(
       widget.report.id,
       'report',
@@ -351,7 +448,8 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
 
     if (!mounted) return;
     setState(() {
-      _beforeSlot = _buildSlot(before, widget.report.beforePhotoUrl);
+      _beforeSlots = photos;
+      _beforeSlot = photos.isEmpty ? null : photos.first;
       _afterSlot = _buildSlot(after, widget.report.afterPhotoUrl);
     });
   }
@@ -367,16 +465,17 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
     if (localRow != null) {
       return FcPhotoSlot(
         localPhotoId: localRow.localPhotoId,
+        remoteId: localRow.remoteId,
         localPath: localRow.localPath,
         remoteUrl: localRow.remoteUrl,
         syncStatus: localRow.syncStatus,
       );
     }
-    // No local row — fall back to legacy remote URL if available.
+    // No local row â€” fall back to legacy remote URL if available.
     if (remoteUrl != null && remoteUrl.isNotEmpty) {
       return FcPhotoSlot(
         remoteUrl: remoteUrl,
-        // syncStatus is null → widget shows no badge (already synced legacy photo)
+        // syncStatus is null â†’ widget shows no badge (already synced legacy photo)
       );
     }
     return null;
@@ -385,19 +484,29 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
   @override
   Widget build(BuildContext context) {
     final currentStatus = widget.report.status.toLowerCase();
-    final bool isAcknowledged = !['unresolved', 'submitted', 'pending'].contains(currentStatus);
-    
+    final bool isAcknowledged = ![
+      'unresolved',
+      'submitted',
+      'pending',
+    ].contains(currentStatus);
+
     final currentLifecycle = widget.report.lifecycleStage?.toLowerCase();
-    final bool isLifecycleAcknowledged = currentLifecycle != null && !['new', 'pending', 'under_review'].contains(currentLifecycle);
-    
-    final bool effectivelyAcknowledged = isAcknowledged || isLifecycleAcknowledged;
-    
+    final bool isLifecycleAcknowledged =
+        currentLifecycle != null &&
+        !['new', 'pending', 'under_review'].contains(currentLifecycle);
+
+    final bool effectivelyAcknowledged =
+        isAcknowledged || isLifecycleAcknowledged;
+
     final bool isBeforeEnabled = effectivelyAcknowledged;
-    final bool isAfterEnabled = effectivelyAcknowledged && (_beforeSlot?.hasPhoto == true);
+    // Already-clear observations need a current photo, not a fabricated before/after pair.
+    final bool isAfterEnabled = effectivelyAcknowledged;
 
     return FcPhotoUploadSection(
       evidencePhotos: widget.evidencePhotos,
+      evidenceError: widget.evidenceError,
       beforeSlot: _beforeSlot,
+      beforeSlots: _beforeSlots,
       afterSlot: _afterSlot,
       isAssigned: widget.isAssigned,
       isBeforeEnabled: isBeforeEnabled,
@@ -415,9 +524,9 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Pending sync badge
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _PendingSyncBadge extends ConsumerWidget {
   final String reportId;
@@ -425,56 +534,63 @@ class _PendingSyncBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch fcSyncStateProvider — rebuilds whenever a sync run completes.
+    // Watch fcSyncStateProvider â€” rebuilds whenever a sync run completes.
     // Fall back to a direct DB check via FutureBuilder on first load (before
     // any sync has run and the notifier is still idle).
     final syncState = ref.watch(fcSyncStateProvider);
+    ref.watch(fcPendingWritesProvider);
+    final automatic = ref.watch(fcSyncSettingsProvider).autoSyncEnabled;
     final localRepo = ref.watch(fcLocalRepositoryProvider);
 
     // If a sync just completed and everything succeeded, hide the badge
     // immediately without a DB round-trip.
-    if (syncState.phase == FcSyncPhase.success &&
-        syncState.lastSyncAt != null) {
-      return const SizedBox.shrink();
-    }
-
-    // Otherwise check the DB — this covers the initial load and partial-
-    // failure states where some items for THIS report may still be pending.
     return FutureBuilder<bool>(
       // Re-run the future every time syncState changes so the badge
       // disappears as soon as this report's items drain.
       key: ValueKey(syncState.lastSyncAt),
-      future: _hasPending(localRepo, reportId),
+      future: _hasPending(localRepo, ref, reportId),
       builder: (context, snap) {
         if (snap.data != true) return const SizedBox.shrink();
-        return _SyncChip(phase: syncState.phase);
+        return _SyncChip(phase: syncState.phase, automatic: automatic);
       },
     );
   }
 
-  Future<bool> _hasPending(dynamic localRepo, String reportId) async {
+  Future<bool> _hasPending(
+    dynamic localRepo,
+    WidgetRef ref,
+    String reportId,
+  ) async {
     final items = await localRepo.getPendingOutboxItems();
-    return items.any((i) => i.entityId == reportId);
+    if (items.any((i) => i.entityId == reportId)) return true;
+    final photos = ref.read(fcLocalPhotoRepositoryProvider);
+    final uploads = await photos.getPendingUploads();
+    final deletes = await photos.getPendingDeletes();
+    return [...uploads, ...deletes].any((p) => p.entityId == reportId);
   }
 }
 
 /// Small AppBar chip showing sync status.
 class _SyncChip extends StatelessWidget {
   final FcSyncPhase phase;
-  const _SyncChip({required this.phase});
+  final bool automatic;
+  const _SyncChip({required this.phase, required this.automatic});
 
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (phase) {
       FcSyncPhase.syncing => ('Syncing…', AppColors.primaryDark),
-      FcSyncPhase.error => ('Sync Error', AppColors.error),
-      _ => ('Pending Sync', AppColors.warning),
+      FcSyncPhase.error ||
+      FcSyncPhase.partialFailure => ('Sync Error', AppColors.error),
+      _ => (automatic ? 'Sync queued' : 'Pending Sync', AppColors.warning),
     };
     return Padding(
       padding: const EdgeInsets.only(right: 12),
       child: Chip(
-        label: Text(label,
-            style: const TextStyle(fontSize: 10, color: Colors.white)),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: Colors.white),
+        ),
         backgroundColor: color,
         padding: EdgeInsets.zero,
         labelPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: -4),
@@ -483,9 +599,9 @@ class _SyncChip extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Loading skeleton
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _ReportDetailSkeleton extends StatelessWidget {
   const _ReportDetailSkeleton();

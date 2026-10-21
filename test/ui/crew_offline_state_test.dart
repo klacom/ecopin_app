@@ -54,7 +54,9 @@ void main() {
         FcOfflinePackageState(
           phase: FcOfflinePackagePhase.ready,
           taskCount: 2,
-          preparedAt: DateTime(2026, 10, 14),
+          preparedAt: DateTime.now(),
+          taskTitles: const ['Saved task'],
+          routeCount: 1,
           steps: buildInitialSteps()
               .map((step) => step.copyWith(completed: true))
               .toList(),
@@ -70,6 +72,19 @@ void main() {
         'Network timed out',
       );
       expect(state.estimatedBytes, 2048);
+      final restored = ProviderContainer();
+      addTearDown(restored.dispose);
+      restored.read(fcOfflinePackageNotifierProvider);
+      await Future<void>.delayed(Duration.zero);
+      final receipt = restored.read(fcOfflinePackageNotifierProvider);
+      expect(receipt.taskTitles, ['Saved task']);
+      expect(receipt.routeCount, 1);
+      expect(
+        receipt.steps
+            .singleWhere((s) => s.label == FcOfflineStepLabel.notes)
+            .error,
+        'Network timed out',
+      );
     },
   );
   test(

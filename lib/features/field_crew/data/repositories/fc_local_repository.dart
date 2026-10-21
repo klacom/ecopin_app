@@ -36,7 +36,10 @@ class FcLocalRepository {
   /// Called by [FieldCrewReportRepository] after a successful API fetch.
   Future<void> saveReports(List<ReportModel> reports) async {
     try {
-      final rows = reports.map((r) {
+      final pending = (await _db.getLocallyModifiedFcReports())
+          .map((r) => r.id)
+          .toSet();
+      final rows = reports.where((r) => !pending.contains(r.id)).map((r) {
         return FcCachedReportsCompanion.insert(
           id: r.id,
           jsonData: jsonEncode(_reportToJson(r)),
@@ -48,6 +51,7 @@ class FcLocalRepository {
       await _db.upsertFcReports(rows);
     } catch (e) {
       _log.severe('saveReports failed', e);
+      rethrow;
     }
   }
 
@@ -148,7 +152,11 @@ class FcLocalRepository {
   /// Upserts a list of [CleanupTask] objects as locally synced.
   Future<void> saveTasks(List<CleanupTask> tasks) async {
     try {
-      final rows = tasks.map((t) {
+      final pending = (await _db.getAllFcTasks())
+          .where((t) => t.localSyncState != 0)
+          .map((t) => t.id)
+          .toSet();
+      final rows = tasks.where((t) => !pending.contains(t.id)).map((t) {
         _log.info(
           'saveTasks: Saving task ${t.id}. streetAddress=${t.streetAddress}',
         );
@@ -164,6 +172,7 @@ class FcLocalRepository {
       await _db.upsertFcTasks(rows);
     } catch (e) {
       _log.severe('saveTasks failed', e);
+      rethrow;
     }
   }
 
@@ -264,6 +273,7 @@ class FcLocalRepository {
       await _db.upsertFcEvidences(reportId, rows);
     } catch (e) {
       _log.severe('saveEvidences($reportId) failed', e);
+      rethrow;
     }
   }
 
@@ -300,6 +310,7 @@ class FcLocalRepository {
       await _db.upsertFcNotes(reportId, rows);
     } catch (e) {
       _log.severe('saveNotes($reportId) failed', e);
+      rethrow;
     }
   }
 
@@ -346,6 +357,25 @@ class FcLocalRepository {
       return [];
     }
   }
+
+  Future<void> reconcileSyncedNote(
+    String reportId,
+    String? localId,
+    Map<String, dynamic> note,
+  ) => _db.transaction(() async {
+    if (localId != null) {
+      await (_db.delete(
+        _db.fcCachedNotes,
+      )..where((n) => n.id.equals(localId) & n.reportId.equals(reportId))).go();
+    }
+    await _db.upsertFcNotes(reportId, [
+      FcCachedNotesCompanion.insert(
+        id: note['id'].toString(),
+        reportId: reportId,
+        jsonData: jsonEncode(note),
+      ),
+    ]);
+  });
 
   // ── Photo metadata ────────────────────────────────────────────────────────
 
@@ -395,6 +425,20 @@ class FcLocalRepository {
   /// duplicated.  This prevents double-taps from producing two queue entries.
   ///
   /// Returns the stable [operationId] assigned to this item.
+  // Retry/status changes do not count as new edits, preventing automatic retry loops.
+  Stream<List<String>> watchPendingWrites() => _db
+      .customSelect(
+        "SELECT 'mutation:' || operation_id || ':' || payload_json AS fingerprint FROM fc_outbox_items "
+        "WHERE status IN ('pending','in_flight','failed') UNION ALL "
+        "SELECT 'photo:' || local_photo_id || ':' || CASE WHEN sync_status=4 THEN 'delete' ELSE 'upload' END AS fingerprint "
+        "FROM fc_local_photos WHERE sync_status<>2",
+        readsFrom: {_db.fcOutboxItems, _db.fcLocalPhotos},
+      )
+      .watch()
+      .map(
+        (rows) => rows.map((row) => row.read<String>('fingerprint')).toList(),
+      );
+
   Future<String> enqueueOutboxItem({
     required String operationType,
     required String entityId,

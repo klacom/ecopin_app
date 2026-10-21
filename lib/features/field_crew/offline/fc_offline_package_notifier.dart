@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_service.dart';
@@ -5,6 +7,14 @@ import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_pro
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+String? get _receiptOwner {
+  try {
+    return Supabase.instance.client.auth.currentUser?.id;
+  } catch (_) {
+    return null;
+  }
+}
 
 const _kOfflinePreparedAt = 'fc_offline_prepared_at';
 const _kOfflineTaskCount = 'fc_offline_task_count';
@@ -139,13 +149,38 @@ class FcOfflinePackageNotifier extends Notifier<FcOfflinePackageState> {
         _log.info(
           '[OFFLINE NOTIFIER] Loaded valid state from SharedPreferences (prepared at $preparedAt)',
         );
+        final saved = prefs.getString('fc_offline_receipt_v2');
+        var receipt = <String, dynamic>{};
+        try {
+          if (saved != null) {
+            receipt = jsonDecode(saved) as Map<String, dynamic>;
+          }
+        } catch (_) {
+          _log.warning(
+            'Preparation receipt is unreadable; refresh preparation.',
+          );
+        }
+        if (receipt['owner'] != _receiptOwner) return;
         state = state.copyWith(
-          phase: FcOfflinePackagePhase.ready,
+          phase: receipt['phase'] == 'failed'
+              ? FcOfflinePackagePhase.failed
+              : FcOfflinePackagePhase.ready,
           preparedAt: preparedAt,
           taskCount: prefs.getInt(_kOfflineTaskCount) ?? 0,
           reportCount: prefs.getInt(_kOfflineReportCount) ?? 0,
           evidenceCount: prefs.getInt(_kOfflineEvidenceCount) ?? 0,
           noteCount: prefs.getInt(_kOfflineNoteCount) ?? 0,
+          routeCount: receipt['routes'] as int? ?? 0,
+          taskTitles: List<String>.from(receipt['tasks'] ?? []),
+          reportTitles: List<String>.from(receipt['reports'] ?? []),
+          steps: [
+            for (final step in receipt['steps'] ?? [])
+              FcDownloadStep(
+                label: step['label'],
+                completed: step['completed'],
+                error: step['error'],
+              ),
+          ],
         );
       } else {
         _log.info(
@@ -175,10 +210,29 @@ class FcOfflinePackageNotifier extends Notifier<FcOfflinePackageState> {
     await prefs.setInt(_kOfflineReportCount, result.reportCount);
     await prefs.setInt(_kOfflineEvidenceCount, result.evidenceCount);
     await prefs.setInt(_kOfflineNoteCount, result.noteCount);
+    await prefs.setString(
+      'fc_offline_receipt_v2',
+      jsonEncode({
+        'owner': _receiptOwner,
+        'phase': result.phase.name,
+        'routes': result.routeCount,
+        'tasks': result.taskTitles,
+        'reports': result.reportTitles,
+        'steps': [
+          for (final step in result.steps)
+            {
+              'label': step.label,
+              'completed': step.completed,
+              'error': step.error,
+            },
+        ],
+      }),
+    );
     _log.info('[OFFLINE NOTIFIER] State saved successfully.');
   }
 
   Future<void> _clearPrefs(SharedPreferences prefs) async {
+    await prefs.remove('fc_offline_receipt_v2');
     await prefs.remove(_kOfflinePreparedAt);
     await prefs.remove(_kOfflineTaskCount);
     await prefs.remove(_kOfflineReportCount);

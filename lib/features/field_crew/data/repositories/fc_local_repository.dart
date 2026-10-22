@@ -6,6 +6,7 @@ import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.da
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:logging/logging.dart';
 import 'package:uuid/uuid.dart';
+import '../../sync/fc_sync_error.dart';
 
 /// Repository that provides local-first read/write access for all Field Crew
 /// data stored in the Drift database.
@@ -666,6 +667,25 @@ class FcLocalRepository {
 
   /// Returns all outbox items (for diagnostics / sync center preview).
   Future<List<FcOutboxItem>> getAllOutboxItems() => _db.getAllOutboxItems();
+
+  /// Explicit retry for exhausted transport failures, never rejected writes.
+  Future<void> resetTransportRetries() async {
+    for (final item in await _db.getPendingOutboxItems()) {
+      final error = item.lastError ?? '';
+      if (item.retryCount < 5 || !fcCanResetTransportError(error)) {
+        continue;
+      }
+      await (_db.update(
+        _db.fcOutboxItems,
+      )..where((t) => t.operationId.equals(item.operationId))).write(
+        const FcOutboxItemsCompanion(
+          status: Value('pending'),
+          retryCount: Value(0),
+          lastError: Value(null),
+        ),
+      );
+    }
+  }
 
   Future<void> markOutboxItemInFlight(String operationId) =>
       _db.markOutboxItemInFlight(operationId);

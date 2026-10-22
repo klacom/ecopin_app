@@ -151,12 +151,38 @@ class _FieldCrewSyncCenterScreenState
     }
   }
 
+  Future<void> _resetChangeRetries() async {
+    setState(() => _resetting = true);
+    try {
+      await ref.read(fcLocalRepositoryProvider).resetTransportRetries();
+      await _refresh();
+      if (mounted) {
+        setState(() {
+          _message =
+              'Connection failure retries reset. Choose Commit changes to try again. Rejected updates remain unchanged.';
+          _failed = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _message =
+              'Retries could not reset. Your queued changes remain on this device.';
+          _failed = true;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _resetting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(fcSyncStateProvider);
     final settings = ref.watch(fcSyncSettingsProvider);
     final network = ref.watch(fcSyncNetworkProvider);
     final pending = ref.watch(fcPendingSummaryProvider);
+    final failures = ref.watch(fcQueuedFailuresProvider);
     final summary = pending.value;
     final busy =
         state.phase == FcSyncPhase.syncing || _committing || _resetting;
@@ -234,15 +260,39 @@ class _FieldCrewSyncCenterScreenState
                   ),
                 ),
                 if (state.phase == FcSyncPhase.error)
-                  const FcOfflineNotice(
+                  FcOfflineNotice(
                     error: true,
                     message:
-                        'The latest sync could not finish. Review the queue and try again on an allowed connection.',
+                        state.errorMessage ??
+                        'The latest sync could not finish. Your queued work remains on this device.',
                   ),
                 if (state.phase == FcSyncPhase.partialFailure)
                   const FcOfflineNotice(
                     message:
-                        'The sync returned some results that need attention. Review retry counts and response updates below.',
+                        'Review the item failure reasons and response updates below. Any unsent work remains on this device.',
+                  ),
+                if (failures.hasError)
+                  FcOfflineNotice(
+                    message: 'Failure details could not load.',
+                    action: TextButton(
+                      onPressed: () => ref.invalidate(fcQueuedFailuresProvider),
+                      child: const Text('Reload failure details'),
+                    ),
+                  ),
+                for (final failure
+                    in failures.value ?? const <FcQueuedFailure>[])
+                  FcOfflineNotice(
+                    error: true,
+                    message:
+                        '${failure.label}\nReport/task: ${failure.entityId}\n${failure.reason}\nAttempts: ${failure.retries}${failure.retries >= 5 ? ' (automatic retries paused)' : ''}',
+                  ),
+                if ((failures.value ?? const <FcQueuedFailure>[]).any(
+                  (f) => f.canResetTransport,
+                ))
+                  AppButton(
+                    text: 'Reset connection failure retries',
+                    variant: ButtonVariant.secondary,
+                    onPressed: busy ? null : _resetChangeRetries,
                   ),
                 if (_message != null)
                   FcOfflineNotice(message: _message!, error: _failed),

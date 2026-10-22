@@ -7,6 +7,7 @@ import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_photo_repository.dart';
 import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_repository.dart';
 import 'package:logging/logging.dart';
+import 'fc_sync_error.dart';
 
 /// Result of one photo sync run.
 class FcPhotoSyncRunResult {
@@ -240,8 +241,7 @@ class FcPhotoSyncManager {
         }
       }
       final isPermanent = _isPermanentError(e);
-      final msg =
-          'HTTP ${e.response?.statusCode}: ${e.message} | Data: ${e.response?.data}';
+      final msg = fcSyncError(e);
 
       if (isPermanent) {
         // Exhaust retry count so this photo is never retried.

@@ -8,6 +8,7 @@ import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_repository.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_result.dart';
 import 'package:logging/logging.dart';
+import 'fc_sync_error.dart';
 
 /// Maximum outbox operations sent in a single HTTP request.
 const int _kBatchSize = 50;
@@ -68,6 +69,7 @@ class FcSyncManager {
   /// Never throws — network errors are caught and recorded in the outbox.
   Future<FcSyncRunResult> sync({bool evidenceDependentOnly = false}) async {
     final allResults = <FcOpResult>[];
+    final pausedIds = <String>{};
     int total = 0,
         succeeded = 0,
         merged = 0,
@@ -86,8 +88,7 @@ class FcSyncManager {
       // by getPendingOutboxItems (which selects status='pending' | 'failed').
       final page = <FcOutboxItem>[];
       for (final item in batch) {
-        if (item.retryCount >= _kMaxRetries ||
-            item.operationType.startsWith('fc.photo.')) {
+        if (item.operationType.startsWith('fc.photo.')) {
           continue;
         }
         final needsEvidence =
@@ -95,6 +96,22 @@ class FcSyncManager {
                 FcOutboxOperationType.reconcileReportOutcome ||
             item.operationType == FcOutboxOperationType.submitTaskFailure;
         if (needsEvidence != evidenceDependentOnly) continue;
+        if (item.retryCount >= _kMaxRetries) {
+          if (pausedIds.add(item.operationId)) {
+            total++;
+            permanent++;
+            allResults.add(
+              FcOpResult(
+                operationId: item.operationId,
+                status: FcOpStatus.failed,
+                errorMessage:
+                    item.lastError ??
+                    'Retries paused; review this queued change.',
+              ),
+            );
+          }
+          continue;
+        }
         if (needsEvidence) {
           final payload = jsonDecode(item.payloadJson) as Map<String, dynamic>;
           final refs = (payload['evidence_refs'] as List).cast<String>();
@@ -123,17 +140,14 @@ class FcSyncManager {
             'syncBatch: network error, resetting batch to pending: ${e.message}',
           );
           for (final item in page) {
-            await _local.markOutboxItemFailed(
-              item.operationId,
-              e.message ?? 'network_error',
-            );
+            await _local.markOutboxItemFailed(item.operationId, fcSyncError(e));
           }
           retryable += page.length;
           // Stop the loop; remaining items were not touched.
           break;
         } else {
           // Non-network 4xx/5xx — treat as transient server-side failure.
-          final msg = 'HTTP ${e.response?.statusCode}: ${e.message}';
+          final msg = fcSyncError(e);
           _log.warning('syncBatch: server error: $msg');
           for (final item in page) {
             await _local.markOutboxItemFailed(item.operationId, msg);
@@ -192,7 +206,10 @@ class FcSyncManager {
       // If every item in this page was terminal, continue to the next batch.
       // If any were retryable we stop — we don't want to advance past failures.
       final anyRetryable = pageResults.any((r) => r.isRetryable);
-      if (anyRetryable) break;
+      if (anyRetryable ||
+          page.any((item) => !respondedIds.contains(item.operationId))) {
+        break;
+      }
     }
 
     return FcSyncRunResult(
@@ -318,7 +335,7 @@ class FcSyncManager {
       for (int i = item.retryCount; i < _kMaxRetries; i++) {
         await _local.markOutboxItemFailed(
           item.operationId,
-          'terminal_${result.status.name}',
+          'terminal_${result.status.name}: ${result.errorMessage ?? result.status.name}',
         );
       }
       _log.warning(

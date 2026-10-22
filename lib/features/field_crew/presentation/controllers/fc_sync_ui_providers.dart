@@ -3,6 +3,8 @@ import '../../sync/fc_sync_trigger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_gate.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_settings.dart';
+import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
+import '../../sync/fc_sync_error.dart';
 
 // Display the same network categories recognized by the existing sync gate.
 FcNetworkType _network(List<ConnectivityResult> values) =>
@@ -27,6 +29,61 @@ final fcPendingSummaryProvider = FutureProvider.autoDispose<FcPendingSummary>((
   await ref.watch(fcPendingWritesProvider.future);
   return gate.getPendingSummary();
 });
+
+class FcQueuedFailure {
+  const FcQueuedFailure(
+    this.label,
+    this.entityId,
+    this.reason,
+    this.retries, {
+    this.canResetTransport = false,
+  });
+  final String label, entityId, reason;
+  final int retries;
+  final bool canResetTransport;
+}
+
+final fcQueuedFailuresProvider =
+    FutureProvider.autoDispose<List<FcQueuedFailure>>((ref) async {
+      ref.watch(fcPendingSummaryProvider);
+      final local = ref.watch(fcLocalRepositoryProvider);
+      final photos = ref.watch(fcLocalPhotoRepositoryProvider);
+      final issues = <FcQueuedFailure>[];
+      for (final item in await local.getAllOutboxItems()) {
+        if (item.operationType.startsWith('fc.photo.') ||
+            item.lastError == null) {
+          continue;
+        }
+        issues.add(
+          FcQueuedFailure(
+            item.operationType == 'fc.note.add'
+                ? 'Response log'
+                : 'Report or task update',
+            item.entityId,
+            item.lastError!,
+            item.retryCount,
+            canResetTransport:
+                item.retryCount >= 5 &&
+                fcCanResetTransportError(item.lastError!),
+          ),
+        );
+      }
+      for (final photo in [
+        ...await photos.getPendingUploads(),
+        ...await photos.getPendingDeletes(),
+      ]) {
+        if (photo.lastError == null) continue;
+        issues.add(
+          FcQueuedFailure(
+            '${photo.photoType == 'before' ? 'Before' : 'After'} photo',
+            photo.entityId,
+            photo.lastError!,
+            photo.retryCount,
+          ),
+        );
+      }
+      return issues;
+    });
 
 String fcSyncPolicy(FcSyncSettings settings, FcNetworkType? network) {
   if (settings.mode == FcSyncMode.offlineOnly) {

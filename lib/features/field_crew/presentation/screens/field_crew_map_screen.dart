@@ -1,4 +1,10 @@
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_layer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -15,9 +21,13 @@ import 'dart:async';
 import 'package:dio/dio.dart' as dio;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data/models/crew_navigation_plan.dart';
+import '../../data/repositories/crew_navigation_cache.dart';
 
 class FieldCrewMapScreen extends ConsumerStatefulWidget {
-  const FieldCrewMapScreen({super.key});
+  const FieldCrewMapScreen({super.key, this.tileProvider});
+  final TileProvider? tileProvider;
 
   @override
   ConsumerState<FieldCrewMapScreen> createState() => _FieldCrewMapScreenState();
@@ -33,6 +43,8 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
   String? _activeNavigationTaskId;
   List<LatLng> _liveNavigationPolyline = []; // Will store the API route
   String? _currentInstruction; // Turn-by-turn text
+  bool _usingSavedRoute = false;
+  bool _directionsSaved = false;
   double? _liveRouteDistance;
   double? _liveRouteDuration;
 
@@ -45,13 +57,6 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
   List<dynamic> _routeSteps = [];
   int _currentStepIndex = 0;
 
-  int _parsePriority(String priority) {
-    if (priority.toLowerCase() == 'high') return 1;
-    if (priority.toLowerCase() == 'normal') return 2;
-    if (priority.toLowerCase() == 'low') return 3;
-    return int.tryParse(priority) ?? 99;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -60,12 +65,18 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
   }
 
   Future<void> _initTts() async {
-    await flutterTts.setSharedInstance(true);
-    await flutterTts.setIosAudioCategory(
-      IosTextToSpeechAudioCategory.playback,
-      [IosTextToSpeechAudioCategoryOptions.duckOthers],
-    );
-    await flutterTts.awaitSpeakCompletion(true);
+    try {
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        await flutterTts.setSharedInstance(true);
+        await flutterTts.setIosAudioCategory(
+          IosTextToSpeechAudioCategory.playback,
+          [IosTextToSpeechAudioCategoryOptions.duckOthers],
+        );
+      }
+      await flutterTts.awaitSpeakCompletion(true);
+    } catch (error) {
+      debugPrint('[TTS] Voice guidance unavailable: $error');
+    }
   }
 
   Future<void> _initLocationTracking() async {
@@ -76,7 +87,9 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
         _currentLocation = loc;
       });
       // Start stream
-      _locationSubscription = LocationService.getPositionStream()?.listen((position) {
+      _locationSubscription = LocationService.getPositionStream()?.listen((
+        position,
+      ) {
         if (mounted) {
           setState(() {
             _currentLocation = position;
@@ -90,10 +103,15 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
   DateTime? _lastLocationUpdate;
 
   void _checkStepProgression(LatLng position) {
-    if (!_isNavigating || _routeSteps.isEmpty || _currentStepIndex >= _routeSteps.length) return;
-    
+    if (!_isNavigating ||
+        _routeSteps.isEmpty ||
+        _currentStepIndex >= _routeSteps.length) {
+      return;
+    }
+
     final now = DateTime.now();
-    if (_lastLocationUpdate != null && now.difference(_lastLocationUpdate!).inMilliseconds < 1000) {
+    if (_lastLocationUpdate != null &&
+        now.difference(_lastLocationUpdate!).inMilliseconds < 1000) {
       return;
     }
     _lastLocationUpdate = now;
@@ -103,14 +121,20 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
     final maneuverPoint = LatLng(maneuverLoc[1], maneuverLoc[0]);
 
     final distance = const Distance();
-    final distToManeuver = distance.as(LengthUnit.Meter, position, maneuverPoint);
+    final distToManeuver = distance.as(
+      LengthUnit.Meter,
+      position,
+      maneuverPoint,
+    );
 
     // 1. Advance Step if very close (e.g. 15m)
     if (distToManeuver <= 15) {
       if (_currentStepIndex < _routeSteps.length - 1) {
         setState(() {
           _currentStepIndex++;
-          _currentInstruction = _parseInstruction(_routeSteps[_currentStepIndex]);
+          _currentInstruction = _parseInstruction(
+            _routeSteps[_currentStepIndex],
+          );
         });
         _speakInstruction(99999, _currentInstruction!);
       }
@@ -138,7 +162,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
     if (_isSpeaking) {
       await flutterTts.stop();
     }
-    
+
     _isSpeaking = true;
     _lastSpokenDistanceThreshold = distanceThreshold;
 
@@ -160,7 +184,9 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
         ref.read(heldTasksProvider).contains(targetTask.id)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('This location is on hold for officer review.')),
+          const SnackBar(
+            content: Text('This location is on hold for officer review.'),
+          ),
         );
       }
       return;
@@ -190,152 +216,143 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
       final route = routeAsync.value;
       if (route == null) return;
 
-      final targetWaypoint = route.waypoints.where((w) => w.cleanupTaskId == targetTask.id).firstOrNull;
-      if (targetWaypoint == null || targetWaypoint.latitude == null || targetWaypoint.longitude == null) {
+      final targetWaypoint = route.waypoints
+          .where((w) => w.cleanupTaskId == targetTask.id)
+          .firstOrNull;
+      if (targetWaypoint == null ||
+          targetWaypoint.latitude == null ||
+          targetWaypoint.longitude == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not find destination coordinates for this task.')),
+            const SnackBar(
+              content: Text(
+                'Could not find destination coordinates for this task.',
+              ),
+            ),
           );
         }
         return;
       }
 
-      final destination = LatLng(targetWaypoint.latitude!, targetWaypoint.longitude!);
+      final destination = LatLng(
+        targetWaypoint.latitude!,
+        targetWaypoint.longitude!,
+      );
 
-      // ── OSRM routing with a strict 3-second total wall-clock cap ────────────
-      // Pre-flight check: if the device reports no network interface at all,
-      // skip OSRM entirely to reach the offline fallback in ~0 ms.
-      final connectivityResult = await Connectivity().checkConnectivity();
-      final isOffline = connectivityResult.contains(ConnectivityResult.none);
-
-      List<LatLng> finalPolyline = [];
-      String? firstInstruction;
-
-      if (!isOffline) {
-        debugPrint('[NAV] Device online — attempting OSRM (3 s cap)...');
-        final tOsrmStart = DateTime.now();
-        try {
-          // Race the real request against a 3-second sentinel Future.
-          // Using a single 3 s connectTimeout is not enough: a slow TCP
-          // handshake can consume it, then receiveTimeout kicks in separately.
-          // The race guarantees the total wall-clock window is ≤ 3 s.
-          final dioClient = dio.Dio(dio.BaseOptions(
+      final interfaces = await Connectivity().checkConnectivity();
+      final online = interfaces.any(
+        (value) => value != ConnectivityResult.none,
+      );
+      CrewNavigationPlan? plan;
+      String? owner;
+      try {
+        owner = Supabase.instance.client.auth.currentUser?.id;
+      } catch (_) {}
+      var saved = false;
+      var directionsSaved = false;
+      if (online) {
+        final client = dio.Dio(
+          dio.BaseOptions(
             connectTimeout: const Duration(seconds: 3),
             receiveTimeout: const Duration(seconds: 3),
-            headers: {'User-Agent': 'dev.ecopinas.ecopin_app/1.0'},
-          ));
-
-          final url = 'http://router.project-osrm.org/route/v1/driving/'
-              '${origin.longitude},${origin.latitude};'
-              '${destination.longitude},${destination.latitude}'
+          ),
+        );
+        final cancel = dio.CancelToken();
+        try {
+          final url =
+              'https://router.project-osrm.org/route/v1/driving/'
+              '${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}'
               '?steps=true&geometries=geojson&overview=full';
-
-          // Sentinel: throws _OsrmTimeout after 3 s regardless of Dio state
-          final timeoutFuture = Future.delayed(
-            const Duration(seconds: 3),
-            () => throw _OsrmTimeout(),
+          final response = await client
+              .get(url, cancelToken: cancel)
+              .timeout(
+                const Duration(seconds: 3),
+                onTimeout: () {
+                  cancel.cancel('Navigation request timed out');
+                  throw TimeoutException('Navigation request timed out');
+                },
+              );
+          plan = CrewNavigationPlan.fromOsrm(
+            Map<String, dynamic>.from(response.data as Map),
           );
-
-          final response = await Future.any<dio.Response>([dioClient.get(url), timeoutFuture]);
-          final data = response.data;
-
-          if (data['code'] == 'Ok') {
-            final routeData = data['routes'][0];
-
-            _liveRouteDistance = (routeData['distance'] as num?)?.toDouble();
-            _liveRouteDuration = ((routeData['duration'] as num?) ?? 0) / 60;
-
-            final geometry = routeData['geometry']['coordinates'] as List;
-            finalPolyline = geometry.map((coord) => LatLng(coord[1].toDouble(), coord[0].toDouble())).toList();
-
-            final legs = routeData['legs'] as List;
-            if (legs.isNotEmpty) {
-              _routeSteps = legs[0]['steps'] as List;
-              _currentStepIndex = 0;
-              if (_routeSteps.isNotEmpty) {
-                firstInstruction = _parseInstruction(_routeSteps[0]);
-                _speakInstruction(99999, firstInstruction!);
-              }
+          if (owner != null) {
+            try {
+              await CrewNavigationCache.save(
+                owner,
+                route.id,
+                targetTask.id,
+                destination,
+                plan,
+              );
+              directionsSaved = true;
+            } catch (error) {
+              debugPrint('[NAV] Could not save turn directions: $error');
             }
-            final tOsrmDone = DateTime.now();
-            debugPrint('[NAV] OSRM success in ${tOsrmDone.difference(tOsrmStart).inMilliseconds} ms');
-          } else {
-            debugPrint('[NAV] OSRM returned non-Ok code: ${data['code']} — falling back');
           }
-        } on _OsrmTimeout {
-          final elapsed = DateTime.now().difference(tOsrmStart).inMilliseconds;
-          debugPrint('[NAV] OSRM timed out after $elapsed ms — falling back to offline route');
-        } catch (e) {
-          final elapsed = DateTime.now().difference(tOsrmStart).inMilliseconds;
-          debugPrint('[NAV] OSRM failed after $elapsed ms — falling back: $e');
+        } catch (error) {
+          debugPrint('[NAV] Online directions unavailable: $error');
+        } finally {
+          client.close(force: true);
         }
-      } else {
-        debugPrint('[NAV] Device offline — skipping OSRM, loading pre-rendered route immediately');
       }
-
-      // ── Offline fallback: pre-computed snapped route from backend ─────────
-      if (finalPolyline.isEmpty) {
-        final tFallbackStart = DateTime.now();
-        debugPrint('[NAV] Offline fallback started at $tFallbackStart');
-
-        List<LatLng> fallbackPolyline = [];
-        for (var wp in route.waypoints) {
-          if (wp.waypointType == 'depot_start') continue;
-          if (wp.polyline.isNotEmpty) {
-            fallbackPolyline.addAll(wp.polyline.map((p) => LatLng(p.latitude, p.longitude)));
-          } else if (wp.latitude != null && wp.longitude != null) {
-            fallbackPolyline.add(LatLng(wp.latitude!, wp.longitude!));
-          }
-          if (wp.cleanupTaskId == targetTask.id) break;
-        }
-
-        if (fallbackPolyline.isEmpty) {
-          // No route data available at all — tell the user instead of silently
-          // entering navigating=true with an empty polyline.
-          debugPrint('[NAV] Offline fallback polyline is also empty — aborting navigation');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No cached route available. Please reconnect to load the route.'),
-                duration: Duration(seconds: 4),
-              ),
-            );
-          }
-          return;
-        }
-
-        // Snap to the closest already-snapped point on the offline road network
-        final distance = const Distance();
-        double minDistance = double.infinity;
-        int closestIndex = 0;
-        for (int i = 0; i < fallbackPolyline.length; i++) {
-          final d = distance.as(LengthUnit.Meter, origin, fallbackPolyline[i]);
-          if (d < minDistance) {
-            minDistance = d;
-            closestIndex = i;
-          }
-        }
-
-        finalPolyline = fallbackPolyline.sublist(closestIndex);
-        firstInstruction = 'Follow the highlighted offline route to destination';
-
-        final tFallbackDone = DateTime.now();
-        debugPrint('[NAV] Offline fallback ready in '
-            '${tFallbackDone.difference(tFallbackStart).inMilliseconds} ms');
+      if (plan == null && owner != null) {
+        plan = await CrewNavigationCache.load(
+          owner,
+          route.id,
+          targetTask.id,
+          destination,
+          origin,
+        );
+        saved = plan != null;
       }
-
-      final tTotal = DateTime.now().difference(tStart).inMilliseconds;
-      debugPrint('[NAV] Start Next Job → route ready: ${tTotal} ms');
-
+      if (plan == null) {
+        // Published geometry describes this leg only; stop coordinates are not a road path.
+        if (targetWaypoint.polyline.length < 2) {
+          throw const FormatException(
+            'No saved road path or turn directions for this stop. Connect to the internet and try again.',
+          );
+        }
+        plan = CrewNavigationPlan(
+          points: targetWaypoint.polyline
+              .map((point) => LatLng(point.latitude, point.longitude))
+              .toList(),
+        ).fromPosition(origin);
+        saved = true;
+      }
+      if (!mounted) return;
+      if (ref.read(completedTasksProvider).contains(targetTask.id) ||
+          ref.read(heldTasksProvider).contains(targetTask.id)) {
+        return;
+      }
+      setState(() {
+        _liveNavigationPolyline = plan!.points;
+        _routeSteps = plan.steps;
+        _currentStepIndex = 0;
+        _liveRouteDistance = plan.distanceMeters;
+        _liveRouteDuration = plan.durationMinutes;
+        _usingSavedRoute = saved;
+        _directionsSaved = directionsSaved;
+        _currentInstruction = plan.steps.isEmpty
+            ? 'Saved path only. Turn directions are unavailable offline.'
+            : crewTurnInstruction(plan.steps.first);
+        _isNavigating = true;
+        _activeNavigationTaskId = targetTask.id;
+        _lastLocationUpdate = null;
+        _lastSpokenStepIndex = -1;
+        _lastSpokenDistanceThreshold = 999999;
+      });
+      if (_routeSteps.isNotEmpty) {
+        unawaited(_speakInstruction(99999, _currentInstruction!));
+      }
+      _mapController.move(origin, 17);
+    } catch (error) {
       if (mounted) {
-        setState(() {
-          _liveNavigationPolyline = finalPolyline;
-          _currentInstruction = firstInstruction;
-          _isNavigating = true;
-          _activeNavigationTaskId = targetTask.id;
-          _lastSpokenStepIndex = -1;
-          _lastSpokenDistanceThreshold = 999999;
-        });
+        final message = error is FormatException
+            ? error.message
+            : 'Directions could not load. Please reconnect and try again.';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message.toString())));
       }
     } finally {
       // Always clear the loading guard, regardless of success or any failure path
@@ -343,26 +360,8 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
     }
   }
 
-  String _parseInstruction(Map<String, dynamic> step) {
-    try {
-      final maneuver = step['maneuver'] as Map<String, dynamic>?;
-      final name = step['name'] as String?;
-      
-      if (maneuver != null) {
-        final type = maneuver['type'] as String?;
-        final modifier = maneuver['modifier'] as String?;
-        
-        String instruction = type ?? 'Head';
-        if (modifier != null) instruction += ' $modifier';
-        if (name != null && name.isNotEmpty) instruction += ' onto $name';
-        
-        return '${instruction[0].toUpperCase()}${instruction.substring(1)}';
-      }
-      return name != null && name.isNotEmpty ? 'Head onto $name' : 'Follow the route';
-    } catch (e) {
-      return 'Follow the route';
-    }
-  }
+  String _parseInstruction(Map<String, dynamic> step) =>
+      crewTurnInstruction(step);
 
   @override
   void dispose() {
@@ -388,7 +387,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
               _isNavigating = false;
               _activeNavigationTaskId = null;
               _lastSpokenStepIndex = -1;
-                      _lastSpokenDistanceThreshold = 999999;
+              _lastSpokenDistanceThreshold = 999999;
             });
           }
         }
@@ -420,97 +419,99 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
           }
 
           final tasks = tasksAsync.value ?? [];
-          final taskStops = route.waypoints.where((w) => w.waypointType == 'task').length;
-          final center = route.startDepot ?? const LatLng(14.561433, 121.075636);
+          final taskStops = route.waypoints
+              .where((w) => w.waypointType == 'task')
+              .length;
+          final center =
+              route.startDepot ?? const LatLng(14.561433, 121.075636);
 
-          // Build full polyline from waypoints ONLY if navigating
-          List<LatLng> fullPolyline = [];
-          if (_isNavigating && _activeNavigationTaskId != null) {
-            for (var wp in route.waypoints) {
-              if (wp.waypointType == 'depot_start') continue;
-              if (wp.polyline.isNotEmpty) {
-                fullPolyline.addAll(wp.polyline.map((p) => LatLng(p.latitude, p.longitude)));
-              } else if (wp.latitude != null && wp.longitude != null) {
-                fullPolyline.add(LatLng(wp.latitude!, wp.longitude!));
-              }
-              if (wp.cleanupTaskId == _activeNavigationTaskId) {
-                break; // Stop path at the target task
-              }
-            }
-          }
-
-          // Dynamically snap and trim route to current location (Overview only)
-          List<LatLng> mainRoutePoints = [];
-          if (_isNavigating) {
-            mainRoutePoints = _liveNavigationPolyline;
-          } else if (_currentLocation != null && fullPolyline.isNotEmpty) {
-            final distance = const Distance();
-            double minDistance = double.infinity;
-            int closestIndex = 0;
-
-            for (int i = 0; i < fullPolyline.length; i++) {
-              double d = distance.as(LengthUnit.Meter, _currentLocation!, fullPolyline[i]);
-              if (d < minDistance) {
-                minDistance = d;
-                closestIndex = i;
-              }
-            }
-
-            // Connect current location to the closest point on the pre-computed road network
-            mainRoutePoints = [_currentLocation!, ...fullPolyline.sublist(closestIndex)];
-          } else {
-            mainRoutePoints = fullPolyline;
-          }
+          final mainRoutePoints = _isNavigating
+              ? _liveNavigationPolyline
+              : <LatLng>[];
+          final overviewLines = route.waypoints
+              .where((waypoint) => waypoint.polyline.length >= 2)
+              .map(
+                (waypoint) => Polyline(
+                  points: waypoint.polyline
+                      .map((p) => LatLng(p.latitude, p.longitude))
+                      .toList(),
+                  color: Theme.of(context).colorScheme.primary,
+                  strokeWidth: 4,
+                ),
+              )
+              .toList();
 
           // Build markers
           List<Marker> markers = [];
           for (var wp in route.waypoints) {
             if (wp.latitude == null || wp.longitude == null) continue;
             final pos = LatLng(wp.latitude!, wp.longitude!);
-            
-            if (wp.waypointType == 'depot_start' || wp.waypointType == 'depot_end') {
-              markers.add(Marker(
-                point: pos,
-                width: 36,
-                height: 36,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryDark,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 2))],
-                  ),
-                  child: const Center(child: Text('🏢', style: TextStyle(fontSize: 16))),
-                ),
-              ));
-            } else if (wp.waypointType == 'task') {
-              final task = tasks.where((t) => t.id == wp.cleanupTaskId).firstOrNull;
-              if (task != null) {
-                bool isCompleted = completedTasks.contains(task.id) || task.status.toLowerCase() == 'completed';
-                markers.add(Marker(
+
+            if (wp.waypointType == 'depot_start' ||
+                wp.waypointType == 'depot_end') {
+              markers.add(
+                Marker(
                   point: pos,
-                  width: 32,
-                  height: 32,
-                  child: GestureDetector(
-                    onTap: () => _showTaskPreview(context, task, isCompleted),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isCompleted ? Colors.blueGrey : AppColors.primaryDark,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 2))],
-                      ),
-                      child: Center(
-                        child: isCompleted
-                           ? const Icon(Icons.check, color: Colors.white, size: 16)
-                           : Text(
-                               wp.sequenceOrder.toString(),
-                               style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
-                             ),
+                  width: 36,
+                  height: 36,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryDark,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black54,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Text('🏢', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ),
+              );
+            } else if (wp.waypointType == 'task') {
+              final task = tasks
+                  .where((t) => t.id == wp.cleanupTaskId)
+                  .firstOrNull;
+              if (task != null) {
+                bool isCompleted =
+                    completedTasks.contains(task.id) ||
+                    task.status.toLowerCase() == 'completed';
+                markers.add(
+                  Marker(
+                    point: pos,
+                    width: ReportPinFrame.width,
+                    height: ReportPinFrame.height,
+                    alignment: Alignment.topCenter,
+                    child: IconButton(
+                      tooltip:
+                          'Stop ${wp.sequenceOrder}: ${task.title}${isCompleted ? ', completed' : ''}',
+                      padding: EdgeInsets.zero,
+                      onPressed: () =>
+                          _showTaskPreview(context, task, isCompleted),
+                      icon: ReportPinFrame(
+                        color: Theme.of(context).colorScheme.primary,
+                        layered: true,
+                        badge: Icon(
+                          isCompleted ? Icons.check : Icons.layers_outlined,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        child: Text(
+                          '${wp.sequenceOrder}',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
                       ),
                     ),
                   ),
-                ));
+                );
               }
             }
           }
@@ -520,11 +521,15 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
           for (var task in tasks) {
             if (task.reports == null || task.reports!.isEmpty) continue;
             // ignore: depend_on_referenced_packages
-            final wp = route.waypoints.where((w) => w.cleanupTaskId == task.id).firstOrNull;
-            if (wp == null || wp.latitude == null || wp.longitude == null) continue;
+            final wp = route.waypoints
+                .where((w) => w.cleanupTaskId == task.id)
+                .firstOrNull;
+            if (wp == null || wp.latitude == null || wp.longitude == null) {
+              continue;
+            }
 
             final centerCoords = LatLng(wp.latitude!, wp.longitude!);
-            
+
             final sortedReports = List.of(task.reports!);
             sortedReports.sort((a, b) {
               int idxA = task.reportSequence.indexOf(a.id);
@@ -539,38 +544,31 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
               final report = sortedReports[i];
               if (report.location.latitude != 0) {
                 positions.add(report.location);
-                final isPending = report.validationStatus == 'pending';
-                markers.add(Marker(
-                  point: report.location,
-                  width: 28,
-                  height: 28,
-                  child: GestureDetector(
-                    onTap: () => _showReportPreview(context, report),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isPending ? AppColors.info : AppColors.success,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 2))],
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${wp.sequenceOrder}.${i + 1}',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
-                        ),
-                      ),
+                markers.add(
+                  Marker(
+                    point: report.location,
+                    width: ReportPinFrame.width,
+                    height: ReportPinFrame.height,
+                    alignment: Alignment.topCenter,
+                    child: ReportMarker(
+                      status: report.status,
+                      title: '${wp.sequenceOrder}.${i + 1} ${report.title}',
+                      issueType: report.issueType,
+                      onTap: () => _showReportPreview(context, report, task.id),
                     ),
                   ),
-                ));
+                );
               }
             }
             if (positions.length > 1) {
-              microRouteLines.add(Polyline(
-                points: positions,
-                color: AppColors.primaryDark.withValues(alpha: 0.7),
-                strokeWidth: 3.0,
-                pattern: StrokePattern.dashed(segments: [5.0, 10.0]),
-              ));
+              microRouteLines.add(
+                Polyline(
+                  points: positions,
+                  color: AppColors.primaryDark.withValues(alpha: 0.7),
+                  strokeWidth: 3.0,
+                  pattern: StrokePattern.dashed(segments: [5.0, 10.0]),
+                ),
+              );
             }
           }
 
@@ -579,19 +577,17 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
               // Map
               FlutterMap(
                 mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: center,
-                  initialZoom: 14.0,
-                ),
+                options: MapOptions(initialCenter: center, initialZoom: 14.0),
                 children: [
                   TileLayer(
+                    tileProvider: widget.tileProvider,
                     urlTemplate: Theme.of(context).brightness == Brightness.dark
                         ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
                         : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
                     subdomains: const ['a', 'b', 'c'],
                     userAgentPackageName: 'dev.ecopinas.ecopin_app',
                   ),
-                  if (mainRoutePoints.isNotEmpty)
+                  if (mainRoutePoints.length >= 2)
                     PolylineLayer(
                       polylines: [
                         Polyline(
@@ -601,13 +597,51 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                         ),
                       ],
                     ),
+                  if (!_isNavigating && overviewLines.isNotEmpty)
+                    PolylineLayer(polylines: overviewLines),
                   if (microRouteLines.isNotEmpty)
-                    PolylineLayer(
-                      polylines: microRouteLines,
-                    ),
+                    PolylineLayer(polylines: microRouteLines),
                   if (markers.isNotEmpty)
-                    MarkerLayer(
-                      markers: markers,
+                    MarkerClusterLayerWidget(
+                      options: MarkerClusterLayerOptions(
+                        markers: markers,
+                        size: const Size(
+                          ReportPinFrame.width,
+                          ReportPinFrame.height,
+                        ),
+                        alignment: Alignment.topCenter,
+                        maxClusterRadius: 60,
+                        spiderfyCircleRadius: 90,
+                        polygonOptions: const PolygonOptions(
+                          color: Colors.transparent,
+                          borderColor: Colors.transparent,
+                          borderStrokeWidth: 0,
+                        ),
+                        animationsOptions:
+                            MediaQuery.disableAnimationsOf(context)
+                            ? const AnimationsOptions(
+                                zoom: Duration.zero,
+                                fitBound: Duration.zero,
+                                centerMarker: Duration.zero,
+                                spiderfy: Duration.zero,
+                              )
+                            : const AnimationsOptions(),
+                        builder: (_, grouped) => Builder(
+                          builder: (clusterContext) => Semantics(
+                            label: '${grouped.length} route pins',
+                            child: ExcludeSemantics(
+                              child: ReportClusterBadge(
+                                count: grouped.length,
+                                onActivate: clusterContext
+                                    .findAncestorWidgetOfExactType<
+                                      GestureDetector
+                                    >()
+                                    ?.onTap,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   if (_currentLocation != null)
                     MarkerLayer(
@@ -626,7 +660,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                                   color: Colors.blueAccent,
                                   blurRadius: 10,
                                   spreadRadius: 2,
-                                )
+                                ),
                               ],
                             ),
                           ),
@@ -635,7 +669,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                     ),
                 ],
               ),
-              
+
               // Unified Top Panel
               Positioned(
                 top: MediaQuery.of(context).padding.top + 16,
@@ -643,10 +677,11 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                 right: 16,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: (Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF1E1E1E)
-                            : Colors.white)
-                        .withValues(alpha: 0.95),
+                    color:
+                        (Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF1E1E1E)
+                                : Colors.white)
+                            .withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: Theme.of(context).brightness == Brightness.dark
@@ -655,7 +690,11 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.45 : 0.08),
+                        color: Colors.black.withValues(
+                          alpha: Theme.of(context).brightness == Brightness.dark
+                              ? 0.45
+                              : 0.08,
+                        ),
                         blurRadius: 12,
                         offset: const Offset(0, 6),
                       ),
@@ -667,34 +706,80 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                       // Turn-by-Turn Header (if navigating)
                       if (_isNavigating && _currentInstruction != null)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                           decoration: const BoxDecoration(
                             color: AppColors.primaryDark,
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(19)),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(19),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.directions, color: Colors.black, size: 28),
+                              const Icon(
+                                Icons.directions,
+                                color: Colors.white,
+                                size: 28,
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   _currentInstruction!,
-                                  style: AppTypography.h4.copyWith(color: Colors.black, fontWeight: FontWeight.bold),
+                                  style: AppTypography.body.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      
+
+                      if (_isNavigating)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: Text(
+                            !_usingSavedRoute
+                                ? (_directionsSaved
+                                      ? 'Directions saved for offline use'
+                                      : 'Online directions · offline saving unavailable')
+                                : _routeSteps.isEmpty
+                                ? 'Saved route preview · no turn-by-turn guidance'
+                                : 'Saved directions · no live rerouting',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
                       // Route Stats
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildTopStat('STOPS', _isNavigating ? '1' : taskStops.toString()),
-                            _buildTopStat('ETA', _formatDuration(_isNavigating && _liveRouteDuration != null ? _liveRouteDuration : route.totalDurationMin)),
-                            _buildTopStat('DIST', _formatDistance(_isNavigating && _liveRouteDistance != null ? _liveRouteDistance : route.totalDistanceMeters)),
+                            _buildTopStat(
+                              'Stops',
+                              _isNavigating ? '1' : taskStops.toString(),
+                            ),
+                            _buildTopStat(
+                              'Est. time',
+                              _formatDuration(
+                                _isNavigating
+                                    ? _liveRouteDuration
+                                    : route.totalDurationMin,
+                              ),
+                            ),
+                            _buildTopStat(
+                              'Distance',
+                              _formatDistance(
+                                _isNavigating
+                                    ? _liveRouteDistance
+                                    : route.totalDistanceMeters,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -704,18 +789,36 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            border: Border(top: BorderSide(
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.white10
-                                  : Colors.grey.shade200,
-                            )),
+                            border: Border(
+                              top: BorderSide(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white10
+                                    : Colors.grey.shade200,
+                              ),
+                            ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.touch_app, color: Colors.grey, size: 14),
+                              const Icon(
+                                Icons.touch_app,
+                                color: Colors.grey,
+                                size: 14,
+                              ),
                               const SizedBox(width: 6),
-                              Text('Tap any pin to view details', style: AppTypography.caption.copyWith(color: Colors.grey)),
+                              Flexible(
+                                child: Text(
+                                  'Tap a pin for details',
+                                  textAlign: TextAlign.center,
+                                  style: AppTypography.caption.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -726,16 +829,18 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
 
               // Unified Bottom Action Card
               Positioned(
-                bottom: 130, // Elevated to avoid navbar labels
+                bottom:
+                    16, // The parent Scaffold already reserves the bottom navigation bar.
                 left: 16,
                 right: 16,
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: (Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF1E1E1E)
-                            : Colors.white)
-                        .withValues(alpha: 0.95),
+                    color:
+                        (Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF1E1E1E)
+                                : Colors.white)
+                            .withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: Theme.of(context).brightness == Brightness.dark
@@ -744,7 +849,11 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.45 : 0.08),
+                        color: Colors.black.withValues(
+                          alpha: Theme.of(context).brightness == Brightness.dark
+                              ? 0.45
+                              : 0.08,
+                        ),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -765,13 +874,20 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                             },
                             icon: const Icon(Icons.close, color: Colors.white),
                             label: Text(
-                              'EXIT NAVIGATION',
-                              style: AppTypography.h4.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                              _routeSteps.isEmpty
+                                  ? 'Exit preview'
+                                  : 'Exit navigation',
+                              style: AppTypography.h4.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.error,
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                               elevation: 0,
                             ),
                           ),
@@ -786,20 +902,30 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                                   heldTasks.contains(t.id)) {
                                 return false;
                               }
-                              return route.waypoints.any((w) => w.cleanupTaskId == t.id);
+                              return route.waypoints.any(
+                                (w) => w.cleanupTaskId == t.id,
+                              );
                             }).toList();
-                            
+
                             uncompletedTasks.sort((a, b) {
-                              final wpA = route.waypoints.firstWhere((w) => w.cleanupTaskId == a.id);
-                              final wpB = route.waypoints.firstWhere((w) => w.cleanupTaskId == b.id);
-                              return wpA.sequenceOrder.compareTo(wpB.sequenceOrder);
+                              final wpA = route.waypoints.firstWhere(
+                                (w) => w.cleanupTaskId == a.id,
+                              );
+                              final wpB = route.waypoints.firstWhere(
+                                (w) => w.cleanupTaskId == b.id,
+                              );
+                              return wpA.sequenceOrder.compareTo(
+                                wpB.sequenceOrder,
+                              );
                             });
                             final nextTask = uncompletedTasks.firstOrNull;
                             if (nextTask == null) {
                               return Center(
                                 child: Text(
                                   'All Route Tasks Completed',
-                                  style: AppTypography.body.copyWith(color: Colors.grey),
+                                  style: AppTypography.body.copyWith(
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               );
                             }
@@ -807,54 +933,72 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                             return SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                onPressed: _isStartingNavigation ? null : () {
-                                  _startLiveNavigation(nextTask);
-                                },
+                                onPressed: _isStartingNavigation
+                                    ? null
+                                    : () {
+                                        _startLiveNavigation(nextTask);
+                                      },
                                 icon: _isStartingNavigation
                                     ? const SizedBox(
                                         width: 20,
                                         height: 20,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2.5,
-                                          color: Colors.black,
+                                          color: Colors.white,
                                         ),
                                       )
-                                    : const Icon(Icons.near_me, color: Colors.black),
+                                    : const Icon(
+                                        Icons.near_me,
+                                        color: Colors.white,
+                                      ),
                                 label: Text(
-                                  'START NEXT JOB',
-                                  style: AppTypography.h4.copyWith(color: Colors.black, fontWeight: FontWeight.bold),
+                                  _isStartingNavigation
+                                      ? 'Loading directions…'
+                                      : 'Start next job',
+                                  style: AppTypography.body.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primaryDark,
-                                  disabledBackgroundColor: AppColors.primaryDark.withValues(alpha: 0.6),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  disabledBackgroundColor: AppColors.primaryDark
+                                      .withValues(alpha: 0.6),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
                                   elevation: 0,
                                 ),
                               ),
                             );
-                          }
+                          },
                         ),
                 ),
               ),
 
               // Map Action Buttons (TTS & Recenter)
               Positioned(
-                bottom: 250, // Elevated above the new bottom action card
+                bottom: 132, // Above the route action card.
                 right: 16,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (_isNavigating) ...[
+                    if (_isNavigating && _routeSteps.isNotEmpty) ...[
                       FloatingActionButton(
                         heroTag: 'tts_mute_toggle',
-                        backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        backgroundColor:
+                            Theme.of(context).brightness == Brightness.dark
                             ? const Color(0xFF1E1E1E)
                             : Colors.white,
                         mini: true,
                         child: Icon(
                           _isTtsMuted ? Icons.volume_off : Icons.volume_up,
-                          color: _isTtsMuted ? AppColors.error : AppColors.primaryDark,
+                          color: _isTtsMuted
+                              ? AppColors.error
+                              : AppColors.primaryDark,
                         ),
                         onPressed: () {
                           setState(() {
@@ -869,10 +1013,14 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                     ],
                     FloatingActionButton(
                       heroTag: 'recenter_map',
-                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                      backgroundColor:
+                          Theme.of(context).brightness == Brightness.dark
                           ? const Color(0xFF1E1E1E)
                           : Colors.white,
-                      child: const Icon(Icons.my_location, color: AppColors.primaryDark),
+                      child: const Icon(
+                        Icons.my_location,
+                        color: AppColors.primaryDark,
+                      ),
                       onPressed: () {
                         if (_currentLocation != null) {
                           _mapController.move(_currentLocation!, 15.0);
@@ -892,28 +1040,29 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
   }
 
   Widget _buildTopStat(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          style: AppTypography.caption.copyWith(
-            color: Colors.grey,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-            fontSize: 10,
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: AppTypography.caption.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: AppTypography.body.copyWith(
-            color: AppColors.textPrimaryDark,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: AppTypography.body.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -933,304 +1082,162 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
     return '${m}m';
   }
 
-  void _showTaskPreview(BuildContext context, CleanupTask task, bool isCompleted) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final modalBg = Theme.of(context).scaffoldBackgroundColor;
-    final handleColor = isDark ? Colors.white24 : Colors.grey.shade300;
-    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final borderColor = isDark ? Colors.white10 : Colors.grey.shade200;
+  void _showTaskPreview(
+    BuildContext context,
+    CleanupTask task,
+    bool isCompleted,
+  ) {
+    _showRoutePreview(
+      title: task.title,
+      subtitle:
+          'Cleanup task · ${isCompleted ? 'Completed' : task.status.replaceAll('_', ' ')}',
+      description: task.description,
+      location: task.streetAddress ?? task.location,
+      details:
+          '${task.reports?.length ?? task.reportIds.length} linked reports',
+      onDetails: () => context.push(
+        FieldCrewAppRoutes.taskDetail.replaceFirst(
+          ':id',
+          Uri.encodeComponent(task.id),
+        ),
+      ),
+      onStart: isCompleted ? null : () => _startLiveNavigation(task),
+    );
+  }
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      builder: (context) => Container(
-        margin: EdgeInsets.zero,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: modalBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: handleColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    task.title,
-                    style: AppTypography.h4.copyWith(color: textColor, fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isCompleted ? Colors.blueGrey.withValues(alpha: 0.2) : AppColors.primaryDark.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    isCompleted ? 'COMPLETED' : task.status.toUpperCase(),
-                    style: AppTypography.caption.copyWith(
-                      color: isCompleted ? Colors.blueGrey : AppColors.primaryDark, 
-                      fontWeight: FontWeight.bold
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              task.description,
-              style: AppTypography.body.copyWith(color: Colors.grey),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.location_on_outlined, color: Colors.grey, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    task.location,
-                    style: AppTypography.caption.copyWith(color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today_outlined, color: Colors.grey, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Created: ${task.createdAt.toString().split(' ')[0]}',
-                  style: AppTypography.caption.copyWith(color: Colors.grey),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            if (task.reports != null && task.reports!.isNotEmpty) ...[
-              Text(
-                'Reports in Task (${task.reports!.length})',
-                style: AppTypography.h5.copyWith(color: textColor, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              ...task.reports!.take(3).map((r) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: borderColor),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            r.validationStatus == 'pending' ? Icons.pending_actions : Icons.check_circle,
-                            color: r.validationStatus == 'pending' ? AppColors.info : AppColors.success,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              r.title,
-                              style: AppTypography.body.copyWith(color: textColor),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )),
-              const SizedBox(height: 24),
-            ],
-            
-            // Render different buttons based on status and active navigation
-            if (isCompleted)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.surfaceLight,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text('Close', style: AppTypography.h5.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              )
-            else if (_isNavigating && _activeNavigationTaskId == task.id)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    flutterTts.stop();
-                    ref.read(completedTasksProvider.notifier).addCompletedTask(task.id);
-                    setState(() {
-                      _isNavigating = false;
-                      _activeNavigationTaskId = null;
-                      _lastSpokenStepIndex = -1;
-                      _lastSpokenDistanceThreshold = 999999;
-                    });
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text('Submit Report', style: AppTypography.h5.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _startLiveNavigation(task);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryDark,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text('Start Task', style: AppTypography.h5.copyWith(color: Colors.black, fontWeight: FontWeight.bold)),
-                ),
-              ),
-          ],
-        ),
+  void _showReportPreview(
+    BuildContext context,
+    ReportModel report,
+    String taskId,
+  ) {
+    _showRoutePreview(
+      title: report.title,
+      subtitle: 'Report · ${report.status.replaceAll('_', ' ')}',
+      description: report.description ?? 'No description provided.',
+      details: report.issueType?.replaceAll('_', ' '),
+      onDetails: () => context.push(
+        FieldCrewAppRoutes.reportDetail
+            .replaceFirst(':id', Uri.encodeComponent(taskId))
+            .replaceFirst(':reportId', Uri.encodeComponent(report.id)),
       ),
     );
   }
 
-  void _showReportPreview(BuildContext context, ReportModel report) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final modalBg = Theme.of(context).scaffoldBackgroundColor;
-    final handleColor = isDark ? Colors.white24 : Colors.grey.shade300;
-    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
-
-    showModalBottomSheet(
+  void _showRoutePreview({
+    required String title,
+    required String subtitle,
+    required String description,
+    required VoidCallback onDetails,
+    String? location,
+    String? details,
+    VoidCallback? onStart,
+  }) {
+    showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      isScrollControlled: true,
       useRootNavigator: true,
-      builder: (context) => Container(
-        margin: EdgeInsets.zero,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: modalBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        final colors = theme.colorScheme;
+        return SafeArea(
+          top: false,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(sheetContext).height * .75,
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: handleColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          subtitle,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close preview',
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: colors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (details != null) ...[
+                    Text(
+                      details,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  Text(
+                    description,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurface,
+                    ),
+                  ),
+                  if (location != null && location.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 20,
+                          color: colors.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            location,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      onDetails();
+                    },
+                    child: const Text('View details'),
+                  ),
+                  if (onStart != null) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        onStart();
+                      },
+                      child: const Text('Navigate to task'),
+                    ),
+                  ],
+                ],
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    report.title,
-                    style: AppTypography.h4.copyWith(color: textColor, fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    report.status.toUpperCase(),
-                    style: AppTypography.caption.copyWith(color: AppColors.info, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              report.issueType ?? 'General Issue',
-              style: AppTypography.caption.copyWith(color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              report.description ?? 'No description.',
-              style: AppTypography.body.copyWith(color: Colors.grey),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.surfaceLight,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: Text('View Details', style: AppTypography.h5.copyWith(color: Colors.white)),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -1242,28 +1249,41 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.map_outlined, size: 64, color: theme.colorScheme.primary),
+            Icon(
+              Icons.map_outlined,
+              size: 64,
+              color: theme.colorScheme.primary,
+            ),
             const SizedBox(height: 24),
-            Text(unavailable ? 'Route could not load' : 'No published route available',
-              textAlign: TextAlign.center, style: theme.textTheme.titleLarge),
+            Text(
+              unavailable
+                  ? 'Route could not load'
+                  : 'No published route available',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
-            Text(unavailable
-                ? 'Check your connection and refresh. Your assigned tasks are still available in Tasks.'
-                : 'Assigned tasks can exist without a published route. Review your Tasks, or ask your officer to publish a route for your crew.',
-              textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+            Text(
+              unavailable
+                  ? 'Check your connection and refresh. Your assigned tasks are still available in Tasks.'
+                  : 'Assigned tasks can exist without a published route. Review your Tasks, or ask your officer to publish a route for your crew.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
             const SizedBox(height: 16),
             TextButton.icon(
               onPressed: () {
                 ref.invalidate(activeRoutesProvider);
                 ref.invalidate(myRouteProvider);
               },
-              icon: const Icon(Icons.refresh), label: const Text('Refresh route')),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh route'),
+            ),
           ],
         ),
       ),
     );
   }
-
 }
 
 class _MapSkeleton extends StatelessWidget {
@@ -1295,11 +1315,4 @@ class _MapSkeleton extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Sentinel exception thrown by the 3-second wall-clock timeout Future
-/// in [_FieldCrewMapScreenState._startLiveNavigation]. Caught specifically
-/// to distinguish a deliberate timeout from other Dio errors.
-class _OsrmTimeout implements Exception {
-  const _OsrmTimeout();
 }

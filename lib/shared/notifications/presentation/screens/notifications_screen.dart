@@ -194,17 +194,23 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       container: true,
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
-        color: isRead ? colors.surface : colors.primary.withValues(alpha: .06),
+        color: isRead
+            ? colors.surface
+            : Color.alphaBlend(
+                colors.primary.withValues(alpha: .06),
+                colors.surface,
+              ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
           side: BorderSide(
             color: isRead
-                ? (Theme.of(context).dividerTheme.color ?? colors.outlineVariant)
+                ? (Theme.of(context).dividerTheme.color ??
+                      colors.outlineVariant)
                 : colors.primary.withValues(alpha: .35),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -214,7 +220,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   Expanded(
                     child: Text(
                       title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: isRead ? FontWeight.w500 : FontWeight.w600,
                       ),
                     ),
@@ -309,7 +315,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: Text(
+          widget.role == UserRole.citizen ? 'Alerts' : 'Notifications',
+        ),
         leading: Navigator.of(context).canPop()
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -327,6 +335,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       ),
       body: SafeArea(
         top: false,
+        bottom: widget.role != UserRole.citizen,
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: CustomScrollView(
@@ -334,7 +343,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -439,7 +448,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    0,
+                    16,
+                    24 + MediaQuery.paddingOf(context).bottom,
+                  ),
                   sliver: SliverList.list(
                     children: [
                       for (final group in groups.entries) ...[

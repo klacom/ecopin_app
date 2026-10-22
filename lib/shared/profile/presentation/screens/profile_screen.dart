@@ -89,6 +89,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  Future<void> _removeAvatar() async {
+    if (_isUploading) return;
+    setState(() => _isUploading = true);
+    try {
+      await ref.read(apiClientProvider).removeAvatar();
+      ref.invalidate(profileProvider);
+      await ref.read(profileProvider.future);
+      if (mounted) {
+        SnackbarHelper.showMessage('Avatar photo removed successfully');
+      }
+    } catch (e, stackTrace) {
+      _log.severe('Failed to remove avatar', e, stackTrace);
+      if (mounted) {
+        SnackbarHelper.showError('Failed to remove avatar. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
   Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate() && !_isSaving) {
       setState(() {
@@ -125,9 +145,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         elevation: 0,
         backgroundColor: Colors.transparent,
         child: Container(
@@ -162,19 +180,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: AppColors.spaceLG),
               const Text(
                 'Log Out',
-                style: TextStyle(
-                  fontSize: 22.0,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 22.0, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: AppColors.spaceSM),
               const Text(
                 'Are you sure you want to log out of your account?',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15.0,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 15.0, color: Colors.grey),
               ),
               const SizedBox(height: AppColors.spaceXL),
               Row(
@@ -187,9 +199,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        side: BorderSide(
-                          color: Theme.of(context).dividerColor,
-                        ),
+                        side: BorderSide(color: Theme.of(context).dividerColor),
                       ),
                       child: Text(
                         'Cancel',
@@ -215,9 +225,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       child: const Text(
                         'Log Out',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -238,7 +246,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _deleteAccount() async {
-    if (_isSaving || ref.read(profileProvider).value?['role'] != 'citizen') return;
+    if (_isSaving || ref.read(profileProvider).value?['role'] != 'citizen')
+      return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => const DeleteAccountDialog(),
@@ -254,7 +263,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         final apiClient = ref.read(apiClientProvider);
         await apiClient.deleteAccount(confirmation: 'I confirm');
         await auth.signOut();
-        SnackbarHelper.showMessage('Account deleted. Personal data removed and waste reports anonymized.');
+        SnackbarHelper.showMessage(
+          'Account deleted. Personal data removed and waste reports anonymized.',
+        );
       } on dio.DioException catch (e, stackTrace) {
         _log.severe('DioException deleting account: $e', stackTrace);
         String errorMsg = 'Failed to delete account. Please try again.';
@@ -267,7 +278,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         SnackbarHelper.showError(errorMsg);
       } catch (e, stackTrace) {
         _log.severe('Error deleting account: $e', stackTrace);
-        SnackbarHelper.showError('Account deletion could not be completed. Sign in again to retry.');
+        SnackbarHelper.showError(
+          'Account deletion could not be completed. Sign in again to retry.',
+        );
       } finally {
         if (mounted) {
           setState(() {
@@ -368,8 +381,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         SnackbarHelper.showError(passwordError);
                         return;
                       }
-                      final confirmError =
-                          validateConfirmPassword(newPw, confirmPw);
+                      final confirmError = validateConfirmPassword(
+                        newPw,
+                        confirmPw,
+                      );
                       if (confirmError != null) {
                         SnackbarHelper.showError(confirmError);
                         return;
@@ -416,7 +431,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _updateDataConsent(bool value) async {
-    if (_isUpdatingConsent) return;
+    if (_isUpdatingConsent ||
+        ref.read(profileProvider).value?['role'] != 'citizen')
+      return;
 
     setState(() {
       _isUpdatingConsent = true;
@@ -494,7 +511,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     GestureDetector(
-                      onTap: _pickImage,
+                      onTap: _isUploading ? null : _pickImage,
                       child: Stack(
                         children: [
                           CircleAvatar(
@@ -547,6 +564,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
+                    if (profile?['role'] == 'officer' &&
+                        avatarUrl != null &&
+                        avatarUrl.isNotEmpty)
+                      TextButton.icon(
+                        onPressed: _isUploading ? null : _removeAvatar,
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Remove photo'),
+                      ),
                     TextFormField(
                       controller: _fullNameController,
                       decoration: const InputDecoration(
@@ -607,50 +632,99 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: AppColors.spaceMD),
 
-                    // Dark Mode Switch
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(
-                          AppColors.radiusCard,
+                    if (profile?['role'] == 'officer') ...[
+                      TextFormField(
+                        initialValue: 'Officer',
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Assigned permissions role',
+                          helperText: 'Managed by your administrator.',
+                          prefixIcon: Icon(Icons.badge_outlined),
                         ),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(AppColors.radiusCard),
-                        child: Consumer(
-                          builder: (context, ref, child) {
-                            final themeMode = ref.watch(themeModeProvider);
-                            final isDarkMode =
-                                themeMode == ThemeMode.dark ||
-                                (themeMode == ThemeMode.system &&
-                                    MediaQuery.platformBrightnessOf(context) ==
-                                        Brightness.dark);
+                      const SizedBox(height: AppColors.spaceMD),
+                      DropdownButtonFormField<ThemeMode>(
+                        key: ValueKey(ref.watch(themeModeProvider)),
+                        initialValue: ref.watch(themeModeProvider),
+                        decoration: const InputDecoration(
+                          labelText: 'Theme preference',
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: ThemeMode.light,
+                            child: Text('Light'),
+                          ),
+                          DropdownMenuItem(
+                            value: ThemeMode.dark,
+                            child: Text('Dark'),
+                          ),
+                          DropdownMenuItem(
+                            value: ThemeMode.system,
+                            child: Text('System'),
+                          ),
+                        ],
+                        onChanged: (mode) {
+                          if (mode != null) {
+                            ref
+                                .read(themeModeProvider.notifier)
+                                .setThemeMode(mode);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: AppColors.spaceMD),
+                    ],
 
-                            return SwitchListTile(
-                              secondary: const Icon(Icons.dark_mode_outlined),
-                              title: const Text(
-                                "Dark Mode",
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Text(
-                                isDarkMode
-                                    ? "Using dark theme."
-                                    : "Using light theme.",
-                              ),
-                              value: isDarkMode,
-                              onChanged: (value) {
-                                ref
-                                    .read(themeModeProvider.notifier)
-                                    .setThemeMode(
-                                      value ? ThemeMode.dark : ThemeMode.light,
-                                    );
-                              },
-                            );
-                          },
+                    // Dark Mode Switch
+                    if (profile?['role'] != 'officer')
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusCard,
+                          ),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusCard,
+                          ),
+                          child: Consumer(
+                            builder: (context, ref, child) {
+                              final themeMode = ref.watch(themeModeProvider);
+                              final isDarkMode =
+                                  themeMode == ThemeMode.dark ||
+                                  (themeMode == ThemeMode.system &&
+                                      MediaQuery.platformBrightnessOf(
+                                            context,
+                                          ) ==
+                                          Brightness.dark);
+
+                              return SwitchListTile(
+                                secondary: const Icon(Icons.dark_mode_outlined),
+                                title: const Text(
+                                  "Dark Mode",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                  isDarkMode
+                                      ? "Using dark theme."
+                                      : "Using light theme.",
+                                ),
+                                value: isDarkMode,
+                                onChanged: (value) {
+                                  ref
+                                      .read(themeModeProvider.notifier)
+                                      .setThemeMode(
+                                        value
+                                            ? ThemeMode.dark
+                                            : ThemeMode.light,
+                                      );
+                                },
+                              );
+                            },
+                          ),
                         ),
                       ),
-                    ),
                     const SizedBox(height: AppColors.spaceMD),
 
                     // Change Password Button
@@ -658,8 +732,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: _changePassword,
-                        icon: Icon(Icons.lock_reset, color: Theme.of(context).brightness == Brightness.light ? Colors.black : null),
-                        label: Text('Change Password', style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? Colors.black : null)),
+                        icon: Icon(
+                          Icons.lock_reset,
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                              ? Colors.black
+                              : null,
+                        ),
+                        label: Text(
+                          'Change Password',
+                          style: TextStyle(
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                ? Colors.black
+                                : null,
+                          ),
+                        ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                             vertical: AppColors.spaceMD,
@@ -669,41 +757,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: AppColors.spaceMD),
 
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(
-                          AppColors.radiusCard,
+                    if (profile?['role'] == 'citizen') ...[
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusCard,
+                          ),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(
+                            AppColors.radiusCard,
+                          ),
+                          child: SwitchListTile(
+                            secondary: const Icon(Icons.privacy_tip_outlined),
+                            title: const Text(
+                              "Share Personal Information",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              dataConsent
+                                  ? "Officers may access your profile information when handling your reports."
+                                  : "Your identity will remain hidden when possible.",
+                            ),
+                            value: dataConsent,
+                            onChanged: _isUpdatingConsent
+                                ? null
+                                : (value) => _updateDataConsent(value),
+                          ),
                         ),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(AppColors.radiusCard),
-                        child: SwitchListTile(
-                          secondary: const Icon(Icons.privacy_tip_outlined),
-                          title: const Text(
-                            "Share Personal Information",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            dataConsent
-                                ? "Officers may access your profile information when handling your reports."
-                                : "Your identity will remain hidden when possible.",
-                          ),
-                          value: dataConsent,
-                          onChanged: _isUpdatingConsent
-                              ? null
-                              : (value) => _updateDataConsent(value),
+
+                      if (_isUpdatingConsent)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: LinearProgressIndicator(),
                         ),
-                      ),
-                    ),
-
-                    if (_isUpdatingConsent)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8),
-                        child: LinearProgressIndicator(),
-                      ),
-
+                    ],
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -740,7 +831,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         width: double.infinity,
                         child: TextButton.icon(
                           onPressed: _isSaving ? null : _deleteAccount,
-                          icon: const Icon(Icons.delete_forever_outlined, color: AppColors.error, size: 20),
+                          icon: const Icon(
+                            Icons.delete_forever_outlined,
+                            color: AppColors.error,
+                            size: 20,
+                          ),
                           label: const Text(
                             'Delete Account',
                             style: TextStyle(
@@ -758,7 +853,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => NoInternetScreen(onRetry: () => ref.invalidate(profileProvider)),
+          error: (err, stack) =>
+              NoInternetScreen(onRetry: () => ref.invalidate(profileProvider)),
         ),
       ),
     );

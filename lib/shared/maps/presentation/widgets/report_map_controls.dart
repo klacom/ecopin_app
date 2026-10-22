@@ -22,51 +22,79 @@ class ReportMapControls extends StatelessWidget {
       Widget icon,
       VoidCallback? action, {
       bool? toggled,
-    }) => Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Semantics(
-        toggled: toggled,
-        child: Material(
-          elevation: 2,
-          shadowColor: const Color(0x26000000),
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          color: Theme.of(context).colorScheme.surface,
-          child: IconButton(
-            tooltip: label,
-            onPressed: action,
-            color: foreground,
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            icon: icon,
-          ),
+    }) => Semantics(
+      toggled: toggled,
+      child: Material(
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        color: toggled == true
+            ? AppColors.primary
+            : Theme.of(context).colorScheme.surface,
+        child: IconButton(
+          tooltip: label,
+          onPressed: action,
+          color: toggled == true ? Colors.white : foreground,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          icon: icon,
         ),
+      ),
+    );
+    final divider = SizedBox(
+      width: 32,
+      child: Divider(
+        height: 1,
+        color: dark ? AppColors.dividerDark : AppColors.dividerLight,
       ),
     );
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         tool('Search places', const Icon(Icons.search), onSearch),
-        tool(
-          heatmap ? 'Hide report heatmap' : 'Show report heatmap',
-          Icon(heatmap ? Icons.layers : Icons.layers_outlined),
-          onHeatmap,
-          toggled: heatmap,
+        const SizedBox(height: 12),
+        Material(
+          elevation: 2,
+          shadowColor: AppColors.shadowCard,
+          color: Theme.of(context).colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: dark ? AppColors.dividerDark : AppColors.dividerLight,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              tool(
+                heatmap ? 'Hide report heatmap' : 'Show report heatmap',
+                Icon(heatmap ? Icons.layers : Icons.layers_outlined),
+                onHeatmap,
+                toggled: heatmap,
+              ),
+              divider,
+              tool(
+                locating ? 'Finding your location' : 'Center on my location',
+                locating
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          semanticsLabel: 'Finding your location',
+                        ),
+                      )
+                    : const Icon(Icons.my_location),
+                locating ? null : onLocate,
+              ),
+              divider,
+              tool(
+                'Map legend and credits',
+                const Icon(Icons.info_outline),
+                onInfo,
+              ),
+            ],
+          ),
         ),
-        tool(
-          locating ? 'Finding your location' : 'Center on my location',
-          locating
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    semanticsLabel: 'Finding your location',
-                  ),
-                )
-              : const Icon(Icons.my_location),
-          locating ? null : onLocate,
-        ),
-        tool('Map legend and credits', const Icon(Icons.info_outline), onInfo),
       ],
     );
   }

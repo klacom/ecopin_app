@@ -67,11 +67,27 @@ class ReportMapPreview extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
-            Text(
-              report.locationPrecision == 'approximate'
-                  ? 'Approximate location shown on the public map.'
-                  : 'Location shown on the public map.',
-              style: Theme.of(context).textTheme.bodySmall,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.privacy_tip_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      report.locationPrecision == 'approximate'
+                          ? 'Approximate location shown on the public map.'
+                          : 'Location shown on the public map.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
             AppButton(

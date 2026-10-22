@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
@@ -14,8 +15,10 @@ class ReportShareHelper {
   static Future<void> shareReportPhoto({
     required ReportModel report,
     String? photoUrl,
+    bool isVideo = false,
   }) async {
-    final isRejected = report.status.toLowerCase() == 'rejected' ||
+    final isRejected =
+        report.status.toLowerCase() == 'rejected' ||
         report.validationStatus.toLowerCase() == 'rejected';
     if (isRejected) {
       SnackbarHelper.showError('Rejected reports cannot be shared.');
@@ -24,17 +27,27 @@ class ReportShareHelper {
 
     final url = photoUrl ?? report.beforePhotoUrl ?? report.afterPhotoUrl;
     if (url == null || url.isEmpty) {
-      SnackbarHelper.showError('No report photo available to share.');
+      SnackbarHelper.showError('No report evidence available to share.');
       return;
     }
 
     try {
+      isVideo =
+          isVideo ||
+          [
+            'mp4',
+            'mov',
+            'webm',
+          ].contains(Uri.parse(url).path.split('.').last.toLowerCase());
       String localFilePath;
       if (url.startsWith('http://') || url.startsWith('https://')) {
         final tempDir = await getTemporaryDirectory();
         final ext = url.split('?').first.split('.').last.toLowerCase();
-        final validExt = ['jpg', 'jpeg', 'png', 'webp'].contains(ext) ? ext : 'jpg';
-        localFilePath = '${tempDir.path}/ecopin_report_${report.id.substring(0, 8)}.$validExt';
+        final validExt = isVideo
+            ? (['mp4', 'mov', 'webm'].contains(ext) ? ext : 'mp4')
+            : (['jpg', 'jpeg', 'png', 'webp'].contains(ext) ? ext : 'jpg');
+        localFilePath =
+            '${tempDir.path}/ecopin_report_${report.id.substring(0, 8)}.$validExt';
 
         final response = await Dio().get<List<int>>(
           url,
@@ -49,17 +62,25 @@ class ReportShareHelper {
         localFilePath = url;
       }
 
-      final webBaseUrl = dotenv.env['WEB_BASE_URL'] ?? 'https://ecopin-web.vercel.app';
+      final webBaseUrl =
+          dotenv.env['WEB_BASE_URL'] ?? 'https://ecopin-web.vercel.app';
       final shareUrl = '$webBaseUrl/reports/${report.id}';
 
       // Generate Strava/Spotify-style Civic Action Share Card
       String finalSharePath = localFilePath;
       try {
-        final cardPath = await _generateShareCard(
-          photoPath: localFilePath,
-          report: report,
-          shareUrl: shareUrl,
-        );
+        final tempDir = isVideo ? null : await getTemporaryDirectory();
+        final cardPath = isVideo
+            ? null
+            : await Isolate.run(
+                () => _generateShareCard(
+                  photoPath: localFilePath,
+                  report: report,
+                  shareUrl: shareUrl,
+                  outputPath:
+                      '${tempDir!.path}/ecopin_story_${report.id.substring(0, 8)}.jpg',
+                ),
+              );
         if (cardPath != null) {
           finalSharePath = cardPath;
         }
@@ -69,7 +90,7 @@ class ReportShareHelper {
 
       final shareText =
           'EcoPin Citizen Report: "${report.title}" in Pasig City.\n\n'
-          'Scan the QR code on the card to track resolution progress or report issues in your barangay!\n\n'
+          'Track resolution progress or report issues in your barangay using the link below.\n\n'
           'Web link: $shareUrl\n\n'
           '#EcoPin #PasigCity #CleanCommunities #CivicAction';
 
@@ -79,7 +100,7 @@ class ReportShareHelper {
         subject: 'EcoPin Report: ${report.title}',
       );
     } catch (e) {
-      SnackbarHelper.showError('Could not share report photo: $e');
+      SnackbarHelper.showError('Could not share report evidence: $e');
     }
   }
 
@@ -87,6 +108,7 @@ class ReportShareHelper {
     required String photoPath,
     required ReportModel report,
     required String shareUrl,
+    required String outputPath,
   }) async {
     final rawBytes = await File(photoPath).readAsBytes();
     var srcPhoto = img.decodeImage(rawBytes);
@@ -120,11 +142,27 @@ class ReportShareHelper {
     // Top-right status pill capsule
     final isResolved = report.status.toLowerCase() == 'resolved';
     final pillBg = img.ColorRgba8(18, 24, 38, 255);
-    _fillRoundedRect(card, x1: 820, y1: 44, x2: 1024, y2: 84, radius: 20, color: pillBg);
+    _fillRoundedRect(
+      card,
+      x1: 820,
+      y1: 44,
+      x2: 1024,
+      y2: 84,
+      radius: 20,
+      color: pillBg,
+    );
     final dotColor = isResolved
         ? img.ColorRgba8(34, 197, 94, 255)
         : img.ColorRgba8(56, 189, 248, 255);
-    _fillRoundedRect(card, x1: 838, y1: 60, x2: 846, y2: 68, radius: 4, color: dotColor);
+    _fillRoundedRect(
+      card,
+      x1: 838,
+      y1: 60,
+      x2: 846,
+      y2: 68,
+      radius: 4,
+      color: dotColor,
+    );
     final statusText = isResolved ? 'RESOLVED' : 'VERIFIED REPORT';
     img.drawString(
       card,
@@ -132,7 +170,9 @@ class ReportShareHelper {
       font: img.arial14,
       x: 856,
       y: 56,
-      color: isResolved ? img.ColorRgba8(34, 197, 94, 255) : img.ColorRgba8(226, 232, 240, 255),
+      color: isResolved
+          ? img.ColorRgba8(34, 197, 94, 255)
+          : img.ColorRgba8(226, 232, 240, 255),
     );
 
     // 2. Hero Photo (Dominates the canvas: 968 x 976 px)
@@ -148,14 +188,29 @@ class ReportShareHelper {
       color: img.ColorRgba8(15, 20, 30, 255),
     );
 
-    var photoResized = img.copyResize(srcPhoto, width: photoBoxW, maintainAspect: true);
+    var photoResized = img.copyResize(
+      srcPhoto,
+      width: photoBoxW,
+      maintainAspect: true,
+    );
     if (photoResized.height > photoBoxH) {
-      photoResized = img.copyResize(srcPhoto, height: photoBoxH, maintainAspect: true);
+      photoResized = img.copyResize(
+        srcPhoto,
+        height: photoBoxH,
+        maintainAspect: true,
+      );
     }
     final px = 56 + ((photoBoxW - photoResized.width) / 2).toInt();
     final py = 104 + ((photoBoxH - photoResized.height) / 2).toInt();
     img.compositeImage(card, photoResized, dstX: px, dstY: py);
-    img.drawRect(card, x1: 56, y1: 104, x2: 1024, y2: 1080, color: img.ColorRgba8(31, 41, 55, 220));
+    img.drawRect(
+      card,
+      x1: 56,
+      y1: 104,
+      x2: 1024,
+      y2: 1080,
+      color: img.ColorRgba8(31, 41, 55, 220),
+    );
 
     // 3. Bottom Editorial Dispatch
     final category = (report.issueType ?? 'Civic Report').toUpperCase();
@@ -180,7 +235,9 @@ class ReportShareHelper {
       color: img.ColorRgba8(255, 255, 255, 255),
     );
 
-    final dateStr = DateFormat('MMMM d, yyyy • hh:mm a').format(report.createdAt.toLocal());
+    final dateStr = DateFormat(
+      'MMMM d, yyyy • hh:mm a',
+    ).format(report.createdAt.toLocal());
     img.drawString(
       card,
       'Pasig City  •  $dateStr',
@@ -190,7 +247,8 @@ class ReportShareHelper {
       color: img.ColorRgba8(148, 163, 184, 255),
     );
 
-    final coordsStr = '${report.location.latitude.toStringAsFixed(5)}° N, ${report.location.longitude.toStringAsFixed(5)}° E';
+    final coordsStr =
+        '${report.location.latitude.toStringAsFixed(5)}° N, ${report.location.longitude.toStringAsFixed(5)}° E';
     img.drawString(
       card,
       coordsStr,
@@ -222,9 +280,20 @@ class ReportShareHelper {
     const qrCardY1 = 1112;
     const qrCardX2 = 1024;
     const qrCardY2 = 1332; // 200 x 220 px
-    _fillRoundedRect(card, x1: qrCardX1, y1: qrCardY1, x2: qrCardX2, y2: qrCardY2, radius: 16, color: img.ColorRgba8(255, 255, 255, 255));
+    _fillRoundedRect(
+      card,
+      x1: qrCardX1,
+      y1: qrCardY1,
+      x2: qrCardX2,
+      y2: qrCardY2,
+      radius: 16,
+      color: img.ColorRgba8(255, 255, 255, 255),
+    );
 
-    final qrCode = QrCode.fromData(data: shareUrl, errorCorrectLevel: QrErrorCorrectLevel.M);
+    final qrCode = QrCode.fromData(
+      data: shareUrl,
+      errorCorrectLevel: QrErrorCorrectLevel.M,
+    );
     final qrImage = QrImage(qrCode);
     final moduleCount = qrImage.moduleCount;
     const qrMargin = 16;
@@ -240,7 +309,14 @@ class ReportShareHelper {
           final my1 = (qy + r * moduleSize).floor();
           final mx2 = (qx + (c + 1) * moduleSize).ceil();
           final my2 = (qy + (r + 1) * moduleSize).ceil();
-          img.fillRect(card, x1: mx1, y1: my1, x2: mx2, y2: my2, color: img.ColorRgba8(15, 23, 42, 255));
+          img.fillRect(
+            card,
+            x1: mx1,
+            y1: my1,
+            x2: mx2,
+            y2: my2,
+            color: img.ColorRgba8(15, 23, 42, 255),
+          );
         }
       }
     }
@@ -255,7 +331,14 @@ class ReportShareHelper {
     );
 
     // 4. Delicate Footer Hairline
-    img.fillRect(card, x1: 56, y1: 1370, x2: 1024, y2: 1371, color: img.ColorRgba8(26, 34, 52, 255));
+    img.fillRect(
+      card,
+      x1: 56,
+      y1: 1370,
+      x2: 1024,
+      y2: 1371,
+      color: img.ColorRgba8(26, 34, 52, 255),
+    );
     img.drawString(
       card,
       'CITIZEN TRANSPARENCY & ENVIRONMENTAL PROTECTION',
@@ -274,8 +357,7 @@ class ReportShareHelper {
     );
 
     // Save final card image to temp directory
-    final tempDir = await getTemporaryDirectory();
-    final cardFile = File('${tempDir.path}/ecopin_story_${report.id.substring(0, 8)}.jpg');
+    final cardFile = File(outputPath);
     final jpgBytes = img.encodeJpg(card, quality: 92);
     await cardFile.writeAsBytes(jpgBytes);
 
@@ -291,7 +373,10 @@ class ReportShareHelper {
     required int radius,
     required img.Color color,
   }) {
-    final r = radius.clamp(1, ((x2 - x1) / 3).floor()).clamp(1, ((y2 - y1) / 3).floor()).toInt();
+    final r = radius
+        .clamp(1, ((x2 - x1) / 3).floor())
+        .clamp(1, ((y2 - y1) / 3).floor())
+        .toInt();
     for (int y = y1; y <= y2; y++) {
       int dx = 0;
       if (y < y1 + r) {
@@ -304,7 +389,14 @@ class ReportShareHelper {
       final curX1 = (x1 + dx).clamp(0, image.width);
       final curX2 = (x2 - dx).clamp(0, image.width);
       if (curX2 > curX1 && y >= 0 && y < image.height) {
-        img.fillRect(image, x1: curX1, y1: y, x2: curX2, y2: y + 1, color: color);
+        img.fillRect(
+          image,
+          x1: curX1,
+          y1: y,
+          x2: curX2,
+          y2: y + 1,
+          color: color,
+        );
       }
     }
   }

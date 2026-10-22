@@ -4,6 +4,7 @@ import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/shared/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_details_body.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_share_helper.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_share_button.dart';
 import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +31,8 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
   CleanupTaskModel? _cleanupTask;
   bool _isLoadingCleanupTask = false;
   final Logger _log = Logger('Report Detail Screen');
-  final pull_refresh.RefreshController _refreshController = pull_refresh.RefreshController(initialRefresh: false);
+  final pull_refresh.RefreshController _refreshController =
+      pull_refresh.RefreshController(initialRefresh: false);
 
   @override
   void dispose() {
@@ -178,14 +180,18 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
         actions: [
           reportAsync.maybeWhen(
             data: (report) {
-              final isOwner = currentUserId != null &&
+              final isOwner =
+                  currentUserId != null &&
                   report.userId != null &&
                   report.userId == currentUserId;
-              final canWithdraw = !isOfficerUser && isOwner && report.canBeWithdrawn;
+              final canWithdraw =
+                  !isOfficerUser && isOwner && report.canBeWithdrawn;
 
-              final isRejected = report.status.toLowerCase() == 'rejected' ||
+              final isRejected =
+                  report.status.toLowerCase() == 'rejected' ||
                   report.validationStatus.toLowerCase() == 'rejected';
-              final photoUrl = report.beforePhotoUrl ??
+              final photoUrl =
+                  report.beforePhotoUrl ??
                   (_evidence.isNotEmpty
                       ? _evidence.first['url'] ?? _evidence.first['file_url']
                       : null);
@@ -200,12 +206,14 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
                       onPressed: () => _handleWithdrawReport(report),
                     ),
                   if (!isRejected)
-                    IconButton(
-                      icon: const Icon(Icons.share_rounded),
-                      tooltip: 'Share Stamped Photo',
-                      onPressed: () => ReportShareHelper.shareReportPhoto(
+                    ReportShareButton(
+                      onShare: () => ReportShareHelper.shareReportPhoto(
                         report: report,
                         photoUrl: photoUrl,
+                        isVideo:
+                            report.beforePhotoUrl == null &&
+                            _evidence.isNotEmpty &&
+                            _evidence.first['resource_type'] == 'video',
                       ),
                     ),
                 ],
@@ -221,10 +229,12 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
         enablePullDown: true,
         child: reportAsync.when(
           data: (report) {
-            final isOwner = currentUserId != null &&
+            final isOwner =
+                currentUserId != null &&
                 report.userId != null &&
                 report.userId == currentUserId;
-            final canWithdraw = !isOfficerUser && isOwner && report.canBeWithdrawn;
+            final canWithdraw =
+                !isOfficerUser && isOwner && report.canBeWithdrawn;
 
             return ReportDetailsBody(
               report: report,
@@ -236,11 +246,16 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
                   ? () => _fetchCleanupTask(report.clusterId!)
                   : null,
               isOfficerUser: isOfficerUser,
-              onWithdraw: canWithdraw ? () => _handleWithdrawReport(report) : null,
+              onWithdraw: canWithdraw
+                  ? () => _handleWithdrawReport(report)
+                  : null,
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => NoInternetScreen(onRetry: () => ref.invalidate(reportDetailsProvider(widget.reportId))),
+          error: (err, stack) => NoInternetScreen(
+            onRetry: () =>
+                ref.invalidate(reportDetailsProvider(widget.reportId)),
+          ),
         ),
       ),
     );

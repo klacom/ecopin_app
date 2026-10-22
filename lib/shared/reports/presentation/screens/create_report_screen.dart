@@ -25,6 +25,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/local_media_preview.dart';
 import 'package:ecopin_app/core/services/photo_verification_service.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/photo_review_dialog.dart';
 // Note: LoadingDialog import removed since we're using an inline overlay
 
 class CreateReportScreen extends ConsumerStatefulWidget {
@@ -75,6 +76,18 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   late final ImagePicker _picker;
   final List<File> _capturedImages = [];
   final List<File> _cleanImages = [];
+  final Map<String, String> _photosForReview = {};
+  String? get _manualReviewReason => _photosForReview.isEmpty
+      ? null
+      : _cleanImages
+            .asMap()
+            .entries
+            .where((entry) => _photosForReview.containsKey(entry.value.path))
+            .map(
+              (entry) =>
+                  'Photo ${entry.key + 1}: ${_photosForReview[entry.value.path]}',
+            )
+            .join('\n');
   final List<File> _capturedVideos = [];
   final Map<String, Duration> _videoDurations = {};
   bool _onPrivateProperty = false;
@@ -234,6 +247,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     if (_isSelectingMedia) return;
+    ImageSource? retrySource;
     setState(() {
       _isSelectingMedia = true;
       _mediaError = null;
@@ -255,7 +269,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           continue;
         }
         final rawFile = File(xFile.path);
-        if (_capturedImages.any((image) => image.path == rawFile.path)) {
+        if (_cleanImages.any((image) => image.path == rawFile.path)) {
           continue;
         }
         if (_capturedImages.length >= reportMaxPhotos) {
@@ -265,26 +279,66 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           break;
         }
 
-        // 1. Validate clean photo with ML classifier first before burning watermark
-        try {
-          final apiClient = ref.read(apiClientProvider);
-          final validationRes = await apiClient.validateImage(rawFile.path);
-          final data = validationRes.data;
-          if (data is Map && data['is_valid'] == false) {
-            final category = data['predicted_category'] ?? 'non-hazard';
-            final conf =
-                ((data['confidence'] as num?)?.toDouble() ?? 0.0) * 100;
-            _showMediaError(
-              'Photo could not be verified as an environmental concern ($category, ${conf.toStringAsFixed(0)}% confidence). Please take a clearer photo of the issue.',
-            );
-            continue;
+        String? reviewReason;
+        bool attachPhoto = false;
+        while (true) {
+          Map? validation;
+          try {
+            final response = await ref
+                .read(apiClientProvider)
+                .validateImage(rawFile.path);
+            if (response.data is Map) validation = response.data as Map;
+          } catch (error) {
+            _log.warning('Photo check unavailable: $error');
           }
-        } catch (e) {
-          // If offline or ML service is unreachable, continue gracefully without blocking
-          _log.warning('Pre-validation skipped or failed: $e');
+          if (!mounted) return;
+          final status = validation?['validation_status'];
+          final decision = validation?['decision'];
+          final unavailable =
+              validation == null ||
+              validation['check_available'] == false ||
+              (status == null &&
+                  decision == null &&
+                  validation['is_valid'] != true);
+          final approved =
+              !unavailable &&
+              status != 'manual_review' &&
+              status != 'rejected' &&
+              decision != 'MANUAL_REVIEW' &&
+              decision != 'REJECTED' &&
+              (status == 'approved' ||
+                  decision == 'APPROVED' ||
+                  validation['is_valid'] == true);
+          if (approved) {
+            attachPhoto = true;
+            break;
+          }
+          _showMediaError(
+            unavailable
+                ? 'Photo check unavailable. The check could not be completed; this is not a rejection. The photo is not attached.'
+                : 'Unable to verify this photo. It is not attached. Take another photo or request manual review with an explanation.',
+          );
+          final choice = await showDialog<PhotoReviewChoice>(
+            context: context,
+            builder: (_) =>
+                PhotoReviewDialog(photo: rawFile, unavailable: unavailable),
+          );
+          if (!mounted) return;
+          if (choice?.action == 'retry') continue;
+          if (choice?.action == 'camera' || choice?.action == 'gallery') {
+            retrySource = choice!.action == 'camera'
+                ? ImageSource.camera
+                : ImageSource.gallery;
+          } else if (choice?.action == 'review') {
+            reviewReason = choice!.reason;
+            attachPhoto = reviewReason != null && reviewReason.isNotEmpty;
+          }
+          break;
         }
+        if (retrySource != null) break;
+        if (!attachPhoto) continue;
 
-        // 2. Photo verified valid: apply TimeMark-style watermark and extract GPS telemetry
+        // Add location telemetry and the watermark only after attachment is confirmed.
         String? currentAddress;
         if (_locationConfirmed) {
           try {
@@ -317,6 +371,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         setState(() {
           _capturedImages.add(file);
           _cleanImages.add(rawFile);
+          if (reviewReason != null) {
+            _photosForReview[rawFile.path] = reviewReason;
+          }
+          _mediaError = null;
           if (source == ImageSource.camera) _selectedImage = file;
         });
       }
@@ -326,6 +384,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     } finally {
       if (mounted) setState(() => _isSelectingMedia = false);
     }
+    if (mounted && retrySource != null) await _pickImage(retrySource);
   }
 
   Future<VideoSubmissionPolicy?> _loadVideoPolicy() async {
@@ -465,6 +524,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         cleanImagePaths: _cleanImages.isNotEmpty
             ? _cleanImages.map((img) => img.path).toList()
             : null,
+        requestManualReview: _photosForReview.isNotEmpty,
+        manualReviewReason: _manualReviewReason,
         videoPath: mainVideo?.path,
         onPrivateProperty: _onPrivateProperty,
         scaleLevel: _defaultScale,
@@ -524,7 +585,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           !_locationConfirmed
               ? 'Choose the concern’s location on the map. The initial view is Pasig, not your detected location.'
               : !_addressRequested
-              ? 'Location selected. Find the street address to check this pin.'
+              ? 'Finding the street address…'
               : snapshot.connectionState == ConnectionState.waiting
               ? 'Finding the street address…'
               : snapshot.data ??
@@ -545,7 +606,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               _addressRequested = true;
               _addressFuture = _findAddress();
             }),
-            child: const Text('Find street address'),
+            child: const Text('Retry street address'),
           ),
       ],
     ),
@@ -554,8 +615,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   void _chooseLocation(LatLng location) => setState(() {
     _reportLocation = location;
     _locationConfirmed = true;
-    _addressRequested = false;
-    _addressFuture = Future.value(null);
+    _addressRequested = true;
+    _addressFuture = _findAddress();
   });
 
   @override
@@ -855,8 +916,16 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                                 label: 'Selected report location',
                                 child: ReportPinFrame(
                                   color: colorScheme.primary,
-                                  badge: const Icon(Icons.check, color: Colors.white, size: 14),
-                                  child: Icon(Icons.my_location, color: colorScheme.primary, size: 25),
+                                  badge: const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                  child: Icon(
+                                    Icons.my_location,
+                                    color: colorScheme.primary,
+                                    size: 25,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1020,6 +1089,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ),
             const SizedBox(height: 16),
           ],
+          if (_photosForReview.isNotEmpty) ...[
+            _photoReviewNotice(),
+            const SizedBox(height: 16),
+          ],
           Text(
             'Photos · Up to $reportMaxPhotos',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -1074,6 +1147,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           onPressed: () => setState(() {
                             final removed = _capturedImages.removeAt(index);
                             if (_cleanImages.length > index) {
+                              _photosForReview.remove(_cleanImages[index].path);
                               _cleanImages.removeAt(index);
                             }
                             if (_selectedImage?.path == removed.path) {
@@ -1087,6 +1161,22 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                           icon: const Icon(Icons.close, size: 20),
                         ),
                       ),
+                      if (index < _cleanImages.length &&
+                          _photosForReview.containsKey(
+                            _cleanImages[index].path,
+                          ))
+                        Positioned(
+                          left: 4,
+                          right: 4,
+                          bottom: 4,
+                          child: Tooltip(
+                            message: 'For manual review — not yet verified',
+                            child: const Chip(
+                              avatar: Icon(Icons.person_search, size: 16),
+                              label: Text('Unverified'),
+                            ),
+                          ),
+                        ),
                     ],
                   );
                 },
@@ -1210,6 +1300,18 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     );
   }
 
+  Widget _photoReviewNotice() => Semantics(
+    liveRegion: true,
+    child: ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.person_search),
+      title: const Text('For manual review — not yet verified'),
+      subtitle: Text(
+        'An officer will review the photo evidence after you submit. This is not an approval. A connection is required to submit this review request.\n\n${_manualReviewReason ?? ''}',
+      ),
+    ),
+  );
+
   Widget _buildStep4Review(ColorScheme colorScheme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1227,6 +1329,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
+          if (_photosForReview.isNotEmpty) _photoReviewNotice(),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(20),

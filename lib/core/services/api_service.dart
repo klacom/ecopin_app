@@ -183,6 +183,8 @@ class ApiClient {
     DateTime? photoCapturedAt,
     String? photoSource,
     bool? isMocked,
+    bool requestManualReview = false,
+    String? manualReviewReason,
   }) async {
     // Require at least one media type
     if ((imagePaths == null || imagePaths.isEmpty) && videoPath == null) {
@@ -191,6 +193,20 @@ class ApiClient {
 
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult.contains(ConnectivityResult.none)) {
+      if (requestManualReview) {
+        final options = dio.RequestOptions(path: ApiConstants.createReport);
+        throw dio.DioException(
+          requestOptions: options,
+          response: dio.Response(
+            requestOptions: options,
+            statusCode: 503,
+            data: {
+              'message':
+                  'Connect to the internet to submit this manual review request. Your report and photos are still here.',
+            },
+          ),
+        );
+      }
       if (_db == null)
         throw Exception("Database not initialized for offline mode");
 
@@ -249,6 +265,14 @@ class ApiClient {
     );
     formData.fields.add(MapEntry('scale_level', scaleLevel));
     formData.fields.add(MapEntry('obstruction_level', obstructionLevel));
+    formData.fields.add(
+      MapEntry('request_manual_review', requestManualReview.toString()),
+    );
+    if (requestManualReview && manualReviewReason != null) {
+      formData.fields.add(
+        MapEntry('manual_review_reason', manualReviewReason.trim()),
+      );
+    }
     if (photoLat != null)
       formData.fields.add(MapEntry('photo_lat', photoLat.toString()));
     if (photoLng != null)
@@ -409,6 +433,10 @@ class ApiClient {
     });
 
     return _dio.post(ApiConstants.avatar, data: formData);
+  }
+
+  Future<dio.Response> removeAvatar() async {
+    return _dio.delete(ApiConstants.avatar);
   }
 
   Future<Map<String, dynamic>> updateDataConsent(bool dataConsent) async {

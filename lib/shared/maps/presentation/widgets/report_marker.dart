@@ -157,7 +157,10 @@ class ReportPinFrame extends StatelessWidget {
               height: 50,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: scheme.surface,
+                color: Color.alphaBlend(
+                  color.withValues(alpha: .10),
+                  scheme.surface,
+                ),
                 border: Border.all(color: color, width: 3),
                 boxShadow: [
                   BoxShadow(color: Colors.white, spreadRadius: 2),

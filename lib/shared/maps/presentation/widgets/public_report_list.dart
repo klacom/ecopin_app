@@ -78,8 +78,9 @@ class _PublicReportListState extends ConsumerState<PublicReportList> {
                 children: [
                   Text('Public reports', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 4),
-                  const Text(
-                    'All areas · Newest first. Your own submissions are in the Reports tab.',
+                  Text(
+                    'All areas · Newest first',
+                    style: theme.textTheme.bodySmall,
                   ),
                 ],
               ),
@@ -128,6 +129,14 @@ class _PublicReportListState extends ConsumerState<PublicReportList> {
           return Card(
             key: ValueKey(report.id),
             clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(
+                color:
+                    theme.dividerTheme.color ??
+                    theme.colorScheme.outlineVariant,
+              ),
+            ),
             margin: const EdgeInsets.only(bottom: 12),
             child: InkWell(
               onTap: () => widget.onOpen(report),
@@ -139,12 +148,10 @@ class _PublicReportListState extends ConsumerState<PublicReportList> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.location_on_outlined),
-                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             report.title,
-                            style: theme.textTheme.titleMedium,
+                            style: theme.textTheme.titleSmall,
                           ),
                         ),
                         const Icon(Icons.chevron_right),
@@ -160,6 +167,7 @@ class _PublicReportListState extends ConsumerState<PublicReportList> {
                         Text(
                           (report.issueType ?? 'Environmental concern')
                               .replaceAll('_', ' '),
+                          style: theme.textTheme.bodySmall,
                         ),
                       ],
                     ),
@@ -167,7 +175,8 @@ class _PublicReportListState extends ConsumerState<PublicReportList> {
                       const SizedBox(height: 12),
                       Text(
                         report.description!,
-                        maxLines: 3,
+                        maxLines: 2,
+                        style: theme.textTheme.bodyMedium,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],

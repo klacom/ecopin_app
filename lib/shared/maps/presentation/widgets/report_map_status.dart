@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/reports/data/datasources/public_report_map_datasource.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,16 @@ class ReportMapStatus extends StatelessWidget {
         value.hasError && (value.hasValue || hasPreviousReports)
         ? '$message Showing the last loaded reports.'
         : message;
+    final compactMessage = value.when(
+      skipLoadingOnRefresh: false,
+      data: (page) => page.hasMore
+          ? 'Newest 200 · Zoom in'
+          : '${page.reports.length} report${page.reports.length == 1 ? '' : 's'}',
+      loading: () => 'Loading…',
+      error: (_, _) => hasPreviousReports || value.hasValue
+          ? 'Refresh failed · Previous reports'
+          : 'Reports could not load.',
+    );
     return Semantics(
       liveRegion: true,
       child: Material(
@@ -39,9 +50,43 @@ class ReportMapStatus extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                displayMessage,
-                style: Theme.of(context).textTheme.bodySmall,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5, right: 8),
+                    child: SizedBox(
+                      width: 8,
+                      height: 8,
+                      child: value.isLoading
+                          ? CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Theme.of(context).colorScheme.primary,
+                              value: MediaQuery.disableAnimationsOf(context)
+                                  ? .75
+                                  : null,
+                            )
+                          : DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: value.hasError
+                                    ? Theme.of(context).colorScheme.error
+                                    : Theme.of(context).brightness ==
+                                          Brightness.dark
+                                    ? AppColors.environmentalDark
+                                    : AppColors.environmentalLight,
+                              ),
+                            ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      compact ? compactMessage : displayMessage,
+                      semanticsLabel: displayMessage,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
               ),
               if (value.hasError)
                 TextButton(onPressed: onRetry, child: const Text('Try again')),

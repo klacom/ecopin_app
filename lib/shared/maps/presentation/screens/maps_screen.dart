@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/reports/data/datasources/public_report_map_cache.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/public_report_list.dart';
 import 'dart:convert';
@@ -289,7 +290,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return Scaffold(
       body: Column(
         children: [
-          _buildMapToolbar(reportsAsync),
+          if (widget.isFieldCrewMode)
+            SafeArea(bottom: false, child: _buildMapToolbar(reportsAsync)),
           Expanded(
             child: IndexedStack(
               index: _listView ? 1 : 0,
@@ -403,21 +405,43 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                     if (!widget.isFieldCrewMode)
                       Positioned(
-                        top: 16,
-                        right: 16,
+                        top: 0,
+                        left: 0,
+                        right: 0,
                         child: SafeArea(
-                          child: ReportMapControls(
-                            heatmap: _showHeatmap,
-                            locating: _isLoadingLocation,
-                            onSearch: () => showGeneralDialog(
-                              context: context,
-                              pageBuilder: (_, animation, secondaryAnimation) =>
-                                  SearchOverlay(mapController: _mapController),
-                            ),
-                            onHeatmap: () =>
-                                setState(() => _showHeatmap = !_showHeatmap),
-                            onLocate: _getCurrentLocation,
-                            onInfo: _showMapInfo,
+                          bottom: false,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildMapToolbar(reportsAsync),
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  right: 16,
+                                  top: 16,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: ReportMapControls(
+                                    heatmap: _showHeatmap,
+                                    locating: _isLoadingLocation,
+                                    onSearch: () => showGeneralDialog(
+                                      context: context,
+                                      pageBuilder:
+                                          (_, animation, secondaryAnimation) =>
+                                              SearchOverlay(
+                                                mapController: _mapController,
+                                              ),
+                                    ),
+                                    onHeatmap: () => setState(
+                                      () => _showHeatmap = !_showHeatmap,
+                                    ),
+                                    onLocate: _getCurrentLocation,
+                                    onInfo: _showMapInfo,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -453,7 +477,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ],
                 ),
                 if (_listOpened)
-                  PublicReportList(onOpen: _showReportPreview)
+                  Column(
+                    children: [
+                      SafeArea(
+                        bottom: false,
+                        child: _buildMapToolbar(reportsAsync),
+                      ),
+                      Expanded(
+                        child: PublicReportList(onOpen: _showReportPreview),
+                      ),
+                    ],
+                  )
                 else
                   const SizedBox.shrink(),
               ],
@@ -465,17 +499,40 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Widget _buildMapToolbar(AsyncValue<ReportMapPage> value) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget viewLabel(bool list, IconData icon, String label) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _listView == list ? AppColors.primary : Colors.transparent,
+        borderRadius: BorderRadius.circular(AppColors.radiusButton),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [Icon(icon, size: 18), const SizedBox(width: 8), Text(label)],
+      ),
+    );
     final controls = SegmentedButton<bool>(
-      segments: const [
+      showSelectedIcon: false,
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+        side: const WidgetStatePropertyAll(BorderSide.none),
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(4)),
+        backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerLow),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.white
+              : scheme.onSurface,
+        ),
+        shape: const WidgetStatePropertyAll(StadiumBorder()),
+      ),
+      segments: [
         ButtonSegment(
           value: false,
-          icon: Icon(Icons.map_outlined),
-          label: Text('Map'),
+          label: viewLabel(false, Icons.map_outlined, 'Map'),
         ),
         ButtonSegment(
           value: true,
-          icon: Icon(Icons.view_list_outlined),
-          label: Text('List'),
+          label: viewLabel(true, Icons.view_list_outlined, 'List'),
         ),
       ],
       selected: {_listView},
@@ -497,12 +554,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       onRetry: _refreshArea,
       compact: true,
     );
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      child: SafeArea(
-        bottom: false,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Material(
+        color: scheme.surface,
+        elevation: 2,
+        shadowColor: AppColors.shadowCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.dividerDark
+                : AppColors.dividerLight,
+          ),
+        ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.all(8),
           child: LayoutBuilder(
             builder: (context, constraints) {
               if (widget.isFieldCrewMode) return status;

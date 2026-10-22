@@ -4,6 +4,7 @@ import 'package:ecopin_app/features/field_crew/data/repositories/fc_local_reposi
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'fc_sync_error.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Network type
@@ -218,7 +219,7 @@ class FcSyncGate {
     int failedPhotos = 0;
     for (final p in pendingUploads) {
       estimatedBytes += p.fileSize;
-      if (p.retryCount >= 5) failedPhotos++;
+      if (fcPhotoRetriesPaused(p.retryCount, p.lastError)) failedPhotos++;
     }
 
     return FcPendingSummary(

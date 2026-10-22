@@ -284,7 +284,7 @@ class _FieldCrewSyncCenterScreenState
                   FcOfflineNotice(
                     error: true,
                     message:
-                        '${failure.label}\nReport/task: ${failure.entityId}\n${failure.reason}\nAttempts: ${failure.retries}${failure.retries >= 5 ? ' (automatic retries paused)' : ''}',
+                        '${failure.label}\nReport/task: ${failure.entityId}\n${failure.reason}\n${failure.attemptLabel}${failure.retriesPaused ? '\nAutomatic retries paused. Review the reason before resetting retries.' : ''}',
                   ),
                 if ((failures.value ?? const <FcQueuedFailure>[]).any(
                   (f) => f.canResetTransport,

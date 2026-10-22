@@ -1,5 +1,8 @@
 import 'package:dio/dio.dart';
 
+bool fcPhotoRetriesPaused(int failures, String? reason) =>
+    failures >= 5 || (reason?.startsWith('permanent: ') ?? false);
+
 bool fcCanResetTransportError(String message) {
   final match = RegExp(r'^HTTP (\d{3}):').firstMatch(message);
   final status = int.tryParse(match?.group(1) ?? '');
@@ -20,5 +23,10 @@ String fcSyncError(DioException error) {
   final hint = status == 404
       ? ' Check that the backend is updated and the sync endpoint is available.'
       : '';
-  return '${status == null ? '' : 'HTTP $status: '}$detail$hint';
+  final requestId = body is Map ? body['requestId'] : null;
+  final reference =
+      requestId is String && RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(requestId)
+      ? ' Reference: $requestId.'
+      : '';
+  return '${status == null ? '' : 'HTTP $status: '}$detail$hint$reference';
 }

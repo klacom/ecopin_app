@@ -32,6 +32,13 @@ class FcSyncStatusCard extends StatelessWidget {
             liveRegion: true,
             child: Text(phase, style: text.titleMedium),
           ),
+          if (state.resultMessage case final message?) ...[
+            const SizedBox(height: 12),
+            Semantics(
+              liveRegion: true,
+              child: Text(message, style: text.bodyMedium),
+            ),
+          ],
           if (state.phase == FcSyncPhase.syncing) ...[
             const SizedBox(height: 16),
             const LinearProgressIndicator(semanticsLabel: 'Sync in progress'),
@@ -51,7 +58,7 @@ class FcSyncStatusCard extends StatelessWidget {
             FcOfflineFact('Photo removals', '${summary!.pendingDeleteCount}'),
             if (summary!.failedPhotoCount > 0)
               Text(
-                '${summary!.failedPhotoCount} photo uploads are paused after repeated failures. Reset their retries below.',
+                '${summary!.failedPhotoCount} photo uploads are paused after a rejection or repeated failures. Review the reason before resetting retries below.',
                 style: text.bodyMedium,
               ),
             if (summary!.estimatedBytes > 0)

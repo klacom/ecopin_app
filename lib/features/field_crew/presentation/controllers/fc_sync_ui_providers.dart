@@ -37,10 +37,18 @@ class FcQueuedFailure {
     this.reason,
     this.retries, {
     this.canResetTransport = false,
+    this.attemptCountKnown = true,
   });
   final String label, entityId, reason;
   final int retries;
   final bool canResetTransport;
+  final bool attemptCountKnown;
+
+  bool get retriesPaused =>
+      fcPhotoRetriesPaused(retries, reason) || reason.startsWith('terminal_');
+  String get attemptLabel => attemptCountKnown
+      ? 'Attempts: $retries'
+      : 'Attempt count unavailable (saved by an earlier app version)';
 }
 
 final fcQueuedFailuresProvider =
@@ -79,6 +87,9 @@ final fcQueuedFailuresProvider =
             photo.entityId,
             photo.lastError!,
             photo.retryCount,
+            attemptCountKnown:
+                !(photo.retryCount >= 5 &&
+                    (photo.lastError?.startsWith('permanent: ') ?? false)),
           ),
         );
       }

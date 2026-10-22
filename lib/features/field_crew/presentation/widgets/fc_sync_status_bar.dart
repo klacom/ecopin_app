@@ -59,6 +59,7 @@ class FcSyncStatusBar extends ConsumerWidget {
         queue.hasError;
     final description =
         '$label. $connection · ${settings.mode.title}'
+        '${state.resultMessage == null ? '' : '. ${state.resultMessage}'}'
         '${blocked ? '. ${fcSyncPolicy(settings, network.hasError ? null : network.value)}' : ''}'
         '${queue.hasError && count != null ? '. Last loaded count: $count' : ''}';
     return Semantics(

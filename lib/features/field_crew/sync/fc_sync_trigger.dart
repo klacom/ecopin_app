@@ -97,6 +97,25 @@ class FcSyncState {
       (lastPhotoResult?.uploadFailed ?? 0) > 0 ||
       (lastPhotoResult?.uploadSkipped ?? 0) > 0 ||
       (lastPhotoResult?.deleteFailed ?? 0) > 0;
+
+  String? get resultMessage {
+    if (phase != FcSyncPhase.success && phase != FcSyncPhase.partialFailure) {
+      return null;
+    }
+    final saved = lastMutationResult?.succeeded ?? 0;
+    final uploads =
+        (lastPhotoResult?.uploadFailed ?? 0) +
+        (lastPhotoResult?.uploadSkipped ?? 0);
+    final removals = lastPhotoResult?.deleteFailed ?? 0;
+    final parts = <String>[
+      if (saved > 0) '$saved ${saved == 1 ? 'change' : 'changes'} saved.',
+      if (uploads > 0)
+        '$uploads photo ${uploads == 1 ? 'upload needs' : 'uploads need'} attention.',
+      if (removals > 0)
+        '$removals photo ${removals == 1 ? 'removal needs' : 'removals need'} attention.',
+    ];
+    return parts.isEmpty ? null : parts.join(' ');
+  }
 }
 
 final fcSyncStateProvider = NotifierProvider<FcSyncStateNotifier, FcSyncState>(

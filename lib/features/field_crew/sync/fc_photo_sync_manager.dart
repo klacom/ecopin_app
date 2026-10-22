@@ -51,7 +51,7 @@ class FcPhotoSyncRunResult {
 ///        and patches the entity cache so the UI sees the Cloudinary/Supabase URL.
 ///     5. On network failure: marks the row `failed`; it will be retried next run.
 ///     6. On a permanent error (4xx not 401/429): marks `failed` with
-///        `retryCount = max` to prevent infinite retries.
+///        a permanent rejection marker to prevent automatic retries.
 ///
 /// Pass 2 — Deletions
 ///   Queries all rows with `syncStatus = pendingDelete`.
@@ -110,10 +110,10 @@ class FcPhotoSyncManager {
     // ── Pass 2: Uploads ──────────────────────────────────────────────────────
     final pendingUploads = await _photoRepo.getPendingUploads();
     for (final photo in pendingUploads) {
-      if (photo.retryCount >= _kMaxRetries) {
+      if (fcPhotoRetriesPaused(photo.retryCount, photo.lastError)) {
         uploadSkipped++;
         _log.warning(
-          'Skipping ${photo.localPhotoId}: max retries (${photo.retryCount}) exceeded',
+          'Skipping ${photo.localPhotoId}: automatic retries paused (${photo.retryCount} recorded failures)',
         );
         continue;
       }
@@ -244,10 +244,7 @@ class FcPhotoSyncManager {
       final msg = fcSyncError(e);
 
       if (isPermanent) {
-        // Exhaust retry count so this photo is never retried.
-        for (int i = photo.retryCount; i < _kMaxRetries; i++) {
-          await _photoRepo.markFailed(photo.localPhotoId, 'permanent: $msg');
-        }
+        await _photoRepo.markFailed(photo.localPhotoId, 'permanent: $msg');
         _log.warning(
           'Permanent upload failure for ${photo.localPhotoId}: $msg\n$st',
         );

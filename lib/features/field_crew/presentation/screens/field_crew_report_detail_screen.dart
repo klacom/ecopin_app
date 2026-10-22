@@ -580,8 +580,8 @@ class _SyncChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, color) = switch (phase) {
       FcSyncPhase.syncing => ('Syncing…', AppColors.primaryDark),
-      FcSyncPhase.error ||
-      FcSyncPhase.partialFailure => ('Sync Error', AppColors.error),
+      FcSyncPhase.error => ('Sync Error', AppColors.error),
+      FcSyncPhase.partialFailure => ('Sync attention', AppColors.error),
       _ => (automatic ? 'Sync queued' : 'Pending Sync', AppColors.warning),
     };
     return Padding(

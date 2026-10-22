@@ -320,7 +320,7 @@ class FcSyncManager {
         await _patchLocalCache(item, result.serverRecord!);
       }
       _log.fine(
-        'Applied ${item.operationType} for ${item.entityId}: $result.status',
+        'Applied ${item.operationType} for ${item.entityId}: ${result.status.name}',
       );
     } else if (result.isTerminalFailure) {
       if (result.serverRecord != null) {

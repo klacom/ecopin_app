@@ -25,6 +25,7 @@ class ReportModel {
   final String? beforePhotoUrl;
   final List<Map<String, dynamic>> beforePhotos;
   final String? afterPhotoUrl;
+  final List<Map<String, dynamic>> afterPhotos;
   final String? rejectionReason;
   final DateTime? rejectedAt;
   final String scaleLevel;
@@ -65,6 +66,7 @@ class ReportModel {
     this.beforePhotoUrl,
     this.beforePhotos = const [],
     this.afterPhotoUrl,
+    this.afterPhotos = const [],
     this.rejectionReason,
     this.rejectedAt,
     this.scaleLevel = 'medium',
@@ -169,6 +171,11 @@ class ReportModel {
           .map((p) => Map<String, dynamic>.from(p))
           .toList(),
       beforePhotoUrl: json['before_photo_url']?.toString(),
+      afterPhotos: (json['after_photos'] as List? ?? [])
+          .whereType<Map>()
+          .map((p) => Map<String, dynamic>.from(p))
+          .toList(),
+      afterPhotoUrl: json['after_photo_url']?.toString(),
       rejectionReason:
           json['rejection_reason']?.toString() ?? json['notes']?.toString(),
       rejectedAt: json['rejected_at'] != null
@@ -252,6 +259,7 @@ class ReportModel {
       'report_claim_generation': reportClaimGeneration,
       'cleanup_task_id': cleanupTaskId,
       'before_photos': beforePhotos,
+      'after_photos': afterPhotos,
     };
   }
 }

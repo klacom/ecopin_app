@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -87,6 +88,15 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
+          final scroll = find
+              .byType(reports ? ListView : CustomScrollView)
+              .first;
+          expect(
+            tester.getBottomRight(scroll).dy,
+            800,
+            reason:
+                'Page content must paint behind the raised navbar, not stop at its bounding box.',
+          );
           try {
             tester.renderObject(find.byKey(preview)).markNeedsPaint();
             await tester.pump();
@@ -164,6 +174,150 @@ void main() {
           } finally {
             debugDisableShadows = previousShadows;
           }
+        },
+      );
+    }
+  }
+
+  for (final dark in [false, true]) {
+    for (final reports in [true, false]) {
+      testWidgets(
+        'loaded citizen ${reports ? "reports" : "alerts"} scrolls beneath the navbar / $dark',
+        (tester) async {
+          tester.view.physicalSize = const Size(390, 800);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final rows = List.generate(
+            20,
+            (i) => {
+              'id': 'synthetic-$i',
+              'title': 'Street concern $i',
+              'body': 'Your report has been reviewed by the response team.',
+              'description': 'Waste beside the street near the public market.',
+              'latitude': 14.58,
+              'longitude': 121.08,
+              'status': 'unresolved',
+              'validation_status': 'approved',
+              'issue_type': 'waste',
+              'is_read': i.isOdd,
+              'created_at': '2026-10-23T00:00:00Z',
+              'updated_at': '2026-10-23T00:00:00Z',
+            },
+          );
+          final path = reports
+              ? ProtectedAppRoutes.reports
+              : ProtectedAppRoutes.notifications;
+          final router = GoRouter(
+            initialLocation: path,
+            routes: [
+              ShellRoute(
+                builder: (_, _, child) => CitizenMainScreen(child: child),
+                routes: [
+                  GoRoute(
+                    path: path,
+                    builder: (_, _) => reports
+                        ? const ReportsScreen()
+                        : const NotificationsScreen(),
+                  ),
+                ],
+              ),
+            ],
+          );
+          addTearDown(router.dispose);
+          const key = Key('loaded-citizen-page');
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                profileProvider.overrideWith(
+                  (ref) => Stream.value({'full_name': 'Synthetic Citizen'}),
+                ),
+                myReportsProvider.overrideWith(
+                  (ref) async => rows.map(ReportModel.fromJson).toList(),
+                ),
+                notificationsProvider.overrideWith((ref) => Stream.value(rows)),
+                unreadNotificationsCountProvider.overrideWith(
+                  (ref) => Stream.value(10),
+                ),
+              ],
+              child: MaterialApp.router(
+                theme: dark ? AppTheme.dark : AppTheme.light,
+                routerConfig: router,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    padding: const EdgeInsets.only(top: 24, bottom: 24),
+                  ),
+                  child: RepaintBoundary(key: key, child: child!),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final scroll = find
+              .byType(reports ? ListView : CustomScrollView)
+              .first;
+          expect(tester.getBottomRight(scroll).dy, 800);
+          await tester.scrollUntilVisible(
+            find.text('Street concern 3'),
+            180,
+            scrollable: find
+                .descendant(of: scroll, matching: find.byType(Scrollable))
+                .first,
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          final output = Platform.environment['ECOPIN_SCREENSHOT_DIR'];
+          if (output != null) {
+            final boundary = tester.renderObject<RenderRepaintBoundary>(
+              find.byKey(key),
+            );
+            await tester.runAsync(() async {
+              final image = await boundary.toImage();
+              final png = await image.toByteData(
+                format: ui.ImageByteFormat.png,
+              );
+              await File(
+                '$output/citizen-loaded-${reports ? "reports" : "alerts"}-${dark ? "dark" : "light"}.png',
+              ).writeAsBytes(png!.buffer.asUint8List());
+              image.dispose();
+            });
+          }
+          await tester.scrollUntilVisible(
+            find.text('Street concern 19'),
+            300,
+            scrollable: find
+                .descendant(of: scroll, matching: find.byType(Scrollable))
+                .first,
+          );
+          await tester.pumpAndSettle();
+          final position = tester
+              .state<ScrollableState>(
+                find
+                    .descendant(of: scroll, matching: find.byType(Scrollable))
+                    .first,
+              )
+              .position;
+          position.jumpTo(position.maxScrollExtent);
+          await tester.pumpAndSettle();
+          final lastCard = find
+              .ancestor(
+                of: find.text('Street concern 19'),
+                matching: find.byType(Card),
+              )
+              .first;
+          expect(
+            tester.getBottomRight(lastCard).dy,
+            lessThanOrEqualTo(
+              tester.getTopLeft(find.byKey(const Key('citizen-navigation'))).dy,
+            ),
+          );
+          expect(
+            tester.getBottomRight(find.text('Street concern 19')).dy,
+            lessThan(
+              tester.getTopLeft(find.byKey(const Key('citizen-navigation'))).dy,
+            ),
+          );
+          expect(tester.takeException(), isNull);
         },
       );
     }

@@ -188,10 +188,10 @@ void main() {
     return reports;
   }
 
-  testWidgets('report status sits beside Map/List on a phone toolbar', (
+  testWidgets('floating report status sits beside Map/List over the full map', (
     tester,
   ) async {
-      tester.view.physicalSize = const Size(360, 800);
+    tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -203,7 +203,7 @@ void main() {
     expect(status.left, greaterThanOrEqualTo(controls.right));
     expect(
       status.bottom,
-      lessThanOrEqualTo(tester.getTopLeft(find.byType(FlutterMap)).dy),
+      greaterThan(tester.getTopLeft(find.byType(FlutterMap)).dy),
     );
     expect(
       tester.widget<Scaffold>(find.byType(Scaffold).first).bottomNavigationBar,
@@ -246,6 +246,50 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('list keeps the status bar outside its compact toolbar', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view.padding = const FakeViewPadding(top: 24);
+    addTearDown(tester.view.resetPadding);
+    await mount(tester);
+    reports.requests.first.$2.complete(page(0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('List'));
+    await tester.pump();
+    reports.feedRequests.single.complete(
+      page(3, title: "Market waste concern"),
+    );
+    await tester.pumpAndSettle();
+    final toolbar = find
+        .ancestor(
+          of: find.byType(SegmentedButton<bool>),
+          matching: find.byType(Material),
+        )
+        .first;
+    expect(tester.getTopLeft(toolbar).dy, 32);
+    expect(tester.getSize(toolbar).height, lessThan(90));
+    expect(tester.takeException(), isNull);
+    final output = Platform.environment['ECOPIN_SCREENSHOT_DIR'];
+    if (output != null) {
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+        find.byKey(const Key('map-capture')),
+      );
+      await tester.runAsync(() async {
+        final capture = await boundary.toImage();
+        final bytes = await capture.toByteData(format: ui.ImageByteFormat.png);
+        await File(
+          '$output/public-list-light.png',
+        ).writeAsBytes(bytes!.buffer.asUint8List());
+        capture.dispose();
+      });
+    }
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets(
     'empty heatmap survives repeated zooms and refreshing an empty area',
@@ -294,7 +338,7 @@ void main() {
     reports.requests.last.$2.complete(page(0));
     await tester.pump();
     await tester.pump();
-    expect(find.text('0 public reports in this area'), findsOneWidget);
+    expect(find.text('0 reports'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -321,10 +365,10 @@ void main() {
       expect(reports.requests, hasLength(3));
       reports.requests.last.$2.complete(page(3));
       await tester.pumpAndSettle();
-      expect(find.text('3 public reports in this area'), findsOneWidget);
+      expect(find.text('3 reports'), findsOneWidget);
       oldRequest.$2.complete(page(1));
       await tester.pumpAndSettle();
-      expect(find.text('3 public reports in this area'), findsOneWidget);
+      expect(find.text('3 reports'), findsOneWidget);
       expect(find.text('Search this area'), findsNothing);
       expect(tester.state(find.byType(FlutterMap)), same(mapState));
       await tester.pumpWidget(const SizedBox());
@@ -353,13 +397,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pumpAndSettle();
     expect(reports.requests, hasLength(2));
-    expect(find.text('0 public reports in this area'), findsOneWidget);
+    expect(find.text('0 reports'), findsOneWidget);
     await tester.pump(const Duration(seconds: 60));
     await tester.pump();
     expect(reports.requests, hasLength(3));
     reports.requests.last.$2.complete(page(1));
     await tester.pumpAndSettle();
-    expect(find.text('1 public report in this area'), findsOneWidget);
+    expect(find.text('1 report'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
   testWidgets(
@@ -499,14 +543,20 @@ void main() {
           await mount(tester, dark: dark, scale: 2);
           reports.requests.first.$2.complete(page(1));
           await tester.pumpAndSettle();
+          expect(tester.getTopLeft(find.byType(FlutterMap)).dy, 0);
           expect(
-            tester.getBottomRight(find.byType(ReportMapStatus)).dy,
-            lessThanOrEqualTo(
-              tester.getTopLeft(find.byType(FlutterMap)).dy + 1,
-            ),
+            tester.getTopLeft(find.byTooltip('Search places')).dy,
+            greaterThan(tester.getBottomRight(find.byType(ReportMapStatus)).dy),
           );
           final info = tester.getRect(find.byTooltip('Map legend and credits'));
           expect(info.top, greaterThanOrEqualTo(0));
+          expect(info.size, const Size(48, 48));
+          final heatmap = tester.getRect(find.byTooltip('Show report heatmap'));
+          final locate = tester.getRect(
+            find.byTooltip('Center on my location'),
+          );
+          expect(locate.top - heatmap.bottom, 1);
+          expect(info.top - locate.bottom, 1);
           expect(info.bottom, lessThanOrEqualTo(size.height));
           expect(find.text('© OpenStreetMap contributors'), findsNothing);
           expect(tester.takeException(), isNull);

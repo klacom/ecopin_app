@@ -256,13 +256,19 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
         ? await localPhoto.getActivePhoto(report.id, 'report', 'before')
         : null;
     final hasBefore =
-        beforePhoto != null || report.beforePhotoUrl?.trim().isNotEmpty == true;
+        beforePhoto != null ||
+        report.beforePhotos.isNotEmpty ||
+        report.beforePhotoUrl?.trim().isNotEmpty == true;
     final issueType = report.issueType?.toLowerCase() ?? '';
     final isScouting =
         issueType == 'scouting' || issueType == 'acknowledge_only';
     final evidence = <String>[
       if (reportPhoto != null)
         'local-photo:${reportPhoto.localPhotoId}'
+      else if (report.afterPhotos.isNotEmpty)
+        for (final p in report.afterPhotos)
+          if ((p['url'] as String?)?.trim().isNotEmpty == true)
+            p['url'] as String
       else if (report.afterPhotoUrl?.trim().isNotEmpty == true)
         report.afterPhotoUrl!,
     ];

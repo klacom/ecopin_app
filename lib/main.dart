@@ -62,7 +62,7 @@ Future<void> main() async {
   final container = ProviderContainer();
   await container.read(notificationServiceProvider).init();
 
-  // â”€â”€ Phase 4: Sync engine crash recovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Phase 4: Sync engine crash recovery
   // Reset any outbox items or photos that were in-flight when the app was last
   // killed, so they are retried rather than stuck permanently.
   final syncManager = container.read(fcSyncManagerProvider);

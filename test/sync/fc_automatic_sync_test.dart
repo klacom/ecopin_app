@@ -35,6 +35,7 @@ class Mutations extends Fake implements FcSyncManager {
   Mutations(this.local);
   final FcLocalRepository local;
   int runs = 0;
+  int outcomeRuns = 0;
   bool fail = false;
   Completer<void>? hold;
   @override
@@ -42,7 +43,10 @@ class Mutations extends Fake implements FcSyncManager {
     int maxAttempts = 3,
     bool evidenceDependentOnly = false,
   }) async {
-    if (evidenceDependentOnly) return emptyResult;
+    if (evidenceDependentOnly) {
+      outcomeRuns++;
+      return emptyResult;
+    }
     runs++;
     if (hold != null) await hold!.future;
     if (fail) {
@@ -70,11 +74,12 @@ class Mutations extends Fake implements FcSyncManager {
 }
 
 class Photos extends Fake implements FcPhotoSyncManager {
+  bool fail = false;
   @override
-  Future<FcPhotoSyncRunResult> sync() async => const FcPhotoSyncRunResult(
-    uploadAttempted: 0,
+  Future<FcPhotoSyncRunResult> sync() async => FcPhotoSyncRunResult(
+    uploadAttempted: fail ? 1 : 0,
     uploadSucceeded: 0,
-    uploadFailed: 0,
+    uploadFailed: fail ? 1 : 0,
     deleteAttempted: 0,
     deleteSucceeded: 0,
     deleteFailed: 0,
@@ -106,6 +111,28 @@ class AutoApi extends Fake implements ApiClient {
 class AutoCache extends Fake implements CacheService {}
 
 void main() {
+  test('completion pass waits until failed photo uploads succeed', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    final local = FcLocalRepository(db);
+    final mutations = Mutations(local);
+    final photos = Photos()..fail = true;
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final trigger = FcSyncTrigger(
+      syncManager: mutations,
+      photoSyncManager: photos,
+      gate: Gate(),
+      stateNotifier: container.read(fcSyncStateProvider.notifier),
+      onSynced: () {},
+    );
+    addTearDown(trigger.dispose);
+    expect((await trigger.syncNow())!.phase, FcSyncPhase.partialFailure);
+    expect(mutations.outcomeRuns, 0);
+    photos.fail = false;
+    expect((await trigger.syncNow())!.phase, FcSyncPhase.success);
+    expect(mutations.outcomeRuns, 1);
+  });
   test(
     'note sync updates the note cache without replacing report identity',
     () async {

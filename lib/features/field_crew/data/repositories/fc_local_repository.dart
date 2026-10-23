@@ -690,6 +690,39 @@ class FcLocalRepository {
   Future<void> markOutboxItemInFlight(String operationId) =>
       _db.markOutboxItemInFlight(operationId);
 
+  /// Advance queued report stage/status mutations based on the version our own operation just changed.
+  Future<void> advanceReportCompletionVersion(
+    String reportId,
+    int previousVersion,
+    int acceptedVersion,
+  ) async {
+    for (final item in await getPendingOutboxItems()) {
+      if (item.entityId != reportId ||
+          item.entityType != 'report' ||
+          int.tryParse(item.baseVersion ?? '') != previousVersion) {
+        continue;
+      }
+      final isCompletion =
+          item.operationType == FcOutboxOperationType.updateReportStatus &&
+          const [
+            'resolved',
+            'completed',
+            'closed',
+            'rejected',
+          ].contains((jsonDecode(item.payloadJson) as Map)['status']);
+      final isLifecycle =
+          item.operationType == FcOutboxOperationType.updateLifecycleStage;
+      if (!isCompletion && !isLifecycle) {
+        continue;
+      }
+      await (_db.update(
+        _db.fcOutboxItems,
+      )..where((t) => t.operationId.equals(item.operationId))).write(
+        FcOutboxItemsCompanion(baseVersion: Value(acceptedVersion.toString())),
+      );
+    }
+  }
+
   Future<void> markOutboxItemFailed(String operationId, String error) =>
       _db.incrementOutboxRetryCount(operationId, error);
 
@@ -720,7 +753,9 @@ class FcLocalRepository {
     json['created_at'] = r.createdAt.toIso8601String();
     json['updated_at'] = r.updatedAt.toIso8601String();
     json['before_photo_url'] = r.beforePhotoUrl;
+    json['before_photos'] = r.beforePhotos;
     json['after_photo_url'] = r.afterPhotoUrl;
+    json['after_photos'] = r.afterPhotos;
     json['is_overdue'] = r.isOverdue;
     return json;
   }

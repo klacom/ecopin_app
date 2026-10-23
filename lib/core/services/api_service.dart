@@ -52,13 +52,31 @@ class ApiClient {
           // Pending password changes use their own in-memory login token. They
           // must not borrow or refresh a different persisted account session.
           if (options.extra['pendingPasswordChange'] != true) {
+            String? token;
             try {
               final session = Supabase.instance.client.auth.currentSession;
-              final token = session?.accessToken;
+              token = session?.accessToken;
               if (token != null) {
                 options.headers['Authorization'] = 'Bearer $token';
               }
             } catch (_) {}
+            if (options.extra['requiresSession'] == true &&
+                (token == null || token.isEmpty)) {
+              return handler.reject(
+                dio.DioException(
+                  requestOptions: options,
+                  type: dio.DioExceptionType.badResponse,
+                  response: dio.Response(
+                    requestOptions: options,
+                    statusCode: 401,
+                    data: {
+                      'error':
+                          'Your session has ended. Sign in again, then retry sync. Your queued photos are still saved on this device.',
+                    },
+                  ),
+                ),
+              );
+            }
           }
           return handler.next(options);
         },
@@ -77,6 +95,10 @@ class ApiClient {
                 final opts = error.requestOptions;
                 opts.extra['sessionRefreshRetried'] = true;
                 opts.headers['Authorization'] = 'Bearer $newToken';
+                // Multipart bodies are consumed by the first upload attempt.
+                if (opts.data is dio.FormData) {
+                  opts.data = (opts.data as dio.FormData).clone();
+                }
                 final response = await _dio.fetch(opts);
                 return handler.resolve(response);
               }

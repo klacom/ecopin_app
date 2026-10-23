@@ -161,14 +161,16 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
     json['created_at'] = r.createdAt.toIso8601String();
     json['updated_at'] = r.updatedAt.toIso8601String();
     json['before_photo_url'] = r.beforePhotoUrl;
+    json['before_photos'] = r.beforePhotos;
     json['after_photo_url'] = r.afterPhotoUrl;
+    json['after_photos'] = r.afterPhotos;
     json['is_overdue'] = r.isOverdue;
     json.addAll(patch);
     return ReportModel.fromJson(json);
   }
 }
 
-/// Family provider â€” one notifier per reportId.
+/// Family provider — one notifier per reportId.
 final fcReportDetailNotifierProvider =
     NotifierProvider.family<
       FcReportDetailNotifier,

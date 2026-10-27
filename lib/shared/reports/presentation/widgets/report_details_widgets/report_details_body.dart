@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'report_video_player.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
@@ -131,6 +132,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               ValidationBadge(status: widget.report.validationStatus),
             ],
           ),
+          ResponseDeadlineIndicator(report: widget.report, details: true),
           if (widget.report.severityScore != null) ...[
             const SizedBox(height: 16),
             Container(

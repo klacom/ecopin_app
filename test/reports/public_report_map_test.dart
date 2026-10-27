@@ -21,6 +21,8 @@ void main() {
     'created_at': '2026-10-11T00:00:00Z',
     'updated_at': '2026-10-11T00:00:00Z',
     'location_precision': 'approximate',
+    'sla_started_at': '2026-10-27T00:00:00Z',
+    'deadline_at': '2026-10-28T00:00:00Z',
   };
   SupabaseClient clientFor(
     Future<http.Response> Function(http.Request) handler,
@@ -60,6 +62,8 @@ void main() {
     ).getFeedPage(offset: 20, limit: 2);
     expect(page.reports.map((r) => r.id), ['synthetic-report', 'second']);
     expect(page.hasMore, isTrue);
+    expect(page.reports.first.deadlineAt, DateTime.utc(2026, 10, 28));
+    expect(page.reports.first.slaStartedAt, DateTime.utc(2026, 10, 27));
     expect(request.path, '/rest/v1/public_reports');
     expect(request.queryParameters['select'], PublicReportMapDataSource.fields);
     expect(request.queryParameters.containsKey('latitude'), isFalse);

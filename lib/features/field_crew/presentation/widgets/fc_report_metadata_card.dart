@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
@@ -51,6 +52,7 @@ class FcReportMetadataCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppColors.spaceMD),
+          ResponseDeadlineIndicator(report: report, details: true),
           _buildInfoRow('Description', report.description ?? 'N/A', textColor),
           Divider(color: dividerColor, height: 24),
           Row(

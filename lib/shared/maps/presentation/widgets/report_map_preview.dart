@@ -2,6 +2,7 @@ import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/status_badge.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 
 class ReportMapPreview extends StatelessWidget {
   const ReportMapPreview({super.key, required this.report});
@@ -57,6 +58,7 @@ class ReportMapPreview extends StatelessWidget {
                 ),
               ],
             ),
+            ResponseDeadlineIndicator(report: report),
             const SizedBox(height: 16),
             Text(
               report.description?.trim().isNotEmpty == true

@@ -36,6 +36,8 @@ class ReportModel {
   final String? lifecycleStage;
   final String? lifecycleState;
   final DateTime? breachedAt;
+  final DateTime? slaStartedAt;
+  final DateTime? deadlineAt;
   final String? slaBreachDuration;
   final int fcVersion;
   final int reportClaimGeneration;
@@ -77,6 +79,8 @@ class ReportModel {
     this.lifecycleStage,
     this.lifecycleState,
     this.breachedAt,
+    this.slaStartedAt,
+    this.deadlineAt,
     this.slaBreachDuration,
     this.fcVersion = 0,
     this.reportClaimGeneration = 0,
@@ -196,6 +200,8 @@ class ReportModel {
         json['breached_at']?.toString() ?? '',
       )?.toLocal(),
       slaBreachDuration: json['sla_breach_duration']?.toString(),
+      slaStartedAt: DateTime.tryParse(json['sla_started_at']?.toString() ?? ''),
+      deadlineAt: DateTime.tryParse(json['deadline_at']?.toString() ?? ''),
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
       reportClaimGeneration:
           int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,
@@ -254,6 +260,8 @@ class ReportModel {
       'stage': lifecycleStage,
       'lifecycle_state': lifecycleState,
       'breached_at': breachedAt?.toIso8601String(),
+      'sla_started_at': slaStartedAt?.toUtc().toIso8601String(),
+      'deadline_at': deadlineAt?.toUtc().toIso8601String(),
       'sla_breach_duration': slaBreachDuration,
       'fc_version': fcVersion,
       'report_claim_generation': reportClaimGeneration,

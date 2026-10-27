@@ -78,7 +78,7 @@ void main() {
       final report = previewReport();
       bool? result;
       await tester.pumpWidget(
-        MaterialApp(
+        ProviderScope(child: MaterialApp(
           theme: AppTheme.dark,
           home: Builder(
             builder: (context) => Scaffold(
@@ -100,7 +100,7 @@ void main() {
               ),
             ),
           ),
-        ),
+        )),
       );
       await tester.tap(find.text('Preview'));
       await tester.pumpAndSettle();

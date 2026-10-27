@@ -41,6 +41,9 @@ class ReportModel {
   final String? locationVerificationStatus;
   final double? photoDistanceMeters;
   final String? cleanupTaskId;
+  final String? streetAddress;
+  final String? barangay;
+  final String? city;
 
   ReportModel({
     required this.id,
@@ -81,6 +84,9 @@ class ReportModel {
     this.locationVerificationStatus,
     this.photoDistanceMeters,
     this.cleanupTaskId,
+    this.streetAddress,
+    this.barangay,
+    this.city,
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
@@ -196,7 +202,26 @@ class ReportModel {
           ?.toString(),
       photoDistanceMeters: (json['photo_distance_meters'] as num?)?.toDouble(),
       cleanupTaskId: json['cleanup_task_id']?.toString(),
+      streetAddress: json['street_address']?.toString(),
+      barangay: json['barangay']?.toString(),
+      city: json['city']?.toString() ?? 'Pasig City',
     );
+  }
+
+  /// Formatted address string for display in details cards and summaries
+  String get formattedAddress {
+    final parts = <String>[];
+    if (streetAddress != null && streetAddress!.trim().isNotEmpty) {
+      parts.add(streetAddress!.trim());
+    }
+    if (barangay != null && barangay!.trim().isNotEmpty) {
+      final bgy = barangay!.trim().toLowerCase().startsWith('brgy')
+          ? barangay!.trim()
+          : 'Brgy. ${barangay!.trim()}';
+      parts.add(bgy);
+    }
+    parts.add(city != null && city!.trim().isNotEmpty ? city!.trim() : 'Pasig City');
+    return parts.join(', ');
   }
 
   /// Whether this report can be withdrawn/deleted by the citizen before triage/dispatch.

@@ -344,9 +344,18 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
           const SizedBox(height: 8),
           InfoRow(
             icon: Icons.location_pin,
-            text:
-                '${widget.report.location.latitude.toStringAsFixed(6)}, ${widget.report.location.longitude.toStringAsFixed(6)}',
+            text: (widget.report.streetAddress != null || widget.report.barangay != null)
+                ? widget.report.formattedAddress
+                : '${widget.report.location.latitude.toStringAsFixed(6)}, ${widget.report.location.longitude.toStringAsFixed(6)}',
           ),
+          if (widget.report.streetAddress != null || widget.report.barangay != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 32, bottom: 4),
+              child: Text(
+                '${widget.report.location.latitude.toStringAsFixed(6)}, ${widget.report.location.longitude.toStringAsFixed(6)}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ),
           InfoRow(icon: Icons.calendar_today, text: dateStr),
           if (widget.report.locationVerificationStatus != null) ...[
             const SizedBox(height: 8),

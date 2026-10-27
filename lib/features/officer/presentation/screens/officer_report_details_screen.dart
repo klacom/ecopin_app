@@ -30,6 +30,7 @@ class OfficerReportDetail {
   final bool? onPrivateProperty;
   final String? propertyOwnerConsentStatus;
   final String? rejectionReason;
+  final String? notes;
 
   OfficerReportDetail({
     required this.id,
@@ -54,6 +55,7 @@ class OfficerReportDetail {
     this.onPrivateProperty,
     this.propertyOwnerConsentStatus,
     this.rejectionReason,
+    this.notes,
   });
 
   factory OfficerReportDetail.fromJson(Map<String, dynamic> json) {
@@ -91,6 +93,7 @@ class OfficerReportDetail {
       propertyOwnerConsentStatus:
           json['property_owner_consent_status'] as String?,
       rejectionReason: json['rejection_reason'] as String?,
+      notes: json['notes'] as String?,
     );
   }
 }
@@ -381,46 +384,138 @@ class _OfficerReportDetailsScreenState
   Future<void> _onValidationStatusChanged(String status) async {
     if (status == 'rejected') {
       final reasonController = TextEditingController();
+      String selectedPreset = '';
+      const presets = [
+        'Blurry / unrecognizable photo',
+        'No visible waste or hazard',
+        'Duplicate submission',
+        'Outside Pasig jurisdiction',
+        'Private property issue',
+        'Inappropriate content',
+      ];
+
+      // Extract citizen manual review note if available
+      final citizenRequest = _report?.notes != null &&
+              _report!.notes!.startsWith('Reporter requested manual review:')
+          ? _report!.notes!
+              .replaceFirst('Reporter requested manual review:', '')
+              .split('\n\nOfficer rejection reason:')[0]
+              .trim()
+          : null;
+
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (dialogCtx) => AlertDialog(
-          title: const Text('Reject Report'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Please provide a reason for rejecting this report:'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: reasonController,
-                decoration: const InputDecoration(
-                  hintText: 'e.g., Duplicate, Invalid photo, Not environmental issue',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
+        builder: (dialogCtx) => StatefulBuilder(
+          builder: (dialogCtx, setDialogState) => AlertDialog(
+            title: const Text('Reject Report'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (citizenRequest != null && citizenRequest.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Citizen manual review request:',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            citizenRequest,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const Text(
+                    'Select a reason or write an explanation for the citizen:',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: presets.map((preset) {
+                      final isSelected = selectedPreset == preset;
+                      return ChoiceChip(
+                        label: Text(preset, style: const TextStyle(fontSize: 12)),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setDialogState(() {
+                            selectedPreset = selected ? preset : '';
+                            if (selected && reasonController.text.trim().isEmpty) {
+                              reasonController.text = preset;
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: reasonController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter rejection explanation...',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.all(12),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final reason = reasonController.text.trim().isNotEmpty
+                      ? reasonController.text.trim()
+                      : selectedPreset;
+                  if (reason.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please provide or select a rejection reason.')),
+                    );
+                    return;
+                  }
+                  Navigator.pop(dialogCtx, true);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Reject', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(dialogCtx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Reject', style: TextStyle(color: Colors.white)),
-            ),
-          ],
         ),
       );
 
       if (confirmed == true) {
+        final reason = reasonController.text.trim().isNotEmpty
+            ? reasonController.text.trim()
+            : (selectedPreset.isNotEmpty ? selectedPreset : 'Rejected by officer');
         await _updateValidationStatus(
           'rejected',
-          rejectionReason: reasonController.text.trim().isNotEmpty
-              ? reasonController.text.trim()
-              : 'Rejected by officer',
+          rejectionReason: reason,
         );
       }
     } else {

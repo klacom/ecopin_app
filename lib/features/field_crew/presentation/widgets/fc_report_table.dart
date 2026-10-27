@@ -1,10 +1,13 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ecopin_app/shared/reports/presentation/response_deadline.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import '../controllers/fc_dashboard_presentation.dart';
 import '../controllers/fc_task_detail_presentation.dart';
 
-class FcReportTable extends StatefulWidget {
+class FcReportTable extends ConsumerStatefulWidget {
   const FcReportTable({
     super.key,
     required this.reports,
@@ -17,20 +20,25 @@ class FcReportTable extends StatefulWidget {
   final Future<void> Function()? onReturn;
   final void Function(ReportModel, String)? onOutcome;
   @override
-  State<FcReportTable> createState() => _FcReportTableState();
+  ConsumerState<FcReportTable> createState() => _FcReportTableState();
 }
 
-class _FcReportTableState extends State<FcReportTable> {
+class _FcReportTableState extends ConsumerState<FcReportTable> {
   String _filter = 'All';
   @override
   Widget build(BuildContext context) {
-    final handled = widget.reports.where(reportIsHandled).length;
+    final now =
+        ref.watch(responseDeadlineClockProvider).value ?? DateTime.now();
+    bool matches(ReportModel report, String filter) => switch (filter) {
+      'Open' => !reportIsHandled(report),
+      'Handled' => reportIsHandled(report),
+      'At risk' => responseDeadline(report, now)?.state == DeadlineState.atRisk,
+      'Overdue' =>
+        responseDeadline(report, now)?.state == DeadlineState.overdue,
+      _ => true,
+    };
     final visible = widget.reports
-        .where(
-          (r) =>
-              _filter == 'All' ||
-              (_filter == 'Handled' ? reportIsHandled(r) : !reportIsHandled(r)),
-        )
+        .where((report) => matches(report, _filter))
         .toList();
     final text = Theme.of(context).textTheme;
     return SliverMainAxisGroup(
@@ -42,16 +50,18 @@ class _FcReportTableState extends State<FcReportTable> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final label in ['All', 'Open', 'Handled'])
+                for (final label in [
+                  'All',
+                  'Open',
+                  'Handled',
+                  'At risk',
+                  'Overdue',
+                ])
                   FilterChip(
                     selected: _filter == label,
                     onSelected: (_) => setState(() => _filter = label),
                     label: Text(
-                      '$label (${label == 'All'
-                          ? widget.reports.length
-                          : label == 'Open'
-                          ? widget.reports.length - handled
-                          : handled})',
+                      '$label (${widget.reports.where((report) => matches(report, label)).length})',
                     ),
                   ),
               ],
@@ -133,15 +143,9 @@ class _FcReportTableState extends State<FcReportTable> {
                               crewTaskLabel(report.validationStatus),
                               style: text.bodySmall,
                             ),
-                            if (report.breachedAt != null)
-                              Text(
-                                'SLA overdue',
-                                style: text.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                              ),
                           ],
                         ),
+                        ResponseDeadlineIndicator(report: report),
                         if (report.description?.trim().isNotEmpty == true) ...[
                           const SizedBox(height: 8),
                           Text(

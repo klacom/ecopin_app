@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/features/field_crew/providers/field_crew_reports_provider.dart';
+import 'package:ecopin_app/features/field_crew/presentation/controllers/fc_task_detail_presentation.dart';
+import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_deadline_indicator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
@@ -24,6 +27,7 @@ class _FieldCrewTasksScreenState extends ConsumerState<FieldCrewTasksScreen> {
   @override
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(allCleanupTasksProvider);
+    final knownReports = ref.watch(fieldCrewReportsProvider).value;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
@@ -113,7 +117,32 @@ class _FieldCrewTasksScreenState extends ConsumerState<FieldCrewTasksScreen> {
                       ),
                       itemCount: filteredTasks.length,
                       separatorBuilder: (context, index) => const SizedBox(height: AppColors.spaceMD),
-                      itemBuilder: (context, index) => FcTaskListTile(task: filteredTasks[index]),
+                      itemBuilder: (context, index) {
+                        final task = filteredTasks[index];
+                        final ids = taskReportIds(task);
+                        final reports = knownReports ?? task.reports ?? [];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            FcTaskListTile(task: task),
+                            if (!{
+                              'completed',
+                              'closed',
+                              'cancelled',
+                            }.contains(task.status.toLowerCase()))
+                              FcTaskDeadlineIndicator(
+                                reports: reports
+                                    .where(
+                                      (r) =>
+                                          ids.contains(r.id) &&
+                                          (r.cleanupTaskId == null ||
+                                              r.cleanupTaskId == task.id),
+                                    )
+                                    .toList(),
+                              ),
+                          ],
+                        );
+                      },
                     );
                   },
                   loading: () => ListView(

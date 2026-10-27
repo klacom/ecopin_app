@@ -13,7 +13,7 @@ import 'package:uuid/uuid.dart';
 /// Responsibilities:
 ///   1. Copy an image-picker temp file into permanent app-internal storage.
 ///   2. Compute the file's SHA-256 hash for duplicate detection.
-///   3. Enforce five report Before photos; other slots remain single-photo.
+///   3. Enforce five report Before/After photos; other slots remain single-photo.
 ///   4. Insert / delete rows in [FcLocalPhotos].
 ///   5. Provide read helpers the UI needs to render pending photos.
 ///
@@ -36,7 +36,7 @@ class FcLocalPhotoRepository {
   /// Steps:
   ///   1. Hash the source file.
   ///   2. Check for duplicate within the same entity/type slot.
-  ///   3. Check the slot capacity (five report Before photos, one otherwise).
+  ///   3. Check the slot capacity (five report Before/After photos, one otherwise).
   ///   4. Copy the file to permanent storage under `<appDocuments>/fc_photos/`.
   ///   5. Insert a [FcLocalPhotos] row with `syncStatus = pending`.
   ///
@@ -71,7 +71,7 @@ class FcLocalPhotoRepository {
       entityId,
       entityType,
     )).where((p) => p.photoType == photoType).length;
-    final limit = entityType == 'report' && photoType == 'before' ? 5 : 1;
+    final limit = entityType == 'report' ? 5 : 1;
     if (existing >= limit) {
       throw FcPhotoSlotOccupiedException(
         'Maximum $limit $photoType photos reached.',

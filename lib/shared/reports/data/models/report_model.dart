@@ -25,6 +25,7 @@ class ReportModel {
   final String? beforePhotoUrl;
   final List<Map<String, dynamic>> beforePhotos;
   final String? afterPhotoUrl;
+  final List<Map<String, dynamic>> afterPhotos;
   final String? rejectionReason;
   final DateTime? rejectedAt;
   final String scaleLevel;
@@ -35,6 +36,8 @@ class ReportModel {
   final String? lifecycleStage;
   final String? lifecycleState;
   final DateTime? breachedAt;
+  final DateTime? slaStartedAt;
+  final DateTime? deadlineAt;
   final String? slaBreachDuration;
   final int fcVersion;
   final int reportClaimGeneration;
@@ -44,6 +47,7 @@ class ReportModel {
   final String? streetAddress;
   final String? barangay;
   final String? city;
+  final String? notes;
 
   ReportModel({
     required this.id,
@@ -68,6 +72,8 @@ class ReportModel {
     this.beforePhotoUrl,
     this.beforePhotos = const [],
     this.afterPhotoUrl,
+    this.afterPhotos = const [],
+    this.notes,
     this.rejectionReason,
     this.rejectedAt,
     this.scaleLevel = 'medium',
@@ -78,6 +84,8 @@ class ReportModel {
     this.lifecycleStage,
     this.lifecycleState,
     this.breachedAt,
+    this.slaStartedAt,
+    this.deadlineAt,
     this.slaBreachDuration,
     this.fcVersion = 0,
     this.reportClaimGeneration = 0,
@@ -175,8 +183,31 @@ class ReportModel {
           .map((p) => Map<String, dynamic>.from(p))
           .toList(),
       beforePhotoUrl: json['before_photo_url']?.toString(),
-      rejectionReason:
-          json['rejection_reason']?.toString() ?? json['notes']?.toString(),
+      afterPhotos: (json['after_photos'] as List? ?? [])
+          .whereType<Map>()
+          .map((p) => Map<String, dynamic>.from(p))
+          .toList(),
+      afterPhotoUrl: json['after_photo_url']?.toString(),
+      notes: json['notes']?.toString(),
+      rejectionReason: () {
+        final explicitReason = json['rejection_reason']?.toString().trim();
+        if (explicitReason != null && explicitReason.isNotEmpty) {
+          return explicitReason;
+        }
+        final rawNotes = json['notes']?.toString();
+        if (rawNotes != null && rawNotes.isNotEmpty) {
+          if (rawNotes.contains('Officer rejection reason:')) {
+            final parts = rawNotes.split('Officer rejection reason:');
+            final extracted = parts.last.trim();
+            if (extracted.isNotEmpty) return extracted;
+          }
+          if (json['validation_status'] == 'rejected' &&
+              !rawNotes.startsWith('Reporter requested manual review:')) {
+            return rawNotes.trim();
+          }
+        }
+        return null;
+      }(),
       rejectedAt: json['rejected_at'] != null
           ? DateTime.tryParse(json['rejected_at']?.toString() ?? '')?.toLocal()
           : (json['validation_status'] == 'rejected'
@@ -195,6 +226,8 @@ class ReportModel {
         json['breached_at']?.toString() ?? '',
       )?.toLocal(),
       slaBreachDuration: json['sla_breach_duration']?.toString(),
+      slaStartedAt: DateTime.tryParse(json['sla_started_at']?.toString() ?? ''),
+      deadlineAt: DateTime.tryParse(json['deadline_at']?.toString() ?? ''),
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
       reportClaimGeneration:
           int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,
@@ -245,6 +278,19 @@ class ReportModel {
     return true;
   }
 
+  /// If the report was submitted with a manual review request, returns the citizen's explanation.
+  String? get manualReviewRequestReason {
+    final rawNotes = notes;
+    if (rawNotes == null || !rawNotes.startsWith('Reporter requested manual review:')) {
+      return null;
+    }
+    final afterPrefix = rawNotes.substring('Reporter requested manual review:'.length);
+    if (afterPrefix.contains('Officer rejection reason:')) {
+      return afterPrefix.split('Officer rejection reason:').first.trim();
+    }
+    return afterPrefix.trim();
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -261,6 +307,7 @@ class ReportModel {
       'lgu_resolved_at': lguResolvedAt?.toIso8601String(),
       'citizen_closed_at': citizenClosedAt?.toIso8601String(),
       'is_overdue': isOverdue,
+      'notes': notes,
       'rejection_reason': rejectionReason,
       'rejected_at': rejectedAt?.toIso8601String(),
       'scale_level': scaleLevel,
@@ -272,11 +319,14 @@ class ReportModel {
       'stage': lifecycleStage,
       'lifecycle_state': lifecycleState,
       'breached_at': breachedAt?.toIso8601String(),
+      'sla_started_at': slaStartedAt?.toUtc().toIso8601String(),
+      'deadline_at': deadlineAt?.toUtc().toIso8601String(),
       'sla_breach_duration': slaBreachDuration,
       'fc_version': fcVersion,
       'report_claim_generation': reportClaimGeneration,
       'cleanup_task_id': cleanupTaskId,
       'before_photos': beforePhotos,
+      'after_photos': afterPhotos,
     };
   }
 }

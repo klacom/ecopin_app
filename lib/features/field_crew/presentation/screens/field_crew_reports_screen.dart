@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/reports/presentation/response_deadline.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
@@ -23,11 +25,14 @@ class _FieldCrewReportsScreenState
   String _selectedStatus = 'All Status';
   String _selectedType = 'All Types';
   String _selectedValidation = 'All Validation';
+  DeadlineState? _deadlineFilter;
 
   @override
   Widget build(BuildContext context) {
     final issueTypesAsync = ref.watch(issueTypesProvider);
     final assignedReportsAsync = ref.watch(assignedReportsProvider);
+    final now =
+        ref.watch(responseDeadlineClockProvider).value ?? DateTime.now();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
@@ -77,8 +82,29 @@ class _FieldCrewReportsScreenState
                   _selectedStatus = 'All Status';
                   _selectedType = 'All Types';
                   _selectedValidation = 'All Validation';
+                  _deadlineFilter = null;
                 });
               },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceLG),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final entry in <DeadlineState?, String>{
+                  null: 'All deadlines',
+                  DeadlineState.atRisk: 'At risk',
+                  DeadlineState.overdue: 'Overdue',
+                }.entries)
+                  ChoiceChip(
+                    label: Text(entry.value),
+                    selected: _deadlineFilter == entry.key,
+                    onSelected: (_) =>
+                        setState(() => _deadlineFilter = entry.key),
+                  ),
+              ],
             ),
           ),
           Expanded(
@@ -133,6 +159,9 @@ class _FieldCrewReportsScreenState
                     }
 
                     return searchMatch &&
+                        (_deadlineFilter == null ||
+                            responseDeadline(report, now)?.state ==
+                                _deadlineFilter) &&
                         statusMatch &&
                         typeMatch &&
                         validationMatch;

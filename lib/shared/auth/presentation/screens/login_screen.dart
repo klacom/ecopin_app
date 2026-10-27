@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/auth_page_body.dart';
 import 'required_password_change_screen.dart';
@@ -29,9 +30,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _emailError;
   String? _passwordError;
   String? _notice;
+  String? _officerNotice;
 
   void _showError(String message) {
-    if (mounted) setState(() => _error = message);
+    if (mounted) {
+      setState(() {
+        _error = message;
+        _officerNotice = null;
+      });
+    }
+  }
+
+  void _showOfficerNotice(String message) {
+    if (mounted) {
+      setState(() {
+        _officerNotice = message;
+        _error = null;
+        _passwordController.clear();
+      });
+    }
   }
 
   @override
@@ -46,6 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _error = null;
       _notice = null;
+      _officerNotice = null;
       _emailError = _emailController.text.trim().isEmpty
           ? 'Enter your email.'
           : null;
@@ -97,20 +115,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       if (sessionData != null) {
-        // Establish the Supabase session from the tokens returned by the
-        // backend.
-        await Supabase.instance.client.auth.setSession(
-          sessionData['refresh_token'],
-          accessToken: sessionData['access_token'],
-        );
-
         // Parse role directly from response to bypass AuthNotifier async delays
         final userData = response.data['user'];
         final roleString = userData?['role'] as String?;
         UserRole role = UserRole.citizen; // Default
 
         if (roleString == 'admin') {
-          await Supabase.instance.client.auth.signOut();
+          try {
+            await Supabase.instance.client.auth.signOut();
+          } catch (_) {}
           if (mounted) {
             _showError(
               'Administrator access is restricted to the Web Command Center. Please use the web application.',
@@ -132,6 +145,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         }
 
+        if (role == UserRole.officer) {
+          try {
+            await Supabase.instance.client.auth.signOut();
+          } catch (_) {}
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('cached_user_role');
+          } catch (_) {}
+          if (mounted) {
+            _showOfficerNotice(
+              'Officer sign-in is temporarily disabled on the mobile app. Please access your dashboard and dispatch tools via the Officer Web Command Center.',
+            );
+          }
+          return;
+        }
+
+        // Establish the Supabase session from the tokens returned by the
+        // backend.
+        await Supabase.instance.client.auth.setSession(
+          sessionData['refresh_token'],
+          accessToken: sessionData['access_token'],
+        );
+
         if (mounted) {
           // Force the notifier to instantly recognize the authenticated state
           // so GoRouter doesn't intercept the navigation and throw us back to login!
@@ -139,9 +175,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               .read(authNotifierProvider.notifier)
               .manualOverrideAuthenticatedState(role);
 
-          if (role == UserRole.officer) {
-            context.go('/officer/dashboard');
-          } else if (role == UserRole.fieldCrew) {
+          if (role == UserRole.fieldCrew) {
             context.go('/field-crew/dashboard');
           } else {
             context.go('/maps');
@@ -228,6 +262,67 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Text(
               _notice!,
               style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          const SizedBox(height: AppColors.spaceMD),
+        ],
+        if (_officerNotice != null) ...[
+          Semantics(
+            liveRegion: true,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.primary.withValues(alpha: 0.15)
+                    : const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.secondaryDark.withValues(alpha: 0.35)
+                      : AppColors.primary.withValues(alpha: 0.25),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.secondaryDark
+                        : AppColors.primary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Officer Access Temporarily Paused',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.textPrimaryDark
+                                    : AppColors.textPrimaryLight,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _officerNotice!,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.textSecondaryDark
+                                    : AppColors.textSecondaryLight,
+                                height: 1.4,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: AppColors.spaceMD),

@@ -184,119 +184,78 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
 
                   // Metadata
                   FcReportMetadataCard(report: report),
-                  const SizedBox(height: AppColors.spaceLG),
-
-                  // Action buttons (status transitions)
-                  FutureBuilder<List<FcLocalPhoto?>>(
-                    future: Future.wait([
-                      ref
-                          .read(fcLocalPhotoRepositoryProvider)
-                          .getActivePhoto(report.id, 'report', 'before'),
-                      ref
-                          .read(fcLocalPhotoRepositoryProvider)
-                          .getActivePhoto(report.id, 'report', 'after'),
-                    ]),
-                    builder: (context, snapshot) {
-                      final localBefore =
-                          snapshot.data != null && snapshot.data!.isNotEmpty
-                          ? snapshot.data![0]
-                          : null;
-                      final localAfter =
-                          snapshot.data != null && snapshot.data!.length > 1
-                          ? snapshot.data![1]
-                          : null;
-                      final hasBefore =
-                          (report.beforePhotoUrl != null &&
-                              report.beforePhotoUrl!.isNotEmpty) ||
-                          (localBefore != null &&
-                              localBefore.localPath.isNotEmpty);
-                      final hasAfter =
-                          (report.afterPhotoUrl != null &&
-                              report.afterPhotoUrl!.isNotEmpty) ||
-                          (localAfter != null &&
-                              localAfter.localPath.isNotEmpty);
-
-                      return FcReportActionButtons(
-                        report: report,
-                        isAssigned: isAssigned,
-                        hasBeforePhoto: hasBefore,
-                        hasAfterPhoto: hasAfter,
-                        onViewOnMap: () => context.push('/field-crew/map'),
-                        onStatusChange: (newStatus) async {
-                          if (newStatus.toLowerCase() == 'resolved') {
-                            final issueType =
-                                report.issueType?.toLowerCase() ?? '';
-                            final isScouting =
-                                issueType == 'scouting' ||
-                                issueType == 'acknowledge_only';
-                            if (!isScouting && (!hasBefore || !hasAfter)) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Before and after photos are required before completing cleanup.',
-                                    ),
-                                    backgroundColor: AppColors.error,
-                                  ),
-                                );
-                              }
-                              return;
-                            }
-                          }
-
-                          if (newStatus == 'acknowledged') {
-                            await notifier.updateLifecycleStage('acknowledged');
-                          } else {
-                            await notifier.updateStatus(newStatus);
-                          }
-                          if (report.breachedAt != null &&
-                              (newStatus.toLowerCase() == 'resolved' ||
-                                  newStatus.toLowerCase() == 'closed')) {
-                            if (context.mounted &&
-                                taskAsync != null &&
-                                taskAsync.value != null) {
-                              final task = taskAsync.value!;
-                              final currentIndex =
-                                  task.reports?.indexWhere(
-                                    (r) => r.id == report.id,
-                                  ) ??
-                                  -1;
-
-                              if (currentIndex != -1 && task.reports != null) {
-                                // Find next unresolved report
-                                try {
-                                  final nextReport = task.reports!
-                                      .skip(currentIndex + 1)
-                                      .firstWhere(
-                                        (r) =>
-                                            r.status.toLowerCase() !=
-                                                'resolved' &&
-                                            r.status.toLowerCase() != 'closed',
-                                      );
-                                  context.pushReplacement(
-                                    '/field-crew/tasks/${task.id}/reports/${nextReport.id}',
-                                  );
-                                } catch (_) {
-                                  // No next report found (all done or at end of list)
-                                  context.pop();
-                                }
-                              } else {
-                                context.pop();
-                              }
-                            }
-                          }
-                        },
-                      );
-                    },
-                  ),
                   const SizedBox(height: AppColors.spaceXL),
 
-                  // Photo Verification â€” offline-first with local photo slots
+                  // Photo Verification + Action Buttons right below Before & After photos
                   _ReportPhotoSection(
                     report: report,
                     isAssigned: isAssigned,
                     evidencePhotos: detailState.evidence,
                     evidenceError: detailState.evidenceError,
+                    onViewOnMap: () => context.push('/field-crew/map'),
+                    onStatusChange: (newStatus, hasBefore, hasAfter) async {
+                      if (newStatus.toLowerCase() == 'resolved') {
+                        final issueType =
+                            report.issueType?.toLowerCase() ?? '';
+                        final isScouting =
+                            issueType == 'scouting' ||
+                            issueType == 'acknowledge_only';
+                        if (!isScouting && (!hasBefore || !hasAfter)) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Before and after photos are required before completing cleanup.',
+                                ),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                          return;
+                        }
+                      }
+
+                      if (newStatus == 'acknowledged') {
+                        await notifier.updateLifecycleStage('acknowledged');
+                      } else {
+                        await notifier.updateStatus(newStatus);
+                      }
+                      if (report.breachedAt != null &&
+                          (newStatus.toLowerCase() == 'resolved' ||
+                              newStatus.toLowerCase() == 'closed')) {
+                        if (context.mounted &&
+                            taskAsync != null &&
+                            taskAsync.value != null) {
+                          final task = taskAsync.value!;
+                          final currentIndex =
+                              task.reports?.indexWhere(
+                                (r) => r.id == report.id,
+                              ) ??
+                              -1;
+
+                          if (currentIndex != -1 && task.reports != null) {
+                            // Find next unresolved report
+                            try {
+                              final nextReport = task.reports!
+                                  .skip(currentIndex + 1)
+                                  .firstWhere(
+                                    (r) =>
+                                        r.status.toLowerCase() != 'resolved' &&
+                                        r.status.toLowerCase() != 'closed',
+                                  );
+                              context.pushReplacement(
+                                '/field-crew/tasks/${task.id}/reports/${nextReport.id}',
+                              );
+                            } catch (_) {
+                              // No next report found (all done or at end of list)
+                              context.pop();
+                            }
+                          } else {
+                            context.pop();
+                          }
+                        }
+                      }
+                    },
                     onUpload: (file, type) async {
                       try {
                         final repo = ref.read(
@@ -326,7 +285,7 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppColors.spaceXL),
 
-                  // Notes input â€” local-first
+                  // Notes input — local-first
                   FcLguNotesSection(
                     isAssigned: isAssigned,
                     onSubmit: (note) async {
@@ -348,22 +307,20 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
   }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Photo section â€” resolves FcLocalPhoto rows then renders FcPhotoUploadSection
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// Photo section — resolves FcLocalPhoto rows then renders FcPhotoUploadSection
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Queries [FcLocalPhotos] for local pending rows, then merges with the remote
 /// URL fallback from [ReportModel] to produce [FcPhotoSlot] objects.
-///
-/// Using a [ConsumerStatefulWidget] here means the slot resolution is a one-
-/// shot async load that re-runs whenever the parent calls [notifier.refresh()]
-/// (which rebuilds this widget because the parent passes new [remoteBeforeUrl]/
-/// [remoteAfterUrl] values).
 class _ReportPhotoSection extends ConsumerStatefulWidget {
   final ReportModel report;
   final bool isAssigned;
   final List<dynamic> evidencePhotos;
   final String? evidenceError;
+  final VoidCallback onViewOnMap;
+  final Future<void> Function(String newStatus, bool hasBefore, bool hasAfter)
+      onStatusChange;
   final Future<void> Function(dynamic file, String type) onUpload;
   final Future<void> Function(FcPhotoSlot slot, String type) onDelete;
 
@@ -372,6 +329,8 @@ class _ReportPhotoSection extends ConsumerStatefulWidget {
     required this.isAssigned,
     required this.evidencePhotos,
     this.evidenceError,
+    required this.onViewOnMap,
+    required this.onStatusChange,
     required this.onUpload,
     required this.onDelete,
   });
@@ -385,6 +344,7 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
   FcPhotoSlot? _beforeSlot;
   List<FcPhotoSlot> _beforeSlots = [];
   FcPhotoSlot? _afterSlot;
+  List<FcPhotoSlot> _afterSlots = [];
 
   @override
   void initState() {
@@ -395,11 +355,12 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
   @override
   void didUpdateWidget(_ReportPhotoSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Re-resolve when parent refreshes (remote URL may have changed or new
-    // local row may have been inserted).
     if (oldWidget.report.beforePhotos != widget.report.beforePhotos ||
+        oldWidget.report.afterPhotos != widget.report.afterPhotos ||
         oldWidget.report.beforePhotoUrl != widget.report.beforePhotoUrl ||
         oldWidget.report.afterPhotoUrl != widget.report.afterPhotoUrl ||
+        oldWidget.report.status != widget.report.status ||
+        oldWidget.report.lifecycleStage != widget.report.lifecycleStage ||
         oldWidget.report.id != widget.report.id) {
       _resolveSlots();
     }
@@ -407,60 +368,74 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
 
   Future<void> _resolveSlots() async {
     final photoRepo = ref.read(fcLocalPhotoRepositoryProvider);
-    final rows = (await photoRepo.getPhotosForEntity(
+    final allRows = await photoRepo.getPhotosForEntity(
       widget.report.id,
       'report',
-    )).where((p) => p.photoType == 'before').toList();
-    final pendingDeletes = (await photoRepo.getPendingDeletes())
-        .where(
-          (p) => p.entityId == widget.report.id && p.entityType == 'report',
-        )
-        .map((p) => p.remoteId ?? p.localPhotoId)
-        .toSet();
-    final photos = rows.map((p) => _buildSlot(p, null)!).toList();
-    final urls = photos.map((p) => p.remoteUrl).toSet();
-    for (final photo in widget.report.beforePhotos) {
-      final url = photo['url'] as String?;
-      if (url != null &&
-          !pendingDeletes.contains(photo['id']) &&
-          urls.add(url)) {
-        photos.add(
-          FcPhotoSlot(remoteUrl: url, remoteId: photo['id'] as String?),
+    );
+    final pendingDeletes = await photoRepo.getPendingDeletes();
+
+    List<FcPhotoSlot> buildSlotsForType(
+      String photoType,
+      List<Map<String, dynamic>> remoteCollection,
+      String? legacyUrl,
+    ) {
+      final rows = allRows.where((p) => p.photoType == photoType).toList();
+      final deletedIds = pendingDeletes
+          .where(
+            (p) =>
+                p.entityId == widget.report.id &&
+                p.entityType == 'report' &&
+                p.photoType == photoType,
+          )
+          .map((p) => p.remoteId ?? p.localPhotoId)
+          .toSet();
+      final slots = rows.map((p) => _buildSlot(p, null)!).toList();
+      final urls = slots.map((p) => p.remoteUrl).toSet();
+      for (final photo in remoteCollection) {
+        final url = photo['url'] as String?;
+        if (url != null &&
+            !deletedIds.contains(photo['id']) &&
+            urls.add(url)) {
+          slots.add(
+            FcPhotoSlot(remoteUrl: url, remoteId: photo['id'] as String?),
+          );
+        }
+      }
+      if (slots.isEmpty &&
+          remoteCollection.isEmpty &&
+          !deletedIds.contains('legacy') &&
+          legacyUrl?.isNotEmpty == true) {
+        slots.add(
+          FcPhotoSlot(
+            remoteUrl: legacyUrl,
+            remoteId: 'legacy',
+          ),
         );
       }
+      return slots;
     }
-    if (photos.isEmpty &&
-        widget.report.beforePhotos.isEmpty &&
-        !pendingDeletes.contains('legacy') &&
-        widget.report.beforePhotoUrl?.isNotEmpty == true) {
-      photos.add(
-        FcPhotoSlot(
-          remoteUrl: widget.report.beforePhotoUrl,
-          remoteId: 'legacy',
-        ),
-      );
-    }
-    final after = await photoRepo.getActivePhoto(
-      widget.report.id,
-      'report',
+
+    final beforePhotos = buildSlotsForType(
+      'before',
+      widget.report.beforePhotos,
+      widget.report.beforePhotoUrl,
+    );
+    final afterPhotos = buildSlotsForType(
       'after',
+      widget.report.afterPhotos,
+      widget.report.afterPhotoUrl,
     );
 
     if (!mounted) return;
     setState(() {
-      _beforeSlots = photos;
-      _beforeSlot = photos.isEmpty ? null : photos.first;
-      _afterSlot = _buildSlot(after, widget.report.afterPhotoUrl);
+      _beforeSlots = beforePhotos;
+      _beforeSlot = beforePhotos.isEmpty ? null : beforePhotos.first;
+      _afterSlots = afterPhotos;
+      _afterSlot = afterPhotos.isEmpty ? null : afterPhotos.first;
     });
   }
 
   /// Merges a local DB row with the remote URL fallback from [ReportModel].
-  ///
-  /// Priority:
-  ///   1. If a local [FcLocalPhoto] row exists, it drives the slot entirely
-  ///      (its remoteUrl field will be set once synced).
-  ///   2. If only a remote URL exists (pre-Phase-3 legacy data), wrap it in
-  ///      a synced-looking slot so the widget can display it.
   FcPhotoSlot? _buildSlot(FcLocalPhoto? localRow, String? remoteUrl) {
     if (localRow != null) {
       return FcPhotoSlot(
@@ -471,11 +446,9 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
         syncStatus: localRow.syncStatus,
       );
     }
-    // No local row â€” fall back to legacy remote URL if available.
     if (remoteUrl != null && remoteUrl.isNotEmpty) {
       return FcPhotoSlot(
         remoteUrl: remoteUrl,
-        // syncStatus is null â†’ widget shows no badge (already synced legacy photo)
       );
     }
     return null;
@@ -484,6 +457,14 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
   @override
   Widget build(BuildContext context) {
     final currentStatus = widget.report.status.toLowerCase();
+    final bool isTerminal = const {
+      'resolved',
+      'completed',
+      'closed',
+      'rejected',
+      'waiting_for_feedback',
+    }.contains(currentStatus);
+
     final bool isAcknowledged = ![
       'unresolved',
       'submitted',
@@ -493,14 +474,28 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
     final currentLifecycle = widget.report.lifecycleStage?.toLowerCase();
     final bool isLifecycleAcknowledged =
         currentLifecycle != null &&
-        !['new', 'pending', 'under_review'].contains(currentLifecycle);
+        !['new', 'pending', 'under_review', 'submitted'].contains(
+          currentLifecycle,
+        );
 
     final bool effectivelyAcknowledged =
         isAcknowledged || isLifecycleAcknowledged;
 
-    final bool isBeforeEnabled = effectivelyAcknowledged;
-    // Already-clear observations need a current photo, not a fabricated before/after pair.
-    final bool isAfterEnabled = effectivelyAcknowledged;
+    // Allow uploading Before photos before or after acknowledging (until completed/terminal).
+    final bool isBeforeEnabled = !isTerminal;
+    // Allow uploading After photos once acknowledged (until completed/terminal).
+    final bool isAfterEnabled = effectivelyAcknowledged && !isTerminal;
+
+    final bool hasBefore =
+        _beforeSlots.isNotEmpty ||
+        widget.report.beforePhotos.isNotEmpty ||
+        (widget.report.beforePhotoUrl != null &&
+            widget.report.beforePhotoUrl!.isNotEmpty);
+    final bool hasAfter =
+        _afterSlots.isNotEmpty ||
+        widget.report.afterPhotos.isNotEmpty ||
+        (widget.report.afterPhotoUrl != null &&
+            widget.report.afterPhotoUrl!.isNotEmpty);
 
     return FcPhotoUploadSection(
       evidencePhotos: widget.evidencePhotos,
@@ -508,12 +503,21 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
       beforeSlot: _beforeSlot,
       beforeSlots: _beforeSlots,
       afterSlot: _afterSlot,
+      afterSlots: _afterSlots,
       isAssigned: widget.isAssigned,
       isBeforeEnabled: isBeforeEnabled,
       isAfterEnabled: isAfterEnabled,
+      actionSection: FcReportActionButtons(
+        report: widget.report,
+        isAssigned: widget.isAssigned,
+        hasBeforePhoto: hasBefore,
+        hasAfterPhoto: hasAfter,
+        onViewOnMap: widget.onViewOnMap,
+        onStatusChange: (newStatus) =>
+            widget.onStatusChange(newStatus, hasBefore, hasAfter),
+      ),
       onUpload: (file, type) async {
         await widget.onUpload(file, type);
-        // Re-resolve slots after upload so new local row is visible immediately.
         await _resolveSlots();
       },
       onDelete: (slot, type) async {
@@ -524,9 +528,9 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
   }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // Pending sync badge
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _PendingSyncBadge extends ConsumerWidget {
   final String reportId;
@@ -534,19 +538,12 @@ class _PendingSyncBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch fcSyncStateProvider â€” rebuilds whenever a sync run completes.
-    // Fall back to a direct DB check via FutureBuilder on first load (before
-    // any sync has run and the notifier is still idle).
     final syncState = ref.watch(fcSyncStateProvider);
     ref.watch(fcPendingWritesProvider);
     final automatic = ref.watch(fcSyncSettingsProvider).autoSyncEnabled;
     final localRepo = ref.watch(fcLocalRepositoryProvider);
 
-    // If a sync just completed and everything succeeded, hide the badge
-    // immediately without a DB round-trip.
     return FutureBuilder<bool>(
-      // Re-run the future every time syncState changes so the badge
-      // disappears as soon as this report's items drain.
       key: ValueKey(syncState.lastSyncAt),
       future: _hasPending(localRepo, ref, reportId),
       builder: (context, snap) {
@@ -599,9 +596,9 @@ class _SyncChip extends StatelessWidget {
   }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // Loading skeleton
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ReportDetailSkeleton extends StatelessWidget {
   const _ReportDetailSkeleton();

@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'dart:math' as math;
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/theme/app_theme.dart';
@@ -387,6 +388,7 @@ class _ReportListItem extends StatelessWidget {
                   ValidationBadge(status: report.validationStatus),
                 ],
               ),
+              ResponseDeadlineIndicator(report: report),
               if (report.validationStatus.toLowerCase() == 'rejected' &&
                   report.rejectionReason != null) ...[
                 const SizedBox(height: 12),

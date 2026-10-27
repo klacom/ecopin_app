@@ -23,7 +23,7 @@ void main() {
   }
 
   testWidgets(
-    'acknowledged stage on unresolved status does not repeat acknowledge',
+    'acknowledged stage on unresolved status shows Mark as Complete instead of repeating acknowledge',
     (tester) async {
       final report = ReportModel.fromJson({
         'id': 'report',
@@ -45,7 +45,73 @@ void main() {
         ),
       );
       expect(find.text('Mark as Acknowledged'), findsNothing);
-      expect(find.textContaining('Upload a Before photo'), findsOneWidget);
+      expect(find.text('Mark as Complete'), findsOneWidget);
+      expect(
+        find.text('Requires both Before and After photos.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'uploading Before photo on unacknowledged report shows indicator to press Mark as Acknowledged',
+    (tester) async {
+      final report = createDummyReport(status: 'unresolved');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FcReportActionButtons(
+              report: report,
+              isAssigned: true,
+              hasBeforePhoto: true,
+              hasAfterPhoto: false,
+              onStatusChange: (_) async {},
+              onViewOnMap: () {},
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.textContaining('Press "Mark as Acknowledged"'),
+        findsOneWidget,
+      );
+      expect(find.text('Mark as Acknowledged'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'uploading After photo on acknowledged report shows indicator to press Mark as Complete',
+    (tester) async {
+      final report = createDummyReport(status: 'acknowledged');
+      String? triggeredStatus;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FcReportActionButtons(
+              report: report,
+              isAssigned: true,
+              hasBeforePhoto: true,
+              hasAfterPhoto: true,
+              onStatusChange: (status) async {
+                triggeredStatus = status;
+              },
+              onViewOnMap: () {},
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.textContaining('Press "Mark as Complete"'),
+        findsOneWidget,
+      );
+      final buttonFinder = find.widgetWithText(
+        ElevatedButton,
+        'Mark as Complete',
+      );
+      expect(buttonFinder, findsOneWidget);
+      await tester.tap(buttonFinder);
+      await tester.pumpAndSettle();
+      expect(triggeredStatus, equals('resolved'));
     },
   );
 
@@ -117,34 +183,6 @@ void main() {
   );
 
   testWidgets(
-    'acknowledged report offers photo guidance without a manual Responded action',
-    (tester) async {
-      var statusCalls = 0;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FcReportActionButtons(
-              report: createDummyReport(status: 'acknowledged'),
-              isAssigned: true,
-              hasBeforePhoto: false,
-              hasAfterPhoto: false,
-              onStatusChange: (_) async {
-                statusCalls++;
-              },
-              onViewOnMap: () {},
-            ),
-          ),
-        ),
-      );
-      expect(find.text('Mark as Responded'), findsNothing);
-      expect(find.byType(ElevatedButton), findsNothing);
-      expect(find.textContaining('Upload a Before photo'), findsOneWidget);
-      expect(find.text('View on Map'), findsOneWidget);
-      expect(statusCalls, 0);
-    },
-  );
-
-  testWidgets(
     'WT-92: FcReportActionButtons enforces photo requirements before resolving',
     (tester) async {
       final report = createDummyReport(status: 'responded');
@@ -167,7 +205,7 @@ void main() {
       // Verify disabled state when photos are missing
       final buttonFinder = find.widgetWithText(
         ElevatedButton,
-        'Cleanup Completed',
+        'Mark as Complete',
       );
       expect(buttonFinder, findsOneWidget);
       final btn = tester.widget<ElevatedButton>(buttonFinder);

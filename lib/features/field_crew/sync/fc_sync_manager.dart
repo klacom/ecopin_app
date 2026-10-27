@@ -95,7 +95,16 @@ class FcSyncManager {
             item.operationType ==
                 FcOutboxOperationType.reconcileReportOutcome ||
             item.operationType == FcOutboxOperationType.submitTaskFailure;
-        if (needsEvidence != evidenceDependentOnly) continue;
+        final closesEntity =
+            item.operationType == FcOutboxOperationType.markTaskComplete ||
+            (item.operationType == FcOutboxOperationType.updateReportStatus &&
+                const [
+                  'resolved',
+                  'completed',
+                  'closed',
+                  'rejected',
+                ].contains((jsonDecode(item.payloadJson) as Map)['status']));
+        if ((needsEvidence || closesEntity) != evidenceDependentOnly) continue;
         if (item.retryCount >= _kMaxRetries) {
           if (pausedIds.add(item.operationId)) {
             total++;
@@ -385,6 +394,15 @@ class FcSyncManager {
         return;
       }
       if (item.entityType == 'report') {
+        final prevVersion = int.tryParse(item.baseVersion ?? '');
+        final acceptedVersion = serverRecord['fc_version'];
+        if (prevVersion != null && acceptedVersion is int) {
+          await _local.advanceReportCompletionVersion(
+            item.entityId,
+            prevVersion,
+            acceptedVersion,
+          );
+        }
         await _local.applyLocalReportPatch(item.entityId, serverRecord);
         await _local.markFcReportSynced(item.entityId);
       } else if (item.entityType == 'task') {

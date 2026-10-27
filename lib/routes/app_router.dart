@@ -82,8 +82,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (role == UserRole.admin) {
             return AdminAppRoutes.dashboard;
           } else if (role == UserRole.officer) {
-            log.info('Redirecting from splash to Officer Dashboard');
-            return OfficerAppRoutes.dashboard;
+            log.info('Officer role disabled on mobile: redirecting from splash to landing');
+            return PublicAppRoutes.landing;
           } else if (role == UserRole.fieldCrew) {
             log.info('Redirecting from splash to Field Crew Dashboard');
             return FieldCrewAppRoutes.dashboard;
@@ -127,8 +127,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         // Route based on role
         log.info('Redirecting based on role: $role');
         if (role == UserRole.officer) {
-          log.info('Redirecting to Officer Dashboard');
-          return OfficerAppRoutes.dashboard;
+          log.info('Officer role disabled on mobile: redirecting to landing');
+          return PublicAppRoutes.landing;
         } else if (role == UserRole.fieldCrew) {
           log.info('Redirecting to Field Crew Dashboard');
           return FieldCrewAppRoutes.dashboard;
@@ -146,9 +146,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (loggedIn) {
         log.info('Role-based check - Role: $role');
 
-        if (isOfficerRoute && role != UserRole.officer) {
+        if (isOfficerRoute) {
           log.info(
-            'Redirecting to citizen maps - non-Officer on Officer route',
+            'Redirecting to citizen maps - Officer route disabled on mobile',
           );
           return ProtectedAppRoutes.maps;
         }

@@ -16,7 +16,7 @@ import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_wi
 
 /// Represents a single before/after photo slot as seen by the UI.
 ///
-/// The widget receives one of these for each of the two slots rather than raw
+/// The widget receives these for the before and after slots rather than raw
 /// URL strings.  The caller (detail screen) is responsible for resolving which
 /// source — remote URL from [ReportModel] or a local [FcLocalPhoto] row — to
 /// show.
@@ -89,10 +89,16 @@ class FcPhotoUploadSection extends StatefulWidget {
 
   /// Current state of the after-photo slot.
   final FcPhotoSlot? afterSlot;
+  final List<FcPhotoSlot> afterSlots;
 
   final bool isAssigned;
   final bool isBeforeEnabled;
   final bool isAfterEnabled;
+
+  /// Optional action widget (status indicator message + action buttons)
+  /// displayed directly below the Before and After photo slots so the crew
+  /// does not have to scroll back up after uploading photos.
+  final Widget? actionSection;
 
   /// Called when the user picks a new image.  Receives the picked [File] and
   /// the slot type string ('before' | 'after').
@@ -109,9 +115,11 @@ class FcPhotoUploadSection extends StatefulWidget {
     this.beforeSlot,
     this.beforeSlots = const [],
     this.afterSlot,
+    this.afterSlots = const [],
     required this.isAssigned,
     this.isBeforeEnabled = true,
     this.isAfterEnabled = true,
+    this.actionSection,
     required this.onUpload,
     required this.onDelete,
   });
@@ -121,11 +129,14 @@ class FcPhotoUploadSection extends StatefulWidget {
 }
 
 class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
-  // Reports allow five Before photos and one After photo.
+  // Reports allow five Before photos and five After photos.
   List<FcPhotoSlot> get _beforePhotos => widget.beforeSlots.isNotEmpty
       ? widget.beforeSlots
       : [if (widget.beforeSlot?.hasPhoto == true) widget.beforeSlot!];
-  int _limit(String type) => type == 'before' ? 5 : 1;
+  List<FcPhotoSlot> get _afterPhotos => widget.afterSlots.isNotEmpty
+      ? widget.afterSlots
+      : [if (widget.afterSlot?.hasPhoto == true) widget.afterSlot!];
+  int _limit(String type) => 5;
 
   // Per-slot upload-in-progress flags to prevent double-taps.
   bool _uploadingBefore = false;
@@ -137,11 +148,9 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
     final isUploading = type == 'before' ? _uploadingBefore : _uploadingAfter;
     if (isUploading) return;
 
-    final slot = type == 'before' ? widget.beforeSlot : widget.afterSlot;
-    if ((type == 'before'
-            ? _beforePhotos.length
-            : (slot?.hasPhoto == true ? 1 : 0)) >=
-        _limit(type)) {
+    final currentCount =
+        type == 'before' ? _beforePhotos.length : _afterPhotos.length;
+    if (currentCount >= _limit(type)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Maximum number of photos reached.')),
@@ -330,7 +339,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
           Divider(color: dividerColor, height: AppColors.spaceXL * 2),
 
           const Text(
-            'If you will clean this site: take a Before photo before starting, then an After photo when finished.\n\n'
+            'If you will clean this site: take Before photo(s) before starting and press Mark as Acknowledged, then take After photo(s) when finished and press Mark as Complete.\n\n'
             'Already clear when you arrive? Take one current photo in After Photos. A Before photo is not required for this observation. Do not upload the same photo twice. Return to Task Details and select Already clear on arrival; this records an observation, not cleanup credit.',
           ),
           const SizedBox(height: AppColors.spaceLG),
@@ -349,6 +358,12 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
             widget.afterSlot,
             _uploadingAfter,
           ),
+
+          if (widget.actionSection != null) ...[
+            const SizedBox(height: AppColors.spaceLG),
+            Divider(color: dividerColor, height: AppColors.spaceLG),
+            widget.actionSection!,
+          ],
         ],
       ),
     );
@@ -478,9 +493,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
     bool isUploading,
   ) {
     final title = type == 'before' ? 'Before Photos' : 'After Photos';
-    final photos = type == 'before'
-        ? _beforePhotos
-        : [if (slot?.hasPhoto == true) slot!];
+    final photos = type == 'before' ? _beforePhotos : _afterPhotos;
     final count = photos.length;
     final maxPerSlot = _limit(type);
     final bool isEnabled = type == 'before'
@@ -518,10 +531,10 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              // Show existing photo thumbnail if slot is occupied.
+              // Show existing photo thumbnails.
               for (final photo in photos)
                 _buildPhotoThumbnail(context, photo, type, isEnabled),
-              // Show add button if slot is empty and user is assigned.
+              // Show add button if slot has capacity and user is assigned.
               if (count < maxPerSlot && widget.isAssigned && isEnabled)
                 isUploading
                     ? _buildUploadingIndicator()
@@ -732,7 +745,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
   String _friendlyError(Object e) {
     final str = e.toString();
     if (str.contains('FcPhotoSlotOccupiedException')) {
-      return 'This photo slot is already occupied. Delete the existing photo first.';
+      return 'Maximum 5 photos reached for this section. Delete an existing photo first.';
     }
     if (str.contains('FcPhotoDuplicateException')) {
       return 'This photo has already been added.';

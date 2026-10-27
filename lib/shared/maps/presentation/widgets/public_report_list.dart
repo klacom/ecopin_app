@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
@@ -171,6 +172,7 @@ class _PublicReportListState extends ConsumerState<PublicReportList> {
                         ),
                       ],
                     ),
+                    ResponseDeadlineIndicator(report: report),
                     if (report.description?.trim().isNotEmpty == true) ...[
                       const SizedBox(height: 12),
                       Text(

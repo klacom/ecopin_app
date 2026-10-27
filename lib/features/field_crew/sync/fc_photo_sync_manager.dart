@@ -175,6 +175,7 @@ class FcPhotoSyncManager {
         endpoint,
         data: formData,
         options: Options(
+          extra: {'requiresSession': true},
           sendTimeout: const Duration(seconds: 60),
           receiveTimeout: const Duration(seconds: 60),
         ),
@@ -206,6 +207,14 @@ class FcPhotoSyncManager {
             photo.entityId,
             Map<String, dynamic>.from(record),
           );
+          final acceptedVersion = record['fc_version'];
+          if (reportVersion != null && acceptedVersion is int) {
+            await _local.advanceReportCompletionVersion(
+              photo.entityId,
+              reportVersion,
+              acceptedVersion,
+            );
+          }
         } else {
           await _local.applyLocalTaskPatch(
             photo.entityId,
@@ -282,6 +291,7 @@ class FcPhotoSyncManager {
           'photo_id': photo.remoteId ?? photo.localPhotoId,
         },
         options: Options(
+          extra: {'requiresSession': true},
           sendTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
         ),

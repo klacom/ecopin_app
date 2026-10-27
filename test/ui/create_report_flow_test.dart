@@ -1,3 +1,5 @@
+import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_share_helper.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart' as dio;
@@ -40,6 +42,7 @@ class SyntheticPicker extends ImagePicker {
   String? videoPath;
   ImageSource? videoSource;
   Duration? videoMaximum;
+  ImageSource? photoSource;
   var requests = 0;
   Completer<List<XFile>>? pendingSelection;
   @override
@@ -52,6 +55,7 @@ class SyntheticPicker extends ImagePicker {
   }) async {
     requests++;
     if (failure != null) throw failure!;
+    photoSource = ImageSource.gallery;
     return pendingSelection == null ? [XFile(path)] : pendingSelection!.future;
   }
 
@@ -66,6 +70,7 @@ class SyntheticPicker extends ImagePicker {
   }) async {
     requests++;
     if (failure != null) throw failure!;
+    photoSource = source;
     return XFile(path);
   }
 
@@ -84,6 +89,12 @@ class SyntheticPicker extends ImagePicker {
 }
 
 class SyntheticReportApi extends ApiClient {
+  bool failPhotoCheck = false;
+  Map<String, dynamic> photoValidation = {
+    'is_valid': true,
+    'confidence': 0.95,
+    'predicted_category': 'waste',
+  };
   int videoMaximum = 8;
   bool failVideoPolicy = false;
   @override
@@ -116,6 +127,8 @@ class SyntheticReportApi extends ApiClient {
     DateTime? photoCapturedAt,
     String? photoSource,
     bool? isMocked,
+    bool requestManualReview = false,
+    String? manualReviewReason,
   }) {
     requests++;
     submitted = {
@@ -126,26 +139,63 @@ class SyntheticReportApi extends ApiClient {
       'private': onPrivateProperty,
       'scale': scaleLevel,
       'obstruction': obstructionLevel,
+      'requestManualReview': requestManualReview,
+      'manualReviewReason': manualReviewReason,
     };
     return result.future;
   }
 
   @override
   Future<dio.Response> validateImage(String imagePath) async {
+    if (failPhotoCheck) throw StateError('Photo service unavailable');
     return dio.Response(
       requestOptions: dio.RequestOptions(path: ''),
       statusCode: 200,
-      data: {
-        'is_valid': true,
-        'confidence': 0.95,
-        'predicted_category': 'waste',
-      },
+      data: photoValidation,
     );
   }
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('video evidence is shared as video with the report link', () async {
+    dotenv.loadFromString(envString: 'WEB_BASE_URL=https://example.com');
+    final directory = await Directory.systemTemp.createTemp('report-share-');
+    addTearDown(() => directory.delete(recursive: true));
+    final video = await File(
+      '${directory.path}/evidence.mp4',
+    ).writeAsBytes([0, 1, 2]);
+    MethodCall? shared;
+    const channel = MethodChannel('dev.fluttercommunity.plus/share');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          shared = call;
+          return 'success';
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+    await ReportShareHelper.shareReportPhoto(
+      report: ReportModel(
+        id: '12345678-abcd',
+        title: 'Video concern',
+        location: const LatLng(14.57, 121.08),
+        validationStatus: 'validated',
+        status: 'pending',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      ),
+      photoUrl: video.path,
+      isVideo: true,
+    );
+    expect(shared?.method, 'share');
+    expect(shared?.arguments['paths'], [video.path]);
+    expect(
+      shared?.arguments['text'],
+      contains('https://example.com/reports/12345678-abcd'),
+    );
+  });
   setUp(() {
     dotenv.loadFromString(envString: 'SYNTHETIC_TEST=true');
     final messenger =
@@ -153,6 +203,257 @@ void main() {
     const channel = MethodChannel('dev.fluttercommunity.plus/connectivity');
     messenger.setMockMethodCallHandler(channel, (call) async => ['wifi']);
   });
+  Future<SyntheticPicker> openMediaStep(
+    WidgetTester tester,
+    SyntheticReportApi api, {
+    ThemeData? theme,
+    double textScale = 1,
+  }) async {
+    final directory = (await tester.runAsync(
+      () => Directory.systemTemp.createTemp('ecopin-photo-review-'),
+    ))!;
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(() => directory.delete(recursive: true));
+    });
+    final photo = File('${directory.path}/waste.png');
+    await tester.runAsync(() => photo.writeAsBytes(SyntheticTiles.bytes));
+    final picker = SyntheticPicker(photo.path);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [apiClientProvider.overrideWithValue(api)],
+        child: MaterialApp(
+          theme: theme ?? AppTheme.light,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+          home: CreateReportScreen(
+            prefillData: const ReportPrefillData(
+              location: LatLng(14.575, 121.08),
+            ),
+            tileProvider: SyntheticTiles(),
+            locationSearchService: SyntheticAddress(),
+            imagePicker: picker,
+          ),
+        ),
+      ),
+    );
+    await tester.runAsync(
+      () => precacheImage(
+        FileImage(photo),
+        tester.element(find.byType(CreateReportScreen)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Next: Details'));
+    await tester.tap(find.text('Next: Details'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField).first,
+      'Waste on the sidewalk',
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Next: Attach Media'));
+    await tester.tap(find.text('Next: Attach Media'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Gallery'));
+    await tester.tap(find.text('Gallery'));
+    await tester.pump();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+    await tester.pump(const Duration(milliseconds: 350));
+    return picker;
+  }
+
+  for (final dark in [false, true]) {
+    testWidgets(
+      'rejected photo explains AI limits and offers recovery (${dark ? 'dark' : 'light'})',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 700);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final api = SyntheticReportApi()
+          ..photoValidation = {
+            'is_valid': false,
+            'decision': 'REJECTED',
+            'validation_status': 'rejected',
+            'confidence': 0.29,
+          };
+        await openMediaStep(
+          tester,
+          api,
+          theme: dark ? AppTheme.dark : AppTheme.light,
+          textScale: dark ? 1.6 : 1,
+        );
+        expect(find.text('Unable to verify this photo'), findsOneWidget);
+        expect(
+          find.textContaining('AI can miss relevant details'),
+          findsAtLeastNWidgets(1),
+        );
+        expect(find.text('Retake photo'), findsOneWidget);
+        expect(find.text('Choose another photo'), findsOneWidget);
+        expect(find.text('Request manual review'), findsOneWidget);
+        expect(find.byTooltip('Remove photo 1'), findsNothing);
+        await tester.tap(find.text('Not now'));
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('Remove photo 1'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+  for (final action in ['Retake photo', 'Choose another photo']) {
+    testWidgets('$action opens the picker again and attaches the replacement', (
+      tester,
+    ) async {
+      final api = SyntheticReportApi()
+        ..photoValidation = {'is_valid': false, 'decision': 'REJECTED'};
+      final picker = await openMediaStep(tester, api);
+      api.photoValidation = {'is_valid': true, 'decision': 'APPROVED'};
+      await tester.tap(find.text(action));
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pumpAndSettle();
+      expect(picker.requests, 2);
+      expect(
+        picker.photoSource,
+        action == 'Retake photo' ? ImageSource.camera : ImageSource.gallery,
+      );
+      expect(find.byTooltip('Remove photo 1'), findsOneWidget);
+      expect(find.textContaining('An officer will review'), findsNothing);
+    });
+  }
+  for (final serviceFailure in [true, false]) {
+    testWidgets(
+      'unavailable check ($serviceFailure) does not attach silently and can retry',
+      (tester) async {
+        final api = SyntheticReportApi()
+          ..failPhotoCheck = serviceFailure
+          ..photoValidation = {
+            'check_available': false,
+            'validation_status': 'manual_review',
+          };
+        final picker = await openMediaStep(tester, api);
+        expect(find.text('Photo check unavailable'), findsOneWidget);
+        expect(find.text('Unable to verify this photo'), findsNothing);
+        expect(find.byTooltip('Remove photo 1'), findsNothing);
+        expect(
+          find.textContaining('This does not mean your photo was rejected'),
+          findsOneWidget,
+        );
+        api.failPhotoCheck = false;
+        api.photoValidation = {'is_valid': true, 'decision': 'APPROVED'};
+        await tester.tap(find.text('Retry photo check'));
+        await tester.pump();
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 200)),
+        );
+        await tester.pumpAndSettle();
+        expect(picker.requests, 1);
+        expect(find.byTooltip('Remove photo 1'), findsOneWidget);
+        expect(find.textContaining('An officer will review'), findsNothing);
+      },
+    );
+  }
+  testWidgets(
+    'uncertain photo requires explicit consent and an explanation before attachment',
+    (tester) async {
+      final api = SyntheticReportApi()
+        ..photoValidation = {
+          'is_valid': false,
+          'predicted_class': 'INVALID',
+          'validation_status': 'manual_review',
+          'confidence': 0.42,
+        };
+      await openMediaStep(tester, api);
+      expect(find.byTooltip('Remove photo 1'), findsNothing);
+      expect(find.text('Unable to verify this photo'), findsOneWidget);
+      final reviewButton = find.widgetWithText(
+        TextButton,
+        'Request manual review',
+      );
+      expect(tester.widget<TextButton>(reviewButton).onPressed, isNull);
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'Waste piled along the sidewalk in the middle of the photo.',
+      );
+      await tester.pump();
+      await tester.tap(reviewButton);
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Remove photo 1'), findsOneWidget);
+      expect(find.textContaining('An officer will review'), findsOneWidget);
+      await tester.ensureVisible(find.text('Next: Review'));
+      await tester.tap(find.text('Next: Review'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('An officer will review'), findsOneWidget);
+      await tester.ensureVisible(find.text('Submit Report'));
+      await tester.tap(find.text('Submit Report'));
+      await tester.pump();
+      expect(api.submitted?['requestManualReview'], isTrue);
+      expect(
+        api.submitted?['manualReviewReason'],
+        contains('Waste piled along the sidewalk'),
+      );
+      expect(api.submitted?['cleanImages'], hasLength(1));
+    },
+  );
+  testWidgets(
+    'appeal attaches rejected photo and removing it clears review request',
+    (tester) async {
+      final api = SyntheticReportApi()
+        ..photoValidation = {'is_valid': false, 'decision': 'REJECTED'};
+      final picker = await openMediaStep(tester, api);
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'Waste bags are blocking the sidewalk.',
+      );
+      await tester.pump();
+      await tester.tap(find.text('Request manual review'));
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Remove photo 1'), findsOneWidget);
+      expect(find.textContaining('An officer will review'), findsOneWidget);
+      await tester.ensureVisible(find.byTooltip('Remove photo 1'));
+      await tester.tap(find.byTooltip('Remove photo 1'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('An officer will review'), findsNothing);
+      api.photoValidation = {'is_valid': true, 'decision': 'APPROVED'};
+      await tester.ensureVisible(find.text('Gallery'));
+      await tester.tap(find.text('Gallery'));
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pumpAndSettle();
+      expect(picker.requests, 2);
+      await tester.ensureVisible(find.text('Next: Review'));
+      await tester.tap(find.text('Next: Review'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Submit Report'));
+      await tester.tap(find.text('Submit Report'));
+      await tester.pump();
+      expect(api.submitted?['requestManualReview'], isFalse);
+    },
+  );
   testWidgets(
     'report steps keep validation, media, review and values after rejection',
     (tester) async {
@@ -312,11 +613,8 @@ void main() {
       await tester.tap(find.text('Use this map center'));
       await tester.pumpAndSettle();
       expect(tester.widget<TextButton>(next).onPressed, isNotNull);
-      expect(address.requests, 0);
-      await tester.ensureVisible(find.text('Find street address'));
-      await tester.tap(find.text('Find street address'));
-      await tester.pumpAndSettle();
       expect(address.requests, 1);
+      expect(find.text('Find street address'), findsNothing);
       expect(find.text('Rosario, Pasig City, Metro Manila'), findsOneWidget);
     },
   );

@@ -1,3 +1,5 @@
+import 'package:ecopin_app/core/theme/app_theme.dart';
+import 'package:flutter/services.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_status.dart';
 import 'package:ecopin_app/shared/reports/data/datasources/public_report_map_datasource.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUpAll(() async {
+    await (FontLoader(
+      'Outfit',
+    )..addFont(rootBundle.load('assets/fonts/Outfit-Regular.ttf'))).load();
+  });
+  testWidgets('compact map count keeps area context in semantics', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: SizedBox(
+            width: 110,
+            child: ReportMapStatus(
+              compact: true,
+              value: AsyncData(ReportMapPage(reports: [], hasMore: false)),
+              onRetry: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('0 reports'), findsOneWidget);
+    expect(tester.getSize(find.byType(ReportMapStatus)).height, lessThan(30));
+    expect(
+      tester.widget<Text>(find.text('0 reports')).semanticsLabel,
+      '0 public reports in this area',
+    );
+  });
+
   Widget status(AsyncValue<ReportMapPage> value, VoidCallback retry) =>
       MaterialApp(
         home: Scaffold(

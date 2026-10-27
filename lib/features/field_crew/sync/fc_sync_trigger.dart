@@ -258,10 +258,20 @@ class FcSyncTrigger {
       photoResult = await photoSyncManager.sync();
       // A physical outcome is transmitted only after its local evidence photo
       // has a remote URL. The saved receipt and observation remain immutable.
-      final outcomeResult = await syncManager.syncWithBackoff(
-        maxAttempts: 3,
-        evidenceDependentOnly: true,
-      );
+      final outcomeResult = photoResult.allSucceeded
+          ? await syncManager.syncWithBackoff(
+              maxAttempts: 3,
+              evidenceDependentOnly: true,
+            )
+          : const FcSyncRunResult(
+              total: 0,
+              succeeded: 0,
+              merged: 0,
+              conflicted: 0,
+              retryable: 0,
+              permanent: 0,
+              results: [],
+            );
       mutationResult = FcSyncRunResult(
         total: ordinaryResult.total + outcomeResult.total,
         succeeded: ordinaryResult.succeeded + outcomeResult.succeeded,

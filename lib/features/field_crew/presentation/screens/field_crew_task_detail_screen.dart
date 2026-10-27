@@ -1,5 +1,6 @@
 import '../../sync/fc_sync_settings.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_deadline_indicator.dart';
 import '../controllers/fc_task_detail_presentation.dart';
 import '../widgets/fc_offline_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -132,6 +133,12 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                     ),
                   const FcConflictSummary(),
                   FcTaskSidebarCard(task: task, address: state.resolvedAddress),
+                  if (!{
+                    'completed',
+                    'closed',
+                    'cancelled',
+                  }.contains(task.status.toLowerCase()))
+                    FcTaskDeadlineIndicator(reports: reports),
                   const SizedBox(height: 20),
                   if (state.errorMessage != null) ...[
                     FcOfflineNotice(
@@ -256,15 +263,21 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
         ? await localPhoto.getActivePhoto(report.id, 'report', 'before')
         : null;
     final hasBefore =
-        beforePhoto != null || report.beforePhotoUrl?.trim().isNotEmpty == true;
+        beforePhoto != null ||
+        report.beforePhotos.isNotEmpty ||
+        report.beforePhotoUrl?.trim().isNotEmpty == true;
     final issueType = report.issueType?.toLowerCase() ?? '';
     final isScouting =
         issueType == 'scouting' || issueType == 'acknowledge_only';
     final evidence = <String>[
       if (reportPhoto != null)
         'local-photo:${reportPhoto.localPhotoId}'
-      else if (report.afterPhotoUrl?.trim().isNotEmpty == true)
-        report.afterPhotoUrl!,
+      else if (report.afterPhotos.isNotEmpty)
+        for (final p in report.afterPhotos)
+          if ((p['url'] as String?)?.trim().isNotEmpty == true)
+            p['url'] as String
+          else if (report.afterPhotoUrl?.trim().isNotEmpty == true)
+            report.afterPhotoUrl!,
     ];
     if (!context.mounted) return;
     if (!isScouting &&

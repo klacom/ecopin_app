@@ -41,7 +41,7 @@ class PublicReportMapDataSource {
   PublicReportMapDataSource(this._client);
 
   static const fields =
-      'id,title,description,issue_type,status,cluster_id,created_at,updated_at,stage,is_overdue,severity_score,severity_level,lifecycle_state,breached_at,validation_status,location,latitude,longitude,location_precision';
+      'id,title,description,issue_type,status,cluster_id,created_at,updated_at,stage,is_overdue,severity_score,severity_level,lifecycle_state,breached_at,validation_status,location,latitude,longitude,location_precision,sla_started_at,deadline_at';
 
   Future<ReportMapPage> getFeedPage({int offset = 0, int limit = 30}) async {
     if (offset < 0) throw RangeError.value(offset, 'offset');

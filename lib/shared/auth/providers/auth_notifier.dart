@@ -122,6 +122,18 @@ class AuthNotifier extends ChangeNotifier {
           return;
         }
 
+        if (roleString == 'officer' || roleString == 'lgu') {
+          _log.warning('Officer role temporarily disabled on mobile application');
+          await Supabase.instance.client.auth.signOut();
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('cached_user_role');
+          } catch (_) {}
+          _state = AppAuthState.unauthenticated();
+          notifyListeners();
+          return;
+        }
+
         UserRole? role;
         if (roleString != null) {
           // Special case for snake_case coming from backend & legacy lgu role
@@ -163,7 +175,9 @@ class AuthNotifier extends ChangeNotifier {
           final prefs = await SharedPreferences.getInstance();
           final cachedRoleStr = prefs.getString('cached_user_role');
           if (cachedRoleStr != null) {
-            if (cachedRoleStr == 'admin') {
+            if (cachedRoleStr == 'admin' ||
+                cachedRoleStr == 'officer' ||
+                cachedRoleStr == 'lgu') {
               _state = AppAuthState.unauthenticated();
               notifyListeners();
               return;

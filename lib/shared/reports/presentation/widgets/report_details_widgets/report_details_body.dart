@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'report_video_player.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
@@ -131,6 +132,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               ValidationBadge(status: widget.report.validationStatus),
             ],
           ),
+          ResponseDeadlineIndicator(report: widget.report, details: true),
           if (widget.report.severityScore != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -211,21 +213,62 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Rejection Reason',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade800,
-                    ),
+                  Row(
+                    children: [
+                      Icon(Icons.cancel_outlined, size: 20, color: Colors.red.shade800),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.report.manualReviewRequestReason != null
+                            ? 'Manual Review Rejected'
+                            : 'Rejection Reason',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red.shade800,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.report.rejectionReason != null && widget.report.rejectionReason!.trim().isNotEmpty
                         ? widget.report.rejectionReason!
                         : 'This report was rejected during validation. You may submit a new report with clearer photos or updated details.',
-                    style: TextStyle(fontSize: 14, color: Colors.red.shade700),
+                    style: TextStyle(fontSize: 14, color: Colors.red.shade800, height: 1.4),
                   ),
+                  if (widget.report.manualReviewRequestReason != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.red.shade100),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your review request note:',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.report.manualReviewRequestReason!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (widget.report.rejectedAt != null) ...[
                     const SizedBox(height: 8),
                     Text(

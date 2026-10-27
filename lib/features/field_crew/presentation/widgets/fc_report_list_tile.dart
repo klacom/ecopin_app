@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
@@ -63,6 +64,7 @@ class FcReportListTile extends StatelessWidget {
                 _buildBadge(report.validationStatus.toUpperCase().replaceAll('_', ' '), validationColor),
               ],
             ),
+            ResponseDeadlineIndicator(report: report),
             const SizedBox(height: AppColors.spaceMD),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

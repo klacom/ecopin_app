@@ -33,6 +33,13 @@ class ApiClient {
   final AppDatabase? _db;
 
   dio.Dio get dioClient => _dio;
+  String? get currentUserId {
+    try {
+      return Supabase.instance.client.auth.currentUser?.id;
+    } catch (_) {
+      return null;
+    }
+  }
 
   ApiClient([this._db]) {
     _dio.interceptors.add(
@@ -52,6 +59,16 @@ class ApiClient {
           // Pending password changes use their own in-memory login token. They
           // must not borrow or refresh a different persisted account session.
           if (options.extra['pendingPasswordChange'] != true) {
+            if (options.extra['expectedUserId'] != null &&
+                options.extra['expectedUserId'] != currentUserId) {
+              return handler.reject(
+                dio.DioException(
+                  requestOptions: options,
+                  error:
+                      'Account changed. The offline draft remains saved for its owner.',
+                ),
+              );
+            }
             String? token;
             try {
               final session = Supabase.instance.client.auth.currentSession;
@@ -188,6 +205,19 @@ class ApiClient {
 
   // Report methods
 
+  Future<dio.Response> getCitizenTrust() => _dio.get('/api/reports/trust/me');
+  Future<dio.Response> getCitizenTrustReview(String reportId) =>
+      _dio.get('/api/reports/$reportId/trust-review');
+  Future<dio.Response> recordCitizenTrustReview(
+    String reportId, {
+    required String outcome,
+    required String reason,
+    required String operationId,
+  }) => _dio.post(
+    '/api/reports/$reportId/trust-review',
+    data: {'outcome': outcome, 'reason': reason, 'operation_id': operationId},
+  );
+
   Future<dio.Response> createReport({
     required String title,
     required String description,
@@ -199,6 +229,9 @@ class ApiClient {
     bool onPrivateProperty = false,
     String scaleLevel = 'medium',
     String obstructionLevel = 'none',
+    String? citizenPriority,
+    String? priorityReason,
+    String? priorityExplanation,
     double? photoLat,
     double? photoLng,
     double? photoAccuracy,
@@ -232,6 +265,10 @@ class ApiClient {
       if (_db == null)
         throw Exception("Database not initialized for offline mode");
 
+      final ownerId = currentUserId;
+      if (ownerId == null) {
+        throw StateError('Sign in to save an offline report.');
+      }
       final idempotencyKey = const Uuid().v4();
       final imageList = imagePaths?.join(',') ?? '';
 
@@ -240,6 +277,7 @@ class ApiClient {
           .insert(
             OfflineReportsCompanion.insert(
               idempotencyKey: idempotencyKey,
+              ownerId: drift.Value(ownerId),
               title: title,
               description: description,
               latitude: latitude,
@@ -247,6 +285,9 @@ class ApiClient {
               onPrivateProperty: drift.Value(onPrivateProperty),
               scaleLevel: drift.Value(scaleLevel),
               obstructionLevel: drift.Value(obstructionLevel),
+              citizenPriority: drift.Value(citizenPriority),
+              priorityReason: drift.Value(priorityReason),
+              priorityExplanation: drift.Value(priorityExplanation),
               imagePaths: drift.Value(imageList),
               videoPath: drift.Value(videoPath),
             ),
@@ -259,6 +300,7 @@ class ApiClient {
             .insert(
               OfflineMediaCompanion.insert(
                 idempotencyKey: idempotencyKey,
+                ownerId: drift.Value(ownerId),
                 imagePaths: drift.Value(imageList.isEmpty ? null : imageList),
                 videoPath: drift.Value(videoPath),
               ),
@@ -287,6 +329,17 @@ class ApiClient {
     );
     formData.fields.add(MapEntry('scale_level', scaleLevel));
     formData.fields.add(MapEntry('obstruction_level', obstructionLevel));
+    if (citizenPriority != null) {
+      formData.fields.add(MapEntry('citizen_priority', citizenPriority));
+    }
+    if (priorityReason != null) {
+      formData.fields.add(MapEntry('priority_reason', priorityReason));
+    }
+    if (priorityExplanation != null) {
+      formData.fields.add(
+        MapEntry('priority_explanation', priorityExplanation),
+      );
+    }
     formData.fields.add(
       MapEntry('request_manual_review', requestManualReview.toString()),
     );
@@ -352,8 +405,9 @@ class ApiClient {
   Future<dio.Response> syncReportMedia(
     String idempotencyKey,
     List<String>? imagePaths,
-    String? videoPath,
-  ) async {
+    String? videoPath, {
+    String? expectedUserId,
+  }) async {
     final formData = dio.FormData();
 
     if (imagePaths != null && imagePaths.isNotEmpty) {
@@ -372,7 +426,13 @@ class ApiClient {
       );
     }
 
-    return _dio.post('/api/reports/sync/media/$idempotencyKey', data: formData);
+    return _dio.post(
+      '/api/reports/sync/media/$idempotencyKey',
+      data: formData,
+      options: dio.Options(
+        extra: {'expectedUserId': expectedUserId, 'requiresSession': true},
+      ),
+    );
   }
 
   Future<dio.Response> getMyReports() async {
@@ -603,9 +663,16 @@ class ApiClient {
   // Sync methods
 
   Future<dio.Response> batchSyncReports(
-    List<Map<String, dynamic>> payload,
-  ) async {
-    return _dio.post('/api/reports/sync/batch', data: {'reports': payload});
+    List<Map<String, dynamic>> payload, {
+    String? expectedUserId,
+  }) async {
+    return _dio.post(
+      '/api/reports/sync/batch',
+      data: {'reports': payload},
+      options: dio.Options(
+        extra: {'expectedUserId': expectedUserId, 'requiresSession': true},
+      ),
+    );
   }
 
   Future<dio.Response> batchSyncTaskUpdates(

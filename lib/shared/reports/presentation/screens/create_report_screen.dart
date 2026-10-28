@@ -26,6 +26,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/local_media_preview.dart';
 import 'package:ecopin_app/core/services/photo_verification_service.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/photo_review_dialog.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_priority_picker.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/citizen_trust_status.dart';
+import 'package:ecopin_app/shared/reports/providers/citizen_trust_provider.dart';
 // Note: LoadingDialog import removed since we're using an inline overlay
 
 class CreateReportScreen extends ConsumerStatefulWidget {
@@ -68,6 +71,14 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _priorityExplanationController = TextEditingController();
+  bool _urgent = false;
+  String? _priorityReason;
+  bool get _priorityComplete =>
+      !_urgent ||
+      (_priorityReason != null &&
+          ref.read(citizenTrustProvider).asData?.value.urgentAllowed == true &&
+          !ref.read(citizenTrustProvider).isLoading);
   final _titleFocusNode = FocusNode();
   final _descriptionFocusNode = FocusNode();
 
@@ -131,6 +142,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     _mediaScroll.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
+    _priorityExplanationController.dispose();
     _titleFocusNode.dispose();
     _descriptionFocusNode.dispose();
     super.dispose();
@@ -144,6 +156,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     // Advancing forward requires earlier steps to meet validation
     if (targetStep >= 1 && !_locationConfirmed) return false;
     if (targetStep >= 2 && _titleController.text.trim().isEmpty) return false;
+    if (targetStep >= 2 && !_priorityComplete) return false;
     if (targetStep >= 3 &&
         _capturedImages.isEmpty &&
         _selectedImage == null &&
@@ -489,6 +502,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   }
 
   Future<void> _submitReport() async {
+    if (!_priorityComplete) return;
     if (_isSubmitting) return;
     setState(() {
       _isSubmitting = true;
@@ -516,6 +530,11 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       final result = await apiClient.createReport(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
+        citizenPriority: _urgent ? 'urgent' : 'non_urgent',
+        priorityReason: _urgent ? _priorityReason : null,
+        priorityExplanation: _urgent
+            ? _priorityExplanationController.text.trim()
+            : null,
         latitude: _reportLocation.latitude,
         longitude: _reportLocation.longitude,
         imagePaths: _capturedImages.isNotEmpty
@@ -550,6 +569,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       }
     } on DioException catch (e) {
       if (mounted) {
+        if (e.response?.data is Map &&
+            e.response?.data['code'] == 'URGENT_TRUST_LOCKED') {
+          ref.invalidate(citizenTrustProvider);
+        }
         setState(() => _isSubmitting = false);
         String message =
             e.response?.data?['message'] ?? 'Failed to submit report.';
@@ -621,6 +644,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(citizenTrustProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final bool isPrefilled = widget.prefillData?.title != null;
 
@@ -986,7 +1010,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   }
 
   Widget _buildStep2Details() {
-    final bool canProceed = _titleController.text.trim().isNotEmpty;
+    final trust = ref.watch(citizenTrustProvider);
+    final bool canProceed =
+        _titleController.text.trim().isNotEmpty && _priorityComplete;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -1017,6 +1043,23 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             hintText: 'Provide more details...',
             maxLines: 5,
           ),
+          const SizedBox(height: 24),
+          ReportPriorityPicker(
+            urgentEnabled:
+                !trust.isLoading && trust.asData?.value.urgentAllowed == true,
+            urgent: _urgent,
+            reason: _priorityReason,
+            explanationController: _priorityExplanationController,
+            onUrgentChanged: (urgent) => setState(() {
+              if (_urgent == urgent) return;
+              _urgent = urgent;
+              _priorityReason = null;
+              _priorityExplanationController.clear();
+            }),
+            onReasonChanged: (reason) =>
+                setState(() => _priorityReason = reason),
+          ),
+          const CitizenTrustStatus(compact: true),
           const SizedBox(height: 24),
           SwitchListTile(
             title: const Text(
@@ -1420,7 +1463,21 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ? 'On private property'
                       : 'Not marked as private property',
                 ),
-                Text('Scale & Obstruction: Automated via AI verification'),
+                const SizedBox(height: 16),
+                Text(
+                  'Priority',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                Text(
+                  _urgent
+                      ? 'Urgent · Pending officer verification'
+                      : 'Non-urgent',
+                ),
+                if (_urgent && _priorityReason != null)
+                  Text(reportPriorityReasons[_priorityReason]!),
+                if (_urgent &&
+                    _priorityExplanationController.text.trim().isNotEmpty)
+                  Text(_priorityExplanationController.text.trim()),
                 const SizedBox(height: 16),
 
                 Row(
@@ -1468,7 +1525,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           _buildStepBottomButtons(
             nextText: 'Submit Report',
             isLoading: _isSubmitting,
-            onNext: _isSubmitting ? null : _submitReport,
+            onNext: _isSubmitting || !_priorityComplete ? null : _submitReport,
             onPrev: _isSubmitting ? null : _prevStep,
           ),
         ],

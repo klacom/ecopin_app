@@ -19,6 +19,7 @@ import 'package:ecopin_app/features/field_crew/providers/field_crew_reports_prov
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/trust_review_panel.dart';
 
 class FieldCrewReportDetailScreen extends ConsumerWidget {
   final String reportId;
@@ -184,6 +185,7 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
 
                   // Metadata
                   FcReportMetadataCard(report: report),
+                  if (isAssigned) TrustReviewPanel(reportId: reportId),
                   const SizedBox(height: AppColors.spaceXL),
 
                   // Photo Verification + Action Buttons right below Before & After photos

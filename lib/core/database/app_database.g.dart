@@ -9,6 +9,17 @@ class $OfflineReportsTable extends OfflineReports
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $OfflineReportsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -113,6 +124,39 @@ class $OfflineReportsTable extends OfflineReports
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _citizenPriorityMeta = const VerificationMeta(
+    'citizenPriority',
+  );
+  @override
+  late final GeneratedColumn<String> citizenPriority = GeneratedColumn<String>(
+    'citizen_priority',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _priorityReasonMeta = const VerificationMeta(
+    'priorityReason',
+  );
+  @override
+  late final GeneratedColumn<String> priorityReason = GeneratedColumn<String>(
+    'priority_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _priorityExplanationMeta =
+      const VerificationMeta('priorityExplanation');
+  @override
+  late final GeneratedColumn<String> priorityExplanation =
+      GeneratedColumn<String>(
+        'priority_explanation',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _imagePathsMeta = const VerificationMeta(
     'imagePaths',
   );
@@ -172,6 +216,7 @@ class $OfflineReportsTable extends OfflineReports
   );
   @override
   List<GeneratedColumn> get $columns => [
+    ownerId,
     id,
     idempotencyKey,
     title,
@@ -181,6 +226,9 @@ class $OfflineReportsTable extends OfflineReports
     onPrivateProperty,
     scaleLevel,
     obstructionLevel,
+    citizenPriority,
+    priorityReason,
+    priorityExplanation,
     imagePaths,
     videoPath,
     syncStatus,
@@ -199,6 +247,12 @@ class $OfflineReportsTable extends OfflineReports
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
@@ -272,6 +326,33 @@ class $OfflineReportsTable extends OfflineReports
         ),
       );
     }
+    if (data.containsKey('citizen_priority')) {
+      context.handle(
+        _citizenPriorityMeta,
+        citizenPriority.isAcceptableOrUnknown(
+          data['citizen_priority']!,
+          _citizenPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('priority_reason')) {
+      context.handle(
+        _priorityReasonMeta,
+        priorityReason.isAcceptableOrUnknown(
+          data['priority_reason']!,
+          _priorityReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('priority_explanation')) {
+      context.handle(
+        _priorityExplanationMeta,
+        priorityExplanation.isAcceptableOrUnknown(
+          data['priority_explanation']!,
+          _priorityExplanationMeta,
+        ),
+      );
+    }
     if (data.containsKey('image_paths')) {
       context.handle(
         _imagePathsMeta,
@@ -311,6 +392,10 @@ class $OfflineReportsTable extends OfflineReports
   OfflineReport map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return OfflineReport(
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      ),
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -347,6 +432,18 @@ class $OfflineReportsTable extends OfflineReports
         DriftSqlType.string,
         data['${effectivePrefix}obstruction_level'],
       ),
+      citizenPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}citizen_priority'],
+      ),
+      priorityReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}priority_reason'],
+      ),
+      priorityExplanation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}priority_explanation'],
+      ),
       imagePaths: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}image_paths'],
@@ -377,6 +474,7 @@ class $OfflineReportsTable extends OfflineReports
 }
 
 class OfflineReport extends DataClass implements Insertable<OfflineReport> {
+  final String? ownerId;
   final int id;
   final String idempotencyKey;
   final String title;
@@ -386,12 +484,16 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   final bool onPrivateProperty;
   final String? scaleLevel;
   final String? obstructionLevel;
+  final String? citizenPriority;
+  final String? priorityReason;
+  final String? priorityExplanation;
   final String? imagePaths;
   final String? videoPath;
   final int syncStatus;
   final String? syncError;
   final DateTime createdAt;
   const OfflineReport({
+    this.ownerId,
     required this.id,
     required this.idempotencyKey,
     required this.title,
@@ -401,6 +503,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     required this.onPrivateProperty,
     this.scaleLevel,
     this.obstructionLevel,
+    this.citizenPriority,
+    this.priorityReason,
+    this.priorityExplanation,
     this.imagePaths,
     this.videoPath,
     required this.syncStatus,
@@ -410,6 +515,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<String>(ownerId);
+    }
     map['id'] = Variable<int>(id);
     map['idempotency_key'] = Variable<String>(idempotencyKey);
     map['title'] = Variable<String>(title);
@@ -422,6 +530,15 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     }
     if (!nullToAbsent || obstructionLevel != null) {
       map['obstruction_level'] = Variable<String>(obstructionLevel);
+    }
+    if (!nullToAbsent || citizenPriority != null) {
+      map['citizen_priority'] = Variable<String>(citizenPriority);
+    }
+    if (!nullToAbsent || priorityReason != null) {
+      map['priority_reason'] = Variable<String>(priorityReason);
+    }
+    if (!nullToAbsent || priorityExplanation != null) {
+      map['priority_explanation'] = Variable<String>(priorityExplanation);
     }
     if (!nullToAbsent || imagePaths != null) {
       map['image_paths'] = Variable<String>(imagePaths);
@@ -439,6 +556,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
 
   OfflineReportsCompanion toCompanion(bool nullToAbsent) {
     return OfflineReportsCompanion(
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
       id: Value(id),
       idempotencyKey: Value(idempotencyKey),
       title: Value(title),
@@ -452,6 +572,15 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       obstructionLevel: obstructionLevel == null && nullToAbsent
           ? const Value.absent()
           : Value(obstructionLevel),
+      citizenPriority: citizenPriority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(citizenPriority),
+      priorityReason: priorityReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priorityReason),
+      priorityExplanation: priorityExplanation == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priorityExplanation),
       imagePaths: imagePaths == null && nullToAbsent
           ? const Value.absent()
           : Value(imagePaths),
@@ -472,6 +601,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return OfflineReport(
+      ownerId: serializer.fromJson<String?>(json['ownerId']),
       id: serializer.fromJson<int>(json['id']),
       idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
       title: serializer.fromJson<String>(json['title']),
@@ -481,6 +611,11 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       onPrivateProperty: serializer.fromJson<bool>(json['onPrivateProperty']),
       scaleLevel: serializer.fromJson<String?>(json['scaleLevel']),
       obstructionLevel: serializer.fromJson<String?>(json['obstructionLevel']),
+      citizenPriority: serializer.fromJson<String?>(json['citizenPriority']),
+      priorityReason: serializer.fromJson<String?>(json['priorityReason']),
+      priorityExplanation: serializer.fromJson<String?>(
+        json['priorityExplanation'],
+      ),
       imagePaths: serializer.fromJson<String?>(json['imagePaths']),
       videoPath: serializer.fromJson<String?>(json['videoPath']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
@@ -492,6 +627,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'ownerId': serializer.toJson<String?>(ownerId),
       'id': serializer.toJson<int>(id),
       'idempotencyKey': serializer.toJson<String>(idempotencyKey),
       'title': serializer.toJson<String>(title),
@@ -501,6 +637,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       'onPrivateProperty': serializer.toJson<bool>(onPrivateProperty),
       'scaleLevel': serializer.toJson<String?>(scaleLevel),
       'obstructionLevel': serializer.toJson<String?>(obstructionLevel),
+      'citizenPriority': serializer.toJson<String?>(citizenPriority),
+      'priorityReason': serializer.toJson<String?>(priorityReason),
+      'priorityExplanation': serializer.toJson<String?>(priorityExplanation),
       'imagePaths': serializer.toJson<String?>(imagePaths),
       'videoPath': serializer.toJson<String?>(videoPath),
       'syncStatus': serializer.toJson<int>(syncStatus),
@@ -510,6 +649,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   }
 
   OfflineReport copyWith({
+    Value<String?> ownerId = const Value.absent(),
     int? id,
     String? idempotencyKey,
     String? title,
@@ -519,12 +659,16 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     bool? onPrivateProperty,
     Value<String?> scaleLevel = const Value.absent(),
     Value<String?> obstructionLevel = const Value.absent(),
+    Value<String?> citizenPriority = const Value.absent(),
+    Value<String?> priorityReason = const Value.absent(),
+    Value<String?> priorityExplanation = const Value.absent(),
     Value<String?> imagePaths = const Value.absent(),
     Value<String?> videoPath = const Value.absent(),
     int? syncStatus,
     Value<String?> syncError = const Value.absent(),
     DateTime? createdAt,
   }) => OfflineReport(
+    ownerId: ownerId.present ? ownerId.value : this.ownerId,
     id: id ?? this.id,
     idempotencyKey: idempotencyKey ?? this.idempotencyKey,
     title: title ?? this.title,
@@ -536,6 +680,15 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     obstructionLevel: obstructionLevel.present
         ? obstructionLevel.value
         : this.obstructionLevel,
+    citizenPriority: citizenPriority.present
+        ? citizenPriority.value
+        : this.citizenPriority,
+    priorityReason: priorityReason.present
+        ? priorityReason.value
+        : this.priorityReason,
+    priorityExplanation: priorityExplanation.present
+        ? priorityExplanation.value
+        : this.priorityExplanation,
     imagePaths: imagePaths.present ? imagePaths.value : this.imagePaths,
     videoPath: videoPath.present ? videoPath.value : this.videoPath,
     syncStatus: syncStatus ?? this.syncStatus,
@@ -544,6 +697,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   );
   OfflineReport copyWithCompanion(OfflineReportsCompanion data) {
     return OfflineReport(
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       id: data.id.present ? data.id.value : this.id,
       idempotencyKey: data.idempotencyKey.present
           ? data.idempotencyKey.value
@@ -563,6 +717,15 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       obstructionLevel: data.obstructionLevel.present
           ? data.obstructionLevel.value
           : this.obstructionLevel,
+      citizenPriority: data.citizenPriority.present
+          ? data.citizenPriority.value
+          : this.citizenPriority,
+      priorityReason: data.priorityReason.present
+          ? data.priorityReason.value
+          : this.priorityReason,
+      priorityExplanation: data.priorityExplanation.present
+          ? data.priorityExplanation.value
+          : this.priorityExplanation,
       imagePaths: data.imagePaths.present
           ? data.imagePaths.value
           : this.imagePaths,
@@ -578,6 +741,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   @override
   String toString() {
     return (StringBuffer('OfflineReport(')
+          ..write('ownerId: $ownerId, ')
           ..write('id: $id, ')
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('title: $title, ')
@@ -587,6 +751,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           ..write('onPrivateProperty: $onPrivateProperty, ')
           ..write('scaleLevel: $scaleLevel, ')
           ..write('obstructionLevel: $obstructionLevel, ')
+          ..write('citizenPriority: $citizenPriority, ')
+          ..write('priorityReason: $priorityReason, ')
+          ..write('priorityExplanation: $priorityExplanation, ')
           ..write('imagePaths: $imagePaths, ')
           ..write('videoPath: $videoPath, ')
           ..write('syncStatus: $syncStatus, ')
@@ -598,6 +765,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
 
   @override
   int get hashCode => Object.hash(
+    ownerId,
     id,
     idempotencyKey,
     title,
@@ -607,6 +775,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     onPrivateProperty,
     scaleLevel,
     obstructionLevel,
+    citizenPriority,
+    priorityReason,
+    priorityExplanation,
     imagePaths,
     videoPath,
     syncStatus,
@@ -617,6 +788,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is OfflineReport &&
+          other.ownerId == this.ownerId &&
           other.id == this.id &&
           other.idempotencyKey == this.idempotencyKey &&
           other.title == this.title &&
@@ -626,6 +798,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           other.onPrivateProperty == this.onPrivateProperty &&
           other.scaleLevel == this.scaleLevel &&
           other.obstructionLevel == this.obstructionLevel &&
+          other.citizenPriority == this.citizenPriority &&
+          other.priorityReason == this.priorityReason &&
+          other.priorityExplanation == this.priorityExplanation &&
           other.imagePaths == this.imagePaths &&
           other.videoPath == this.videoPath &&
           other.syncStatus == this.syncStatus &&
@@ -634,6 +809,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
 }
 
 class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
+  final Value<String?> ownerId;
   final Value<int> id;
   final Value<String> idempotencyKey;
   final Value<String> title;
@@ -643,12 +819,16 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
   final Value<bool> onPrivateProperty;
   final Value<String?> scaleLevel;
   final Value<String?> obstructionLevel;
+  final Value<String?> citizenPriority;
+  final Value<String?> priorityReason;
+  final Value<String?> priorityExplanation;
   final Value<String?> imagePaths;
   final Value<String?> videoPath;
   final Value<int> syncStatus;
   final Value<String?> syncError;
   final Value<DateTime> createdAt;
   const OfflineReportsCompanion({
+    this.ownerId = const Value.absent(),
     this.id = const Value.absent(),
     this.idempotencyKey = const Value.absent(),
     this.title = const Value.absent(),
@@ -658,6 +838,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     this.onPrivateProperty = const Value.absent(),
     this.scaleLevel = const Value.absent(),
     this.obstructionLevel = const Value.absent(),
+    this.citizenPriority = const Value.absent(),
+    this.priorityReason = const Value.absent(),
+    this.priorityExplanation = const Value.absent(),
     this.imagePaths = const Value.absent(),
     this.videoPath = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -665,6 +848,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     this.createdAt = const Value.absent(),
   });
   OfflineReportsCompanion.insert({
+    this.ownerId = const Value.absent(),
     this.id = const Value.absent(),
     required String idempotencyKey,
     required String title,
@@ -674,6 +858,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     this.onPrivateProperty = const Value.absent(),
     this.scaleLevel = const Value.absent(),
     this.obstructionLevel = const Value.absent(),
+    this.citizenPriority = const Value.absent(),
+    this.priorityReason = const Value.absent(),
+    this.priorityExplanation = const Value.absent(),
     this.imagePaths = const Value.absent(),
     this.videoPath = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -685,6 +872,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
        latitude = Value(latitude),
        longitude = Value(longitude);
   static Insertable<OfflineReport> custom({
+    Expression<String>? ownerId,
     Expression<int>? id,
     Expression<String>? idempotencyKey,
     Expression<String>? title,
@@ -694,6 +882,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Expression<bool>? onPrivateProperty,
     Expression<String>? scaleLevel,
     Expression<String>? obstructionLevel,
+    Expression<String>? citizenPriority,
+    Expression<String>? priorityReason,
+    Expression<String>? priorityExplanation,
     Expression<String>? imagePaths,
     Expression<String>? videoPath,
     Expression<int>? syncStatus,
@@ -701,6 +892,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
+      if (ownerId != null) 'owner_id': ownerId,
       if (id != null) 'id': id,
       if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
       if (title != null) 'title': title,
@@ -710,6 +902,10 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       if (onPrivateProperty != null) 'on_private_property': onPrivateProperty,
       if (scaleLevel != null) 'scale_level': scaleLevel,
       if (obstructionLevel != null) 'obstruction_level': obstructionLevel,
+      if (citizenPriority != null) 'citizen_priority': citizenPriority,
+      if (priorityReason != null) 'priority_reason': priorityReason,
+      if (priorityExplanation != null)
+        'priority_explanation': priorityExplanation,
       if (imagePaths != null) 'image_paths': imagePaths,
       if (videoPath != null) 'video_path': videoPath,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -719,6 +915,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
   }
 
   OfflineReportsCompanion copyWith({
+    Value<String?>? ownerId,
     Value<int>? id,
     Value<String>? idempotencyKey,
     Value<String>? title,
@@ -728,6 +925,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Value<bool>? onPrivateProperty,
     Value<String?>? scaleLevel,
     Value<String?>? obstructionLevel,
+    Value<String?>? citizenPriority,
+    Value<String?>? priorityReason,
+    Value<String?>? priorityExplanation,
     Value<String?>? imagePaths,
     Value<String?>? videoPath,
     Value<int>? syncStatus,
@@ -735,6 +935,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Value<DateTime>? createdAt,
   }) {
     return OfflineReportsCompanion(
+      ownerId: ownerId ?? this.ownerId,
       id: id ?? this.id,
       idempotencyKey: idempotencyKey ?? this.idempotencyKey,
       title: title ?? this.title,
@@ -744,6 +945,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       onPrivateProperty: onPrivateProperty ?? this.onPrivateProperty,
       scaleLevel: scaleLevel ?? this.scaleLevel,
       obstructionLevel: obstructionLevel ?? this.obstructionLevel,
+      citizenPriority: citizenPriority ?? this.citizenPriority,
+      priorityReason: priorityReason ?? this.priorityReason,
+      priorityExplanation: priorityExplanation ?? this.priorityExplanation,
       imagePaths: imagePaths ?? this.imagePaths,
       videoPath: videoPath ?? this.videoPath,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -755,6 +959,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
@@ -782,6 +989,15 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     if (obstructionLevel.present) {
       map['obstruction_level'] = Variable<String>(obstructionLevel.value);
     }
+    if (citizenPriority.present) {
+      map['citizen_priority'] = Variable<String>(citizenPriority.value);
+    }
+    if (priorityReason.present) {
+      map['priority_reason'] = Variable<String>(priorityReason.value);
+    }
+    if (priorityExplanation.present) {
+      map['priority_explanation'] = Variable<String>(priorityExplanation.value);
+    }
     if (imagePaths.present) {
       map['image_paths'] = Variable<String>(imagePaths.value);
     }
@@ -803,6 +1019,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
   @override
   String toString() {
     return (StringBuffer('OfflineReportsCompanion(')
+          ..write('ownerId: $ownerId, ')
           ..write('id: $id, ')
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('title: $title, ')
@@ -812,6 +1029,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
           ..write('onPrivateProperty: $onPrivateProperty, ')
           ..write('scaleLevel: $scaleLevel, ')
           ..write('obstructionLevel: $obstructionLevel, ')
+          ..write('citizenPriority: $citizenPriority, ')
+          ..write('priorityReason: $priorityReason, ')
+          ..write('priorityExplanation: $priorityExplanation, ')
           ..write('imagePaths: $imagePaths, ')
           ..write('videoPath: $videoPath, ')
           ..write('syncStatus: $syncStatus, ')
@@ -1295,6 +1515,17 @@ class $OfflineMediaTable extends OfflineMedia
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $OfflineMediaTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -1379,6 +1610,7 @@ class $OfflineMediaTable extends OfflineMedia
   );
   @override
   List<GeneratedColumn> get $columns => [
+    ownerId,
     id,
     idempotencyKey,
     imagePaths,
@@ -1399,6 +1631,12 @@ class $OfflineMediaTable extends OfflineMedia
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
@@ -1452,6 +1690,10 @@ class $OfflineMediaTable extends OfflineMedia
   OfflineMediaData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return OfflineMediaData(
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      ),
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -1491,6 +1733,7 @@ class $OfflineMediaTable extends OfflineMedia
 
 class OfflineMediaData extends DataClass
     implements Insertable<OfflineMediaData> {
+  final String? ownerId;
   final int id;
   final String idempotencyKey;
   final String? imagePaths;
@@ -1499,6 +1742,7 @@ class OfflineMediaData extends DataClass
   final String? syncError;
   final DateTime createdAt;
   const OfflineMediaData({
+    this.ownerId,
     required this.id,
     required this.idempotencyKey,
     this.imagePaths,
@@ -1510,6 +1754,9 @@ class OfflineMediaData extends DataClass
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<String>(ownerId);
+    }
     map['id'] = Variable<int>(id);
     map['idempotency_key'] = Variable<String>(idempotencyKey);
     if (!nullToAbsent || imagePaths != null) {
@@ -1528,6 +1775,9 @@ class OfflineMediaData extends DataClass
 
   OfflineMediaCompanion toCompanion(bool nullToAbsent) {
     return OfflineMediaCompanion(
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
       id: Value(id),
       idempotencyKey: Value(idempotencyKey),
       imagePaths: imagePaths == null && nullToAbsent
@@ -1550,6 +1800,7 @@ class OfflineMediaData extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return OfflineMediaData(
+      ownerId: serializer.fromJson<String?>(json['ownerId']),
       id: serializer.fromJson<int>(json['id']),
       idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
       imagePaths: serializer.fromJson<String?>(json['imagePaths']),
@@ -1563,6 +1814,7 @@ class OfflineMediaData extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'ownerId': serializer.toJson<String?>(ownerId),
       'id': serializer.toJson<int>(id),
       'idempotencyKey': serializer.toJson<String>(idempotencyKey),
       'imagePaths': serializer.toJson<String?>(imagePaths),
@@ -1574,6 +1826,7 @@ class OfflineMediaData extends DataClass
   }
 
   OfflineMediaData copyWith({
+    Value<String?> ownerId = const Value.absent(),
     int? id,
     String? idempotencyKey,
     Value<String?> imagePaths = const Value.absent(),
@@ -1582,6 +1835,7 @@ class OfflineMediaData extends DataClass
     Value<String?> syncError = const Value.absent(),
     DateTime? createdAt,
   }) => OfflineMediaData(
+    ownerId: ownerId.present ? ownerId.value : this.ownerId,
     id: id ?? this.id,
     idempotencyKey: idempotencyKey ?? this.idempotencyKey,
     imagePaths: imagePaths.present ? imagePaths.value : this.imagePaths,
@@ -1592,6 +1846,7 @@ class OfflineMediaData extends DataClass
   );
   OfflineMediaData copyWithCompanion(OfflineMediaCompanion data) {
     return OfflineMediaData(
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       id: data.id.present ? data.id.value : this.id,
       idempotencyKey: data.idempotencyKey.present
           ? data.idempotencyKey.value
@@ -1611,6 +1866,7 @@ class OfflineMediaData extends DataClass
   @override
   String toString() {
     return (StringBuffer('OfflineMediaData(')
+          ..write('ownerId: $ownerId, ')
           ..write('id: $id, ')
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('imagePaths: $imagePaths, ')
@@ -1624,6 +1880,7 @@ class OfflineMediaData extends DataClass
 
   @override
   int get hashCode => Object.hash(
+    ownerId,
     id,
     idempotencyKey,
     imagePaths,
@@ -1636,6 +1893,7 @@ class OfflineMediaData extends DataClass
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is OfflineMediaData &&
+          other.ownerId == this.ownerId &&
           other.id == this.id &&
           other.idempotencyKey == this.idempotencyKey &&
           other.imagePaths == this.imagePaths &&
@@ -1646,6 +1904,7 @@ class OfflineMediaData extends DataClass
 }
 
 class OfflineMediaCompanion extends UpdateCompanion<OfflineMediaData> {
+  final Value<String?> ownerId;
   final Value<int> id;
   final Value<String> idempotencyKey;
   final Value<String?> imagePaths;
@@ -1654,6 +1913,7 @@ class OfflineMediaCompanion extends UpdateCompanion<OfflineMediaData> {
   final Value<String?> syncError;
   final Value<DateTime> createdAt;
   const OfflineMediaCompanion({
+    this.ownerId = const Value.absent(),
     this.id = const Value.absent(),
     this.idempotencyKey = const Value.absent(),
     this.imagePaths = const Value.absent(),
@@ -1663,6 +1923,7 @@ class OfflineMediaCompanion extends UpdateCompanion<OfflineMediaData> {
     this.createdAt = const Value.absent(),
   });
   OfflineMediaCompanion.insert({
+    this.ownerId = const Value.absent(),
     this.id = const Value.absent(),
     required String idempotencyKey,
     this.imagePaths = const Value.absent(),
@@ -1672,6 +1933,7 @@ class OfflineMediaCompanion extends UpdateCompanion<OfflineMediaData> {
     this.createdAt = const Value.absent(),
   }) : idempotencyKey = Value(idempotencyKey);
   static Insertable<OfflineMediaData> custom({
+    Expression<String>? ownerId,
     Expression<int>? id,
     Expression<String>? idempotencyKey,
     Expression<String>? imagePaths,
@@ -1681,6 +1943,7 @@ class OfflineMediaCompanion extends UpdateCompanion<OfflineMediaData> {
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
+      if (ownerId != null) 'owner_id': ownerId,
       if (id != null) 'id': id,
       if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
       if (imagePaths != null) 'image_paths': imagePaths,
@@ -1692,6 +1955,7 @@ class OfflineMediaCompanion extends UpdateCompanion<OfflineMediaData> {
   }
 
   OfflineMediaCompanion copyWith({
+    Value<String?>? ownerId,
     Value<int>? id,
     Value<String>? idempotencyKey,
     Value<String?>? imagePaths,
@@ -1701,6 +1965,7 @@ class OfflineMediaCompanion extends UpdateCompanion<OfflineMediaData> {
     Value<DateTime>? createdAt,
   }) {
     return OfflineMediaCompanion(
+      ownerId: ownerId ?? this.ownerId,
       id: id ?? this.id,
       idempotencyKey: idempotencyKey ?? this.idempotencyKey,
       imagePaths: imagePaths ?? this.imagePaths,
@@ -1714,6 +1979,9 @@ class OfflineMediaCompanion extends UpdateCompanion<OfflineMediaData> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
@@ -1741,6 +2009,7 @@ class OfflineMediaCompanion extends UpdateCompanion<OfflineMediaData> {
   @override
   String toString() {
     return (StringBuffer('OfflineMediaCompanion(')
+          ..write('ownerId: $ownerId, ')
           ..write('id: $id, ')
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('imagePaths: $imagePaths, ')
@@ -6084,6 +6353,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 
 typedef $$OfflineReportsTableCreateCompanionBuilder =
     OfflineReportsCompanion Function({
+      Value<String?> ownerId,
       Value<int> id,
       required String idempotencyKey,
       required String title,
@@ -6093,6 +6363,9 @@ typedef $$OfflineReportsTableCreateCompanionBuilder =
       Value<bool> onPrivateProperty,
       Value<String?> scaleLevel,
       Value<String?> obstructionLevel,
+      Value<String?> citizenPriority,
+      Value<String?> priorityReason,
+      Value<String?> priorityExplanation,
       Value<String?> imagePaths,
       Value<String?> videoPath,
       Value<int> syncStatus,
@@ -6101,6 +6374,7 @@ typedef $$OfflineReportsTableCreateCompanionBuilder =
     });
 typedef $$OfflineReportsTableUpdateCompanionBuilder =
     OfflineReportsCompanion Function({
+      Value<String?> ownerId,
       Value<int> id,
       Value<String> idempotencyKey,
       Value<String> title,
@@ -6110,6 +6384,9 @@ typedef $$OfflineReportsTableUpdateCompanionBuilder =
       Value<bool> onPrivateProperty,
       Value<String?> scaleLevel,
       Value<String?> obstructionLevel,
+      Value<String?> citizenPriority,
+      Value<String?> priorityReason,
+      Value<String?> priorityExplanation,
       Value<String?> imagePaths,
       Value<String?> videoPath,
       Value<int> syncStatus,
@@ -6126,6 +6403,11 @@ class $$OfflineReportsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -6171,6 +6453,21 @@ class $$OfflineReportsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get citizenPriority => $composableBuilder(
+    column: $table.citizenPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priorityReason => $composableBuilder(
+    column: $table.priorityReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priorityExplanation => $composableBuilder(
+    column: $table.priorityExplanation,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get imagePaths => $composableBuilder(
     column: $table.imagePaths,
     builder: (column) => ColumnFilters(column),
@@ -6206,6 +6503,11 @@ class $$OfflineReportsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -6251,6 +6553,21 @@ class $$OfflineReportsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get citizenPriority => $composableBuilder(
+    column: $table.citizenPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priorityReason => $composableBuilder(
+    column: $table.priorityReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priorityExplanation => $composableBuilder(
+    column: $table.priorityExplanation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get imagePaths => $composableBuilder(
     column: $table.imagePaths,
     builder: (column) => ColumnOrderings(column),
@@ -6286,6 +6603,9 @@ class $$OfflineReportsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -6320,6 +6640,21 @@ class $$OfflineReportsTableAnnotationComposer
 
   GeneratedColumn<String> get obstructionLevel => $composableBuilder(
     column: $table.obstructionLevel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get citizenPriority => $composableBuilder(
+    column: $table.citizenPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get priorityReason => $composableBuilder(
+    column: $table.priorityReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get priorityExplanation => $composableBuilder(
+    column: $table.priorityExplanation,
     builder: (column) => column,
   );
 
@@ -6376,6 +6711,7 @@ class $$OfflineReportsTableTableManager
               $$OfflineReportsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String?> ownerId = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 Value<String> idempotencyKey = const Value.absent(),
                 Value<String> title = const Value.absent(),
@@ -6385,12 +6721,16 @@ class $$OfflineReportsTableTableManager
                 Value<bool> onPrivateProperty = const Value.absent(),
                 Value<String?> scaleLevel = const Value.absent(),
                 Value<String?> obstructionLevel = const Value.absent(),
+                Value<String?> citizenPriority = const Value.absent(),
+                Value<String?> priorityReason = const Value.absent(),
+                Value<String?> priorityExplanation = const Value.absent(),
                 Value<String?> imagePaths = const Value.absent(),
                 Value<String?> videoPath = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => OfflineReportsCompanion(
+                ownerId: ownerId,
                 id: id,
                 idempotencyKey: idempotencyKey,
                 title: title,
@@ -6400,6 +6740,9 @@ class $$OfflineReportsTableTableManager
                 onPrivateProperty: onPrivateProperty,
                 scaleLevel: scaleLevel,
                 obstructionLevel: obstructionLevel,
+                citizenPriority: citizenPriority,
+                priorityReason: priorityReason,
+                priorityExplanation: priorityExplanation,
                 imagePaths: imagePaths,
                 videoPath: videoPath,
                 syncStatus: syncStatus,
@@ -6408,6 +6751,7 @@ class $$OfflineReportsTableTableManager
               ),
           createCompanionCallback:
               ({
+                Value<String?> ownerId = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 required String idempotencyKey,
                 required String title,
@@ -6417,12 +6761,16 @@ class $$OfflineReportsTableTableManager
                 Value<bool> onPrivateProperty = const Value.absent(),
                 Value<String?> scaleLevel = const Value.absent(),
                 Value<String?> obstructionLevel = const Value.absent(),
+                Value<String?> citizenPriority = const Value.absent(),
+                Value<String?> priorityReason = const Value.absent(),
+                Value<String?> priorityExplanation = const Value.absent(),
                 Value<String?> imagePaths = const Value.absent(),
                 Value<String?> videoPath = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
                 Value<String?> syncError = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => OfflineReportsCompanion.insert(
+                ownerId: ownerId,
                 id: id,
                 idempotencyKey: idempotencyKey,
                 title: title,
@@ -6432,6 +6780,9 @@ class $$OfflineReportsTableTableManager
                 onPrivateProperty: onPrivateProperty,
                 scaleLevel: scaleLevel,
                 obstructionLevel: obstructionLevel,
+                citizenPriority: citizenPriority,
+                priorityReason: priorityReason,
+                priorityExplanation: priorityExplanation,
                 imagePaths: imagePaths,
                 videoPath: videoPath,
                 syncStatus: syncStatus,
@@ -6736,6 +7087,7 @@ typedef $$OfflineTaskUpdatesTableProcessedTableManager =
     >;
 typedef $$OfflineMediaTableCreateCompanionBuilder =
     OfflineMediaCompanion Function({
+      Value<String?> ownerId,
       Value<int> id,
       required String idempotencyKey,
       Value<String?> imagePaths,
@@ -6746,6 +7098,7 @@ typedef $$OfflineMediaTableCreateCompanionBuilder =
     });
 typedef $$OfflineMediaTableUpdateCompanionBuilder =
     OfflineMediaCompanion Function({
+      Value<String?> ownerId,
       Value<int> id,
       Value<String> idempotencyKey,
       Value<String?> imagePaths,
@@ -6764,6 +7117,11 @@ class $$OfflineMediaTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -6809,6 +7167,11 @@ class $$OfflineMediaTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -6854,6 +7217,9 @@ class $$OfflineMediaTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -6913,6 +7279,7 @@ class $$OfflineMediaTableTableManager
               $$OfflineMediaTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String?> ownerId = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 Value<String> idempotencyKey = const Value.absent(),
                 Value<String?> imagePaths = const Value.absent(),
@@ -6921,6 +7288,7 @@ class $$OfflineMediaTableTableManager
                 Value<String?> syncError = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => OfflineMediaCompanion(
+                ownerId: ownerId,
                 id: id,
                 idempotencyKey: idempotencyKey,
                 imagePaths: imagePaths,
@@ -6931,6 +7299,7 @@ class $$OfflineMediaTableTableManager
               ),
           createCompanionCallback:
               ({
+                Value<String?> ownerId = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 required String idempotencyKey,
                 Value<String?> imagePaths = const Value.absent(),
@@ -6939,6 +7308,7 @@ class $$OfflineMediaTableTableManager
                 Value<String?> syncError = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => OfflineMediaCompanion.insert(
+                ownerId: ownerId,
                 id: id,
                 idempotencyKey: idempotencyKey,
                 imagePaths: imagePaths,

@@ -7,6 +7,7 @@ import 'package:ecopin_app/features/officer/providers/officer_clusters_provider.
 import 'package:ecopin_app/features/officer/providers/officer_cleanup_tasks_provider.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_response_logs_screen.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
+import 'package:ecopin_app/shared/reports/providers/citizen_trust_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:logging/logging.dart';
@@ -45,6 +46,9 @@ class AuthNotifier extends ChangeNotifier {
     }
     // Invalidate profile provider to reset it
     _ref.invalidate(profileProvider);
+    _ref.invalidate(citizenTrustProvider);
+    _ref.invalidate(reportTrustReviewProvider);
+    _ref.invalidate(blockedUrgentReportsProvider);
   }
 
   void _initialize() {

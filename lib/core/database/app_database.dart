@@ -17,6 +17,7 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class OfflineReports extends Table {
+  TextColumn get ownerId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   TextColumn get idempotencyKey => text().unique()();
   TextColumn get title => text()();
@@ -27,6 +28,9 @@ class OfflineReports extends Table {
       boolean().withDefault(const Constant(false))();
   TextColumn get scaleLevel => text().nullable()();
   TextColumn get obstructionLevel => text().nullable()();
+  TextColumn get citizenPriority => text().nullable()();
+  TextColumn get priorityReason => text().nullable()();
+  TextColumn get priorityExplanation => text().nullable()();
 
   // Media files (stored as comma-separated paths or JSON)
   TextColumn get imagePaths => text().nullable()();
@@ -58,6 +62,7 @@ class OfflineTaskUpdates extends Table {
 }
 
 class OfflineMedia extends Table {
+  TextColumn get ownerId => text().nullable()();
   IntColumn get id => integer().autoIncrement()();
   TextColumn get idempotencyKey => text().unique()();
   TextColumn get imagePaths => text().nullable()();
@@ -326,7 +331,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -360,18 +365,106 @@ class AppDatabase extends _$AppDatabase {
         if (from < 6) {
           await m.addColumn(fcCachedTasks, fcCachedTasks.address);
         }
+        if (from < 7) {
+          await m.addColumn(offlineReports, offlineReports.citizenPriority);
+          await m.addColumn(offlineReports, offlineReports.priorityReason);
+          await m.addColumn(offlineReports, offlineReports.priorityExplanation);
+        }
+        if (from < 8) {
+          await m.addColumn(offlineReports, offlineReports.ownerId);
+          await m.addColumn(offlineMedia, offlineMedia.ownerId);
+        }
       },
     );
   }
 
   // ── Legacy helper methods (citizen flow — unchanged) ──────────────────────
 
-  Future<List<OfflineReport>> getPendingReports() =>
-      (select(offlineReports)..where((t) => t.syncStatus.equals(0))).get();
+  Future<List<OfflineReport>> getPendingReports({String? ownerId}) =>
+      (select(offlineReports)..where(
+            (t) =>
+                t.syncStatus.equals(0) &
+                (ownerId == null
+                    ? const Constant(true)
+                    : t.ownerId.equals(ownerId)),
+          ))
+          .get();
+
+  Stream<List<OfflineReport>> watchBlockedUrgentReports(String ownerId) =>
+      (select(offlineReports)..where(
+            (t) =>
+                t.ownerId.equals(ownerId) &
+                t.syncStatus.equals(2) &
+                t.syncError.like('URGENT_TRUST_LOCKED:%'),
+          ))
+          .watch();
+
+  Future<bool> hasOfflineReport(String key, String ownerId) async =>
+      (await (select(offlineReports)..where(
+                (t) => t.idempotencyKey.equals(key) & t.ownerId.equals(ownerId),
+              ))
+              .get())
+          .isNotEmpty;
+
+  Future<bool> retryBlockedUrgentReport(
+    int id,
+    String ownerId, {
+    bool asNonUrgent = false,
+  }) => transaction(() async {
+    final rows =
+        await (update(offlineReports)..where(
+              (t) =>
+                  t.id.equals(id) &
+                  t.ownerId.equals(ownerId) &
+                  t.syncStatus.equals(2) &
+                  t.syncError.like('URGENT_TRUST_LOCKED:%'),
+            ))
+            .write(
+              OfflineReportsCompanion(
+                syncStatus: const Value(0),
+                syncError: const Value(null),
+                citizenPriority: asNonUrgent
+                    ? const Value('non_urgent')
+                    : const Value.absent(),
+                priorityReason: asNonUrgent
+                    ? const Value(null)
+                    : const Value.absent(),
+                priorityExplanation: asNonUrgent
+                    ? const Value(null)
+                    : const Value.absent(),
+              ),
+            );
+    if (rows == 1) {
+      final draft = await (select(
+        offlineReports,
+      )..where((t) => t.id.equals(id))).getSingle();
+      await (update(offlineMedia)..where(
+            (t) =>
+                t.ownerId.equals(ownerId) &
+                t.idempotencyKey.equals(draft.idempotencyKey) &
+                t.syncStatus.equals(2),
+          ))
+          .write(
+            const OfflineMediaCompanion(
+              syncStatus: Value(0),
+              syncError: Value(null),
+            ),
+          );
+    }
+    return rows == 1;
+  });
 
   Future<void> markReportSyncing(int id) =>
       (update(offlineReports)..where((t) => t.id.equals(id))).write(
         const OfflineReportsCompanion(syncStatus: Value(1)),
+      );
+
+  Future<void> markReportPending(int id) =>
+      (update(offlineReports)..where((t) => t.id.equals(id))).write(
+        const OfflineReportsCompanion(
+          syncStatus: Value(0),
+          syncError: Value(null),
+        ),
       );
 
   Future<void> markReportFailed(int id, String error) =>
@@ -404,12 +497,27 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteTaskUpdate(int id) =>
       (delete(offlineTaskUpdates)..where((t) => t.id.equals(id))).go();
 
-  Future<List<OfflineMediaData>> getPendingMedia() =>
-      (select(offlineMedia)..where((t) => t.syncStatus.equals(0))).get();
+  Future<List<OfflineMediaData>> getPendingMedia({String? ownerId}) =>
+      (select(offlineMedia)..where(
+            (t) =>
+                t.syncStatus.equals(0) &
+                (ownerId == null
+                    ? const Constant(true)
+                    : t.ownerId.equals(ownerId)),
+          ))
+          .get();
 
   Future<void> markMediaSyncing(int id) =>
       (update(offlineMedia)..where((t) => t.id.equals(id))).write(
         const OfflineMediaCompanion(syncStatus: Value(1)),
+      );
+
+  Future<void> markMediaPending(int id) =>
+      (update(offlineMedia)..where((t) => t.id.equals(id))).write(
+        const OfflineMediaCompanion(
+          syncStatus: Value(0),
+          syncError: Value(null),
+        ),
       );
 
   Future<void> markMediaFailed(int id, String error) =>
@@ -867,7 +975,9 @@ class AppDatabase extends _$AppDatabase {
   Future<List<FcCachedAddress>> searchFcAddresses(String query) {
     if (query.isEmpty) return select(fcCachedAddresses).get();
     final lowerQuery = query.toLowerCase();
-    return (select(fcCachedAddresses)..where((a) => a.displayName.lower().like('%$lowerQuery%'))).get();
+    return (select(
+      fcCachedAddresses,
+    )..where((a) => a.displayName.lower().like('%$lowerQuery%'))).get();
   }
 }
 

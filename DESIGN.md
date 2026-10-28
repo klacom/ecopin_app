@@ -112,6 +112,16 @@ Shared-widget edits require checking every affected role/caller. Feature-specifi
 
 ## App purpose and information architecture
 
+### PDT-01: citizen priority selection (28 October 2026)
+
+Citizen Create Report uses Non-urgent (default) and Urgent tap choices in Details. Urgent requires one preset reason: Community Event/Liga, School/Hospital Zone, Severe Obstruction, or Public Health Hazard. A separate explanation is optional (1000 characters). Review shows the selected priority and urgency details; switching back to Non-urgent clears them. Priority and reasons survive offline saving and sync. Citizen urgency requests require officer verification and do not approve dispatch or promise response timing. Keep this separate from calculated incident severity. Web citizen submission is deferred; the shared API accepts the same contract.
+
+### PDT-02: citizen trust gate (28 October 2026)
+
+Gemini review follow-up: successful eligibility remains cached between screens for offline drafts, with account-change/rejection invalidation. Profile lists the signed-in citizen's blocked Urgent drafts and offers explicit confirmed Non-urgent conversion or eligible Urgent retry. Preserve evidence and request identity. Scope report/media queues to their recorded owner and recheck the account before sending. Quarantine unowned legacy records rather than exposing/submitting them as the next signed-in user. Lock copy lists only unmet requirements; completed crew tasks remain SWMO review territory. Reused staff panels clear the prior report's draft.
+
+Citizen Profile shows server-reported trust and a refresh action. Start at 50/100; Urgent requires 70. Human-verified valid reports earn 10; proven false urgency removes 30 and requires both seven days and three consecutive valid reviews for recovery. Ordinary rejection, low severity and declined urgency do not mean dishonesty. Disable Urgent while locked or when eligibility is unknown, with explanatory text; keep Non-urgent reporting available. Server eligibility is authoritative, including offline sync. Keep rejected urgent drafts and their reason; do not silently downgrade them. Trust caches clear on account changes. Officer and assigned crew report details expose an explicit online trust review, mandatory reason and a confirmation for proven false urgency. Failure retains the reason and retry identity. Administrative corrections remain an auditable API operation. This does not alter incident severity, dispatch approval, or account suspension.
+
 Design for a phone held in one hand: find a concern, report it with location and evidence, then follow its progress. Use native Flutter controls and device safe areas rather than reproducing the web header, hero, hover interactions, or desktop sidebar. Keep the current role routes and platform back behavior.
 
 | Citizen control | Job | Existing destination |

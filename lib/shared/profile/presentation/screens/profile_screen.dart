@@ -15,6 +15,9 @@ import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/providers/theme_mode_provider.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/citizen_trust_status.dart';
+import 'package:ecopin_app/shared/reports/providers/citizen_trust_provider.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/blocked_urgent_reports.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -485,6 +488,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(profileProvider);
+          ref.invalidate(citizenTrustProvider);
+          ref.invalidate(blockedUrgentReportsProvider);
           await ref.read(profileProvider.future);
         },
         child: profileAsync.when(
@@ -758,6 +763,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     const SizedBox(height: AppColors.spaceMD),
 
                     if (profile?['role'] == 'citizen') ...[
+                      const CitizenTrustStatus(),
+                      const BlockedUrgentReports(),
+                      const SizedBox(height: AppColors.spaceMD),
                       Container(
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface,

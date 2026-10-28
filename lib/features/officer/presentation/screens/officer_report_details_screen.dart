@@ -1,4 +1,5 @@
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/trust_review_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -654,6 +655,7 @@ class _OfficerReportDetailsScreenState
                   _buildReportDetailsSection(),
                   const SizedBox(height: 24),
                   _buildActionsSection(),
+                  TrustReviewPanel(reportId: widget.reportId),
                   const SizedBox(height: 24),
                   _buildLifecycleSection(),
                   const SizedBox(height: 24),

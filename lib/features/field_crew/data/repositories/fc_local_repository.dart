@@ -538,7 +538,8 @@ class FcLocalRepository {
         'observed_at': observedAt.toUtc().toIso8601String(),
         'evidence_refs': List<String>.unmodifiable(evidenceRefs),
         'notes': notes,
-        if (investigation != null) 'investigation': Map<String, dynamic>.from(investigation),
+        if (investigation != null)
+          'investigation': Map<String, dynamic>.from(investigation),
       },
     );
   }
@@ -559,7 +560,8 @@ class FcLocalRepository {
         }
         resolved.add(photo.remoteUrl!);
       } else if (Uri.tryParse(ref)?.hasScheme == true &&
-          ref.startsWith('https://')) {
+          (ref.startsWith('https://') ||
+              ref.startsWith('storage://Cleanup%20Originals/'))) {
         resolved.add(ref);
       } else {
         return null;

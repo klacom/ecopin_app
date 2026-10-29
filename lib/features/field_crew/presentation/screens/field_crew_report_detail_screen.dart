@@ -2,6 +2,7 @@ import '../../sync/fc_sync_settings.dart';
 import '../../providers/fc_investigation_provider.dart';
 import '../../providers/fc_task_detail_notifier.dart';
 import '../widgets/fc_investigation_card.dart';
+import '../widgets/cleanup_notes_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -238,6 +239,7 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                     evidenceError: detailState.evidenceError,
                     onViewOnMap: () => context.push('/field-crew/map'),
                     onStatusChange: (newStatus, hasBefore, hasAfter) async {
+                      String? completionNotes;
                       if (const {
                         'resolved',
                         'completed',
@@ -281,10 +283,23 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                         }
                       }
 
+                      if (newStatus.toLowerCase() == 'resolved') {
+                        if (!context.mounted) return;
+                        completionNotes = await showCleanupNotesDialog(
+                          context,
+                          title: 'Complete cleanup',
+                          description:
+                              'Describe the work done. Before and After photos and action notes are checked during sync.',
+                        );
+                        if (completionNotes == null || !context.mounted) return;
+                      }
                       if (newStatus == 'acknowledged') {
                         await notifier.updateLifecycleStage('acknowledged');
                       } else {
-                        await notifier.updateStatus(newStatus);
+                        await notifier.updateStatus(
+                          newStatus,
+                          notes: completionNotes,
+                        );
                       }
                       if (report.breachedAt != null &&
                           (newStatus.toLowerCase() == 'resolved' ||

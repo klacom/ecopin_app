@@ -165,7 +165,7 @@ class FcTaskDetailNotifier extends Notifier<FcTaskDetailState> {
   Future<void> refresh() => _load();
 
   /// Marks the task as complete optimistically.
-  Future<void> markComplete() async {
+  Future<void> markComplete({String notes = ''}) async {
     final current = state.task;
     if (current == null) return;
     if (state.isLoading ||
@@ -178,7 +178,7 @@ class FcTaskDetailNotifier extends Notifier<FcTaskDetailState> {
     final investigation = ref.read(fcInvestigationProvider(taskId));
     final receipts = investigation.taskReceipts;
     final taskRepo = ref.read(cleanupTaskRepositoryProvider);
-    await taskRepo.markTaskComplete(taskId, investigations: receipts);
+    await taskRepo.markTaskComplete(taskId, notes: notes, investigations: receipts);
     if (ref.mounted) {
       state = state.copyWith(
         task: _patchTask(current, {'status': 'completed'}),

@@ -203,16 +203,24 @@ class FieldCrewReportRepository {
   //   5. On network error: leave outbox item pending (Phase 3 will drain it).
 
   /// Acknowledges or otherwise updates the status of a report.
-  Future<void> updateReportStatus(String id, String status) async {
+  Future<void> updateReportStatus(
+    String id,
+    String status, {
+    String? notes,
+  }) async {
     // Step 1 — local
     final baseVersion = (await _local.getCachedReportById(id))?.fcVersion ?? 0;
-    await _local.applyLocalReportPatch(id, {'status': status});
+    final payload = {
+      'status': status,
+      if (notes != null) 'cleanup_action_notes': notes.trim(),
+    };
+    await _local.applyLocalReportPatch(id, payload);
     // Step 2 — queue (idempotent; double-taps update payload, not create new)
     await _local.enqueueOutboxItem(
       operationType: FcOutboxOperationType.updateReportStatus,
       entityId: id,
       entityType: 'report',
-      payload: {'status': status},
+      payload: payload,
       baseVersion: baseVersion.toString(),
     );
     // Step 3 — background network attempt
@@ -388,9 +396,7 @@ class FieldCrewReportRepository {
       }
       if (keys.length >= 5) {
         final label = photoType == 'before' ? 'Before' : 'After';
-        throw FcPhotoSlotOccupiedException(
-          'Maximum 5 $label photos reached.',
-        );
+        throw FcPhotoSlotOccupiedException('Maximum 5 $label photos reached.');
       }
     }
     // Step 1 — Copy file to permanent storage, check dedup/slot, insert DB row.
@@ -483,8 +489,12 @@ class FieldCrewReportRepository {
         )
         .map((p) => p.remoteId)
         .toSet();
-    final collectionKey = photoType == 'before' ? 'before_photos' : 'after_photos';
-    final urlKey = photoType == 'before' ? 'before_photo_url' : 'after_photo_url';
+    final collectionKey = photoType == 'before'
+        ? 'before_photos'
+        : 'after_photos';
+    final urlKey = photoType == 'before'
+        ? 'before_photo_url'
+        : 'after_photo_url';
     final existingRemote = photoType == 'before'
         ? cached?.beforePhotos
         : cached?.afterPhotos;

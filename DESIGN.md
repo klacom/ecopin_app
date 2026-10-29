@@ -43,6 +43,8 @@ Explicit task instructions may revise this contract. Record accepted revisions h
 
 ## Role ownership and navigation
 
+Runtime scope confirmed 29 October 2026: Officer access is web only and Field Crew access is mobile only. Native officer shell/source references below describe retained code, not permission to enable officer sign-in on mobile.
+
 All roles share EcoPin identity, light/dark themes, accessibility, and truthful feedback. They do not share every destination, dataset, or action.
 
 | Experience | Primary job | Shell and visible navigation | Scope to preserve |
@@ -542,3 +544,7 @@ Task Details and task-scoped Report Details show automatic 5 m arrival, measured
 Citizen Create Report Review includes “Hide my identity”. Its per-report override takes precedence over account-wide name-disclosure consent without changing that consent. Preserve the choice through offline drafts, retries and resubmission. Hiding applies to public, officer, crew and admin output; private ownership still supports My reports, notifications and trust enforcement. Copy explains that report text/photos remain visible and may identify the author if they include personal details. Keep the control accessible, available in both themes and readable at 320px. Database/API protection is authoritative; UI masking alone does not implement this contract. Prototype/review/rollout status is recorded in `../UI_UPDATE_BACKLOG.md` under PDT-20.
 
 Officer operational maps must retain hidden reports through the protected `reports_view`, with identity fields masked. The current feed loads paginated rows immediately and refreshes every 15 seconds while subscribed; disposal cancels polling, and failures offer Retry. Raw `reports` CDC cannot substitute for this feed because identity-protected rows are deliberately unavailable to other accounts. Citizen public-map and own-report sources keep their existing scopes.
+
+### PDT-13: required cleanup proof
+
+Field Crew remains mobile only and Officer verification remains on web. Capture different Before and After photos for physical cleanup and require action notes before queuing outcomes or completion. Keep existing investigation, photo sync and assignment/version gates; saved locally is not server acceptance. Already-clear-on-arrival is an observation and must not require a fabricated Before photo or claim cleanup credit. New originals use authenticated delivery. Citizen Report Details shows only the officer-approved, privacy-reviewed public copies, with written Before/After labels, public action notes and completion/verification times. Missing/error proof has a truthful state and retry without falling back to originals. Implementation, review reconciliation, legacy-image limits and coordinated rollout: ../ecopin_backend_node/docs/cleanup-proof.md; evidence/status: ../UI_UPDATE_BACKLOG.md.

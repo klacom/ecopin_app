@@ -3,7 +3,8 @@ import 'package:ecopin_app/features/field_crew/data/models/agency_response_model
 import 'package:ecopin_app/features/field_crew/data/repositories/field_crew_report_repository.dart';
 import 'package:ecopin_app/features/field_crew/providers/field_crew_reports_provider.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
-import 'package:ecopin_app/features/field_crew/data/models/crew_urgency_observation.dart' show crewUrgencyNote;
+import 'package:ecopin_app/features/field_crew/data/models/crew_urgency_observation.dart'
+    show crewUrgencyNote;
 
 /// Holds all screen state for a single report detail view.
 class FcReportDetailState {
@@ -100,13 +101,13 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
   Future<void> refresh() => _load();
 
   /// Optimistically updates report status in local state.
-  Future<void> updateStatus(String newStatus) async {
+  Future<void> updateStatus(String newStatus, {String? notes}) async {
     final current = state.report;
     if (current == null) return;
     state = state.copyWith(
       report: _patchReport(current, {'status': newStatus}),
     );
-    await _repo.updateReportStatus(reportId, newStatus);
+    await _repo.updateReportStatus(reportId, newStatus, notes: notes);
   }
 
   /// Optimistically updates lifecycle stage.
@@ -159,14 +160,17 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
     required String result,
     required String conditions,
   }) async {
-    final saved = await _repo.logAgencyResponse(reportId, crewUrgencyNote(
-      taskId: taskId,
-      observerId: observerId,
-      assignmentGeneration: assignmentGeneration,
-      reportClaimGeneration: reportClaimGeneration,
-      result: result,
-      conditions: conditions,
-    ));
+    final saved = await _repo.logAgencyResponse(
+      reportId,
+      crewUrgencyNote(
+        taskId: taskId,
+        observerId: observerId,
+        assignmentGeneration: assignmentGeneration,
+        reportClaimGeneration: reportClaimGeneration,
+        result: result,
+        conditions: conditions,
+      ),
+    );
     state = state.copyWith(notes: [saved, ...state.notes]);
   }
 

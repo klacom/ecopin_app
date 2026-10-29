@@ -150,6 +150,7 @@ class CleanupTaskRepository {
   /// even when offline. The mode-aware sync engine sends the queued change.
   Future<void> markTaskComplete(
     String id, {
+    String notes = '',
     List<Map<String, dynamic>> investigations = const [],
   }) async {
     final baseVersion = (await _local.getCachedTaskById(id))?.fcVersion ?? 0;
@@ -162,7 +163,7 @@ class CleanupTaskRepository {
       entityType: 'task',
       payload: {
         'outcome': 'completed',
-        'notes': '',
+        'notes': notes.trim(),
         if (investigations.isNotEmpty) 'investigations': investigations,
       },
       baseVersion: baseVersion.toString(),

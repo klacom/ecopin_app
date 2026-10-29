@@ -2,6 +2,7 @@ const privateMediaBuckets = [
   'Report Evidence',
   'Cleanup Task Photos',
   'Report Cleanup',
+  'Cleanup Originals',
 ];
 bool isPrivateMedia(String source, String supabaseOrigin) {
   if (source.startsWith('storage:')) return true;

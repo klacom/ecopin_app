@@ -2,6 +2,7 @@ import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline
 import 'report_video_player.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
+import '../verified_cleanup_proof.dart';
 
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/reports/data/models/cleanup_task_model.dart';
@@ -575,9 +576,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 },
               ),
             ),
-          if (widget.report.status.toLowerCase() == 'resolved' ||
+          if (!widget.isOfficerUser) VerifiedCleanupProof(key: ValueKey(widget.report.id), reportId: widget.report.id),
+          if (widget.isOfficerUser && (widget.report.status.toLowerCase() == 'resolved' ||
               widget.report.status.toLowerCase() == 'waiting_for_feedback' ||
-              widget.report.status.toLowerCase() == 'closed') ...[
+              widget.report.status.toLowerCase() == 'closed')) ...[
             const SizedBox(height: 24),
             const Text(
               'Before & After',

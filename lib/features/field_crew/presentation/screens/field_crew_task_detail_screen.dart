@@ -1,6 +1,7 @@
 import '../../sync/fc_sync_settings.dart';
 import '../../providers/fc_investigation_provider.dart';
 import '../widgets/fc_investigation_card.dart';
+import '../widgets/cleanup_notes_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_deadline_indicator.dart';
 import '../controllers/fc_task_detail_presentation.dart';
@@ -233,7 +234,14 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                   reports: reports,
                   isRefreshing: state.isLoading || reports.length != expected,
                   onComplete: () async {
-                    await notifier.markComplete();
+                    final notes = await showCleanupNotesDialog(
+                      context,
+                      title: 'Complete task',
+                      description:
+                          'Summarize the work done. Photos and the on-site investigation are checked again during sync.',
+                    );
+                    if (notes == null) return;
+                    await notifier.markComplete(notes: notes);
                     if (!context.mounted) return;
                     ref
                         .read(completedTasksProvider.notifier)
@@ -333,32 +341,16 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
       }
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          outcome == 'already_resolved'
-              ? 'Site already clear?'
-              : 'Confirm physical cleanup',
-        ),
-        content: Text(
-          outcome == 'already_resolved'
-              ? 'This records an arrival observation. It does not claim cleanup credit.'
-              : 'This queues a physical cleanup receipt with the captured photo.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Queue outcome'),
-          ),
-        ],
-      ),
+    final notes = await showCleanupNotesDialog(
+      context,
+      title: outcome == 'already_resolved'
+          ? 'Site already clear?'
+          : 'Confirm physical cleanup',
+      description: outcome == 'already_resolved'
+          ? 'Describe the site on arrival. This records an observation, not cleanup credit.'
+          : 'Describe the cleanup performed. Before and After photos are required; the server records when this proof is accepted.',
     );
-    if (confirmed != true || !context.mounted) return;
+    if (notes == null || !context.mounted) return;
     try {
       final receipt = investigation.receipt(report.id);
       if (receipt['crew_id'] != actor) {
@@ -375,6 +367,7 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
             outcome: outcome,
             observedAt: DateTime.now(),
             evidenceRefs: evidence,
+            notes: notes,
             investigation: receipt,
           );
       if (context.mounted) {

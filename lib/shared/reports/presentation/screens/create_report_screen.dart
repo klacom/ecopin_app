@@ -102,6 +102,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final List<File> _capturedVideos = [];
   final Map<String, Duration> _videoDurations = {};
   bool _onPrivateProperty = false;
+  bool _consentGiven = false;
   static const String _defaultScale = 'medium';
   static const String _defaultObstruction = 'none';
   PhotoVerificationResult? _photoVerificationResult;
@@ -502,6 +503,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   }
 
   Future<void> _submitReport() async {
+    if (!_consentGiven) {
+      setState(() {
+        _submissionError = 'You must agree to share the pinned location and incident details to submit.';
+      });
+      return;
+    }
     if (!_priorityComplete) return;
     if (_isSubmitting) return;
     setState(() {
@@ -1511,7 +1518,46 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 48),
+          const SizedBox(height: 24),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: _submissionError != null && !_consentGiven
+                    ? colorScheme.error
+                    : colorScheme.outlineVariant,
+              ),
+            ),
+            child: CheckboxListTile(
+              value: _consentGiven,
+              onChanged: (val) {
+                setState(() {
+                  _consentGiven = val ?? false;
+                  if (_consentGiven && _submissionError?.contains('agree') == true) {
+                    _submissionError = null;
+                  }
+                });
+              },
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(
+                'Do you agree to share the pinned location and incident details publicly for waste monitoring?',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+              subtitle: Text(
+                'Required for report submission',
+                style: TextStyle(
+                  color: _submissionError != null && !_consentGiven
+                      ? colorScheme.error
+                      : colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           if (_submissionError != null) ...[
             Semantics(
               liveRegion: true,
@@ -1525,7 +1571,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           _buildStepBottomButtons(
             nextText: 'Submit Report',
             isLoading: _isSubmitting,
-            onNext: _isSubmitting || !_priorityComplete ? null : _submitReport,
+            onNext: _isSubmitting || !_priorityComplete || !_consentGiven ? null : _submitReport,
             onPrev: _isSubmitting ? null : _prevStep,
           ),
         ],

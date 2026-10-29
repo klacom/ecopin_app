@@ -619,6 +619,20 @@ class ApiClient {
     return _dio.patch(ApiConstants.markCleanupTaskComplete(taskId));
   }
 
+  Future<dio.Response> getMyCrewPerformance({String timeframe = 'all'}) async {
+    return _dio.get(
+      ApiConstants.myCrewPerformance,
+      queryParameters: {'timeframe': timeframe},
+    );
+  }
+
+  Future<dio.Response> getCrewPerformance({String timeframe = 'all'}) async {
+    return _dio.get(
+      ApiConstants.crewPerformance,
+      queryParameters: {'timeframe': timeframe},
+    );
+  }
+
   // Report lifecycle resolution methods
   Future<dio.Response> officerResolveReport(String reportId) async {
     return _dio.patch(ApiConstants.lguResolveReport(reportId));
@@ -635,6 +649,17 @@ class ApiClient {
     return _dio.patch(
       ApiConstants.citizenCloseReport(reportId),
       data: {'satisfaction_rating': satisfactionRating},
+    );
+  }
+
+  Future<dio.Response> citizenFlagIncomplete(
+    String reportId, {
+    String? reason,
+    String? notes,
+  }) async {
+    return _dio.patch(
+      ApiConstants.citizenFlagIncomplete(reportId),
+      data: {'reason': reason, 'notes': notes},
     );
   }
 

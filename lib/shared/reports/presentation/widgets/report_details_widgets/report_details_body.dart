@@ -735,7 +735,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          SatisfactionRatingScreen(reportId: widget.report.id),
+                          SatisfactionRatingScreen(
+                            reportId: widget.report.id,
+                            report: widget.report,
+                          ),
                     ),
                   );
                 },

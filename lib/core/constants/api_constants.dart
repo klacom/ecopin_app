@@ -40,6 +40,10 @@ class ApiConstants {
     return '/api/reports/$reportId/close';
   }
 
+  static String citizenFlagIncomplete(String reportId) {
+    return '/api/reports/$reportId/flag-incomplete';
+  }
+
   static String deleteReport(String reportId) {
     return '/api/reports/$reportId';
   }
@@ -64,6 +68,8 @@ class ApiConstants {
   static const String reports = '/api/reports';
   static const String satisfactionAnalytics = '/api/reports/analytics/satisfaction';
   static const String activeRoutes = '/api/optimization/routes/active';
+  static const String myCrewPerformance = '/api/cleanup-tasks/performance/me';
+  static const String crewPerformance = '/api/cleanup-tasks/performance';
 
   static String clusterById(String clusterId) {
     return '/api/clusters/$clusterId';

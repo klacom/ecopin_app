@@ -43,6 +43,7 @@ import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_r
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_map_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_sync_center_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_prepare_offline_screen.dart';
+import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_performance_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
@@ -434,6 +435,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: FieldCrewAppRoutes.profile,
             builder: (_, _) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: FieldCrewAppRoutes.performance,
+            builder: (_, _) => const FieldCrewPerformanceScreen(),
           ),
           GoRoute(
             path: FieldCrewAppRoutes.notifications,

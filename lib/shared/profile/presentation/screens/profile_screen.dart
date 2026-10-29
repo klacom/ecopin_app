@@ -732,6 +732,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     const SizedBox(height: AppColors.spaceMD),
 
+                    // Field Crew Dedicated Performance & CSAT Screen Entry
+                    if (profile?['role'] == 'field_crew') ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => context.push(FieldCrewAppRoutes.performance),
+                          icon: const Icon(
+                            Icons.insights_outlined,
+                            color: AppColors.primary,
+                          ),
+                          label: const Text(
+                            'My Performance & CSAT',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppColors.spaceMD,
+                            ),
+                            side: const BorderSide(color: AppColors.primary),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppColors.spaceMD),
+                    ],
+
                     // Change Password Button
                     SizedBox(
                       width: double.infinity,

@@ -75,11 +75,12 @@ class FieldCrewAppRoutes {
   static const String reports = '/field-crew/reports';
   static const String rawDataReportDetail = '/field-crew/reports/:reportId';
   static const String profile = '/field-crew/profile';
+  static const String performance = '/field-crew/performance';
   static const String notifications = '/field-crew/notifications';
   static const String syncCenter = '/field-crew/sync-center';
   static const String prepareOffline = '/field-crew/prepare-offline';
 
-  static const fieldCrewRoutes = [dashboard, map, tasks, reports, profile, notifications];
+  static const fieldCrewRoutes = [dashboard, map, tasks, reports, profile, performance, notifications];
 }
 
 // Admin-only routes

@@ -13,6 +13,9 @@ class MyMarkerClusterLayer extends StatelessWidget {
     options: MarkerClusterLayerOptions(
       size: const Size(ReportPinFrame.width, ReportPinFrame.height),
       alignment: Alignment.topCenter,
+      maxClusterRadius: 45,
+      spiderfyCircleRadius: 80,
+      zoomToBoundsOnClick: true,
       polygonOptions: const PolygonOptions(
         borderColor: Colors.transparent,
         color: Colors.transparent,

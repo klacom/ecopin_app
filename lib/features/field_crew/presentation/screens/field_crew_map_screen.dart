@@ -612,6 +612,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                         alignment: Alignment.topCenter,
                         maxClusterRadius: 60,
                         spiderfyCircleRadius: 90,
+                        zoomToBoundsOnClick: true,
                         polygonOptions: const PolygonOptions(
                           color: Colors.transparent,
                           borderColor: Colors.transparent,

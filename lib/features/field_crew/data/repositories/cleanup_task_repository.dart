@@ -148,7 +148,10 @@ class CleanupTaskRepository {
   ///
   /// The local state is updated immediately so the UI reflects the change
   /// even when offline. The mode-aware sync engine sends the queued change.
-  Future<void> markTaskComplete(String id) async {
+  Future<void> markTaskComplete(
+    String id, {
+    List<Map<String, dynamic>> investigations = const [],
+  }) async {
     final baseVersion = (await _local.getCachedTaskById(id))?.fcVersion ?? 0;
     // Step 1 — local
     await _local.applyLocalTaskPatch(id, {'status': 'completed'});
@@ -157,7 +160,11 @@ class CleanupTaskRepository {
       operationType: FcOutboxOperationType.markTaskComplete,
       entityId: id,
       entityType: 'task',
-      payload: {'outcome': 'completed', 'notes': ''},
+      payload: {
+        'outcome': 'completed',
+        'notes': '',
+        if (investigations.isNotEmpty) 'investigations': investigations,
+      },
       baseVersion: baseVersion.toString(),
     );
     // Step 3 — background push

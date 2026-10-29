@@ -54,7 +54,6 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
 }
 
 class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
-
   Color _getSeverityColor(String level) {
     switch (level.toLowerCase()) {
       case 'minimal':
@@ -84,6 +83,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
     final prefill = ReportPrefillData(
       location: widget.report.location,
       title: widget.report.title,
+      hideIdentity: widget.report.hideIdentity,
       description: widget.report.description,
     );
 
@@ -215,7 +215,11 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.cancel_outlined, size: 20, color: Colors.red.shade800),
+                      Icon(
+                        Icons.cancel_outlined,
+                        size: 20,
+                        color: Colors.red.shade800,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         widget.report.manualReviewRequestReason != null
@@ -231,10 +235,15 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.report.rejectionReason != null && widget.report.rejectionReason!.trim().isNotEmpty
+                    widget.report.rejectionReason != null &&
+                            widget.report.rejectionReason!.trim().isNotEmpty
                         ? widget.report.rejectionReason!
                         : 'This report was rejected during validation. You may submit a new report with clearer photos or updated details.',
-                    style: TextStyle(fontSize: 14, color: Colors.red.shade800, height: 1.4),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red.shade800,
+                      height: 1.4,
+                    ),
                   ),
                   if (widget.report.manualReviewRequestReason != null) ...[
                     const SizedBox(height: 10),
@@ -299,7 +308,11 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.home_work_outlined, color: Colors.amber.shade900, size: 20),
+                      Icon(
+                        Icons.home_work_outlined,
+                        color: Colors.amber.shade900,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'Private Property',
@@ -313,12 +326,17 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    widget.report.propertyOwnerConsentStatus == 'obtained' || widget.report.propertyOwnerConsentStatus == 'granted'
+                    widget.report.propertyOwnerConsentStatus == 'obtained' ||
+                            widget.report.propertyOwnerConsentStatus ==
+                                'granted'
                         ? 'Property owner consent has been granted for cleanup crews to enter.'
                         : widget.report.propertyOwnerConsentStatus == 'denied'
-                            ? 'Property owner consent was denied. Crews cannot enter private premises.'
-                            : 'This site is located on private property. LGU review and property owner consent are required before dispatch.',
-                    style: TextStyle(fontSize: 13, color: Colors.amber.shade900),
+                        ? 'Property owner consent was denied. Crews cannot enter private premises.'
+                        : 'This site is located on private property. LGU review and property owner consent are required before dispatch.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.amber.shade900,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -387,11 +405,14 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
           const SizedBox(height: 8),
           InfoRow(
             icon: Icons.location_pin,
-            text: (widget.report.streetAddress != null || widget.report.barangay != null)
+            text:
+                (widget.report.streetAddress != null ||
+                    widget.report.barangay != null)
                 ? widget.report.formattedAddress
                 : '${widget.report.location.latitude.toStringAsFixed(6)}, ${widget.report.location.longitude.toStringAsFixed(6)}',
           ),
-          if (widget.report.streetAddress != null || widget.report.barangay != null)
+          if (widget.report.streetAddress != null ||
+              widget.report.barangay != null)
             Padding(
               padding: const EdgeInsets.only(left: 32, bottom: 4),
               child: Text(
@@ -721,7 +742,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
           // Satisfaction rating button if waiting for feedback or resolved (citizen only)
           if (!widget.isOfficerUser &&
               (widget.report.status.toLowerCase() == 'waiting_for_feedback' ||
-               widget.report.status.toLowerCase() == 'resolved')) ...[
+                  widget.report.status.toLowerCase() == 'resolved')) ...[
             const Text(
               'The issue has been resolved! Please rate the service.',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -803,7 +824,9 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Theme.of(context).colorScheme.error,
-                        side: BorderSide(color: Theme.of(context).colorScheme.error),
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                       icon: const Icon(Icons.delete_outline, size: 18),
                       label: const Text('Withdraw Report'),
@@ -819,14 +842,22 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
           // Shared details link to the authorized officer tools instead of no-op actions.
           if (widget.isOfficerUser) ...[
             const SizedBox(height: 24),
-            Text('Officer tools', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Officer tools',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
-            const Text('Review and update this report in your officer workspace.'),
+            const Text(
+              'Review and update this report in your officer workspace.',
+            ),
             const SizedBox(height: 16),
             AppButton(
               text: 'Open officer report tools',
               onPressed: () => context.push(
-                OfficerAppRoutes.reportDetails.replaceFirst(':id', widget.report.id),
+                OfficerAppRoutes.reportDetails.replaceFirst(
+                  ':id',
+                  widget.report.id,
+                ),
               ),
             ),
           ],
@@ -835,7 +866,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
     );
   }
 
-  Widget _buildLocationVerificationBadge(String status, double? distanceMeters) {
+  Widget _buildLocationVerificationBadge(
+    String status,
+    double? distanceMeters,
+  ) {
     Color bg;
     Color border;
     Color text;

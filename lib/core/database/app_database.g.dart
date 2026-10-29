@@ -124,6 +124,21 @@ class $OfflineReportsTable extends OfflineReports
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _hideIdentityMeta = const VerificationMeta(
+    'hideIdentity',
+  );
+  @override
+  late final GeneratedColumn<bool> hideIdentity = GeneratedColumn<bool>(
+    'hide_identity',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("hide_identity" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _citizenPriorityMeta = const VerificationMeta(
     'citizenPriority',
   );
@@ -226,6 +241,7 @@ class $OfflineReportsTable extends OfflineReports
     onPrivateProperty,
     scaleLevel,
     obstructionLevel,
+    hideIdentity,
     citizenPriority,
     priorityReason,
     priorityExplanation,
@@ -323,6 +339,15 @@ class $OfflineReportsTable extends OfflineReports
         obstructionLevel.isAcceptableOrUnknown(
           data['obstruction_level']!,
           _obstructionLevelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hide_identity')) {
+      context.handle(
+        _hideIdentityMeta,
+        hideIdentity.isAcceptableOrUnknown(
+          data['hide_identity']!,
+          _hideIdentityMeta,
         ),
       );
     }
@@ -432,6 +457,10 @@ class $OfflineReportsTable extends OfflineReports
         DriftSqlType.string,
         data['${effectivePrefix}obstruction_level'],
       ),
+      hideIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}hide_identity'],
+      )!,
       citizenPriority: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}citizen_priority'],
@@ -484,6 +513,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   final bool onPrivateProperty;
   final String? scaleLevel;
   final String? obstructionLevel;
+  final bool hideIdentity;
   final String? citizenPriority;
   final String? priorityReason;
   final String? priorityExplanation;
@@ -503,6 +533,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     required this.onPrivateProperty,
     this.scaleLevel,
     this.obstructionLevel,
+    required this.hideIdentity,
     this.citizenPriority,
     this.priorityReason,
     this.priorityExplanation,
@@ -531,6 +562,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     if (!nullToAbsent || obstructionLevel != null) {
       map['obstruction_level'] = Variable<String>(obstructionLevel);
     }
+    map['hide_identity'] = Variable<bool>(hideIdentity);
     if (!nullToAbsent || citizenPriority != null) {
       map['citizen_priority'] = Variable<String>(citizenPriority);
     }
@@ -572,6 +604,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       obstructionLevel: obstructionLevel == null && nullToAbsent
           ? const Value.absent()
           : Value(obstructionLevel),
+      hideIdentity: Value(hideIdentity),
       citizenPriority: citizenPriority == null && nullToAbsent
           ? const Value.absent()
           : Value(citizenPriority),
@@ -611,6 +644,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       onPrivateProperty: serializer.fromJson<bool>(json['onPrivateProperty']),
       scaleLevel: serializer.fromJson<String?>(json['scaleLevel']),
       obstructionLevel: serializer.fromJson<String?>(json['obstructionLevel']),
+      hideIdentity: serializer.fromJson<bool>(json['hideIdentity']),
       citizenPriority: serializer.fromJson<String?>(json['citizenPriority']),
       priorityReason: serializer.fromJson<String?>(json['priorityReason']),
       priorityExplanation: serializer.fromJson<String?>(
@@ -637,6 +671,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       'onPrivateProperty': serializer.toJson<bool>(onPrivateProperty),
       'scaleLevel': serializer.toJson<String?>(scaleLevel),
       'obstructionLevel': serializer.toJson<String?>(obstructionLevel),
+      'hideIdentity': serializer.toJson<bool>(hideIdentity),
       'citizenPriority': serializer.toJson<String?>(citizenPriority),
       'priorityReason': serializer.toJson<String?>(priorityReason),
       'priorityExplanation': serializer.toJson<String?>(priorityExplanation),
@@ -659,6 +694,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     bool? onPrivateProperty,
     Value<String?> scaleLevel = const Value.absent(),
     Value<String?> obstructionLevel = const Value.absent(),
+    bool? hideIdentity,
     Value<String?> citizenPriority = const Value.absent(),
     Value<String?> priorityReason = const Value.absent(),
     Value<String?> priorityExplanation = const Value.absent(),
@@ -680,6 +716,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     obstructionLevel: obstructionLevel.present
         ? obstructionLevel.value
         : this.obstructionLevel,
+    hideIdentity: hideIdentity ?? this.hideIdentity,
     citizenPriority: citizenPriority.present
         ? citizenPriority.value
         : this.citizenPriority,
@@ -717,6 +754,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       obstructionLevel: data.obstructionLevel.present
           ? data.obstructionLevel.value
           : this.obstructionLevel,
+      hideIdentity: data.hideIdentity.present
+          ? data.hideIdentity.value
+          : this.hideIdentity,
       citizenPriority: data.citizenPriority.present
           ? data.citizenPriority.value
           : this.citizenPriority,
@@ -751,6 +791,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           ..write('onPrivateProperty: $onPrivateProperty, ')
           ..write('scaleLevel: $scaleLevel, ')
           ..write('obstructionLevel: $obstructionLevel, ')
+          ..write('hideIdentity: $hideIdentity, ')
           ..write('citizenPriority: $citizenPriority, ')
           ..write('priorityReason: $priorityReason, ')
           ..write('priorityExplanation: $priorityExplanation, ')
@@ -775,6 +816,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     onPrivateProperty,
     scaleLevel,
     obstructionLevel,
+    hideIdentity,
     citizenPriority,
     priorityReason,
     priorityExplanation,
@@ -798,6 +840,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           other.onPrivateProperty == this.onPrivateProperty &&
           other.scaleLevel == this.scaleLevel &&
           other.obstructionLevel == this.obstructionLevel &&
+          other.hideIdentity == this.hideIdentity &&
           other.citizenPriority == this.citizenPriority &&
           other.priorityReason == this.priorityReason &&
           other.priorityExplanation == this.priorityExplanation &&
@@ -819,6 +862,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
   final Value<bool> onPrivateProperty;
   final Value<String?> scaleLevel;
   final Value<String?> obstructionLevel;
+  final Value<bool> hideIdentity;
   final Value<String?> citizenPriority;
   final Value<String?> priorityReason;
   final Value<String?> priorityExplanation;
@@ -838,6 +882,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     this.onPrivateProperty = const Value.absent(),
     this.scaleLevel = const Value.absent(),
     this.obstructionLevel = const Value.absent(),
+    this.hideIdentity = const Value.absent(),
     this.citizenPriority = const Value.absent(),
     this.priorityReason = const Value.absent(),
     this.priorityExplanation = const Value.absent(),
@@ -858,6 +903,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     this.onPrivateProperty = const Value.absent(),
     this.scaleLevel = const Value.absent(),
     this.obstructionLevel = const Value.absent(),
+    this.hideIdentity = const Value.absent(),
     this.citizenPriority = const Value.absent(),
     this.priorityReason = const Value.absent(),
     this.priorityExplanation = const Value.absent(),
@@ -882,6 +928,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Expression<bool>? onPrivateProperty,
     Expression<String>? scaleLevel,
     Expression<String>? obstructionLevel,
+    Expression<bool>? hideIdentity,
     Expression<String>? citizenPriority,
     Expression<String>? priorityReason,
     Expression<String>? priorityExplanation,
@@ -902,6 +949,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       if (onPrivateProperty != null) 'on_private_property': onPrivateProperty,
       if (scaleLevel != null) 'scale_level': scaleLevel,
       if (obstructionLevel != null) 'obstruction_level': obstructionLevel,
+      if (hideIdentity != null) 'hide_identity': hideIdentity,
       if (citizenPriority != null) 'citizen_priority': citizenPriority,
       if (priorityReason != null) 'priority_reason': priorityReason,
       if (priorityExplanation != null)
@@ -925,6 +973,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Value<bool>? onPrivateProperty,
     Value<String?>? scaleLevel,
     Value<String?>? obstructionLevel,
+    Value<bool>? hideIdentity,
     Value<String?>? citizenPriority,
     Value<String?>? priorityReason,
     Value<String?>? priorityExplanation,
@@ -945,6 +994,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       onPrivateProperty: onPrivateProperty ?? this.onPrivateProperty,
       scaleLevel: scaleLevel ?? this.scaleLevel,
       obstructionLevel: obstructionLevel ?? this.obstructionLevel,
+      hideIdentity: hideIdentity ?? this.hideIdentity,
       citizenPriority: citizenPriority ?? this.citizenPriority,
       priorityReason: priorityReason ?? this.priorityReason,
       priorityExplanation: priorityExplanation ?? this.priorityExplanation,
@@ -989,6 +1039,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     if (obstructionLevel.present) {
       map['obstruction_level'] = Variable<String>(obstructionLevel.value);
     }
+    if (hideIdentity.present) {
+      map['hide_identity'] = Variable<bool>(hideIdentity.value);
+    }
     if (citizenPriority.present) {
       map['citizen_priority'] = Variable<String>(citizenPriority.value);
     }
@@ -1029,6 +1082,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
           ..write('onPrivateProperty: $onPrivateProperty, ')
           ..write('scaleLevel: $scaleLevel, ')
           ..write('obstructionLevel: $obstructionLevel, ')
+          ..write('hideIdentity: $hideIdentity, ')
           ..write('citizenPriority: $citizenPriority, ')
           ..write('priorityReason: $priorityReason, ')
           ..write('priorityExplanation: $priorityExplanation, ')
@@ -6363,6 +6417,7 @@ typedef $$OfflineReportsTableCreateCompanionBuilder =
       Value<bool> onPrivateProperty,
       Value<String?> scaleLevel,
       Value<String?> obstructionLevel,
+      Value<bool> hideIdentity,
       Value<String?> citizenPriority,
       Value<String?> priorityReason,
       Value<String?> priorityExplanation,
@@ -6384,6 +6439,7 @@ typedef $$OfflineReportsTableUpdateCompanionBuilder =
       Value<bool> onPrivateProperty,
       Value<String?> scaleLevel,
       Value<String?> obstructionLevel,
+      Value<bool> hideIdentity,
       Value<String?> citizenPriority,
       Value<String?> priorityReason,
       Value<String?> priorityExplanation,
@@ -6450,6 +6506,11 @@ class $$OfflineReportsTableFilterComposer
 
   ColumnFilters<String> get obstructionLevel => $composableBuilder(
     column: $table.obstructionLevel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hideIdentity => $composableBuilder(
+    column: $table.hideIdentity,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6553,6 +6614,11 @@ class $$OfflineReportsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get hideIdentity => $composableBuilder(
+    column: $table.hideIdentity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get citizenPriority => $composableBuilder(
     column: $table.citizenPriority,
     builder: (column) => ColumnOrderings(column),
@@ -6643,6 +6709,11 @@ class $$OfflineReportsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get hideIdentity => $composableBuilder(
+    column: $table.hideIdentity,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get citizenPriority => $composableBuilder(
     column: $table.citizenPriority,
     builder: (column) => column,
@@ -6721,6 +6792,7 @@ class $$OfflineReportsTableTableManager
                 Value<bool> onPrivateProperty = const Value.absent(),
                 Value<String?> scaleLevel = const Value.absent(),
                 Value<String?> obstructionLevel = const Value.absent(),
+                Value<bool> hideIdentity = const Value.absent(),
                 Value<String?> citizenPriority = const Value.absent(),
                 Value<String?> priorityReason = const Value.absent(),
                 Value<String?> priorityExplanation = const Value.absent(),
@@ -6740,6 +6812,7 @@ class $$OfflineReportsTableTableManager
                 onPrivateProperty: onPrivateProperty,
                 scaleLevel: scaleLevel,
                 obstructionLevel: obstructionLevel,
+                hideIdentity: hideIdentity,
                 citizenPriority: citizenPriority,
                 priorityReason: priorityReason,
                 priorityExplanation: priorityExplanation,
@@ -6761,6 +6834,7 @@ class $$OfflineReportsTableTableManager
                 Value<bool> onPrivateProperty = const Value.absent(),
                 Value<String?> scaleLevel = const Value.absent(),
                 Value<String?> obstructionLevel = const Value.absent(),
+                Value<bool> hideIdentity = const Value.absent(),
                 Value<String?> citizenPriority = const Value.absent(),
                 Value<String?> priorityReason = const Value.absent(),
                 Value<String?> priorityExplanation = const Value.absent(),
@@ -6780,6 +6854,7 @@ class $$OfflineReportsTableTableManager
                 onPrivateProperty: onPrivateProperty,
                 scaleLevel: scaleLevel,
                 obstructionLevel: obstructionLevel,
+                hideIdentity: hideIdentity,
                 citizenPriority: citizenPriority,
                 priorityReason: priorityReason,
                 priorityExplanation: priorityExplanation,

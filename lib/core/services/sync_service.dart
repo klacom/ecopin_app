@@ -48,6 +48,7 @@ class SyncService {
             'latitude': r.latitude,
             'longitude': r.longitude,
             'on_private_property': r.onPrivateProperty,
+            'hide_identity': r.hideIdentity,
             'scale_level': r.scaleLevel,
             'obstruction_level': r.obstructionLevel,
             'citizen_priority': r.citizenPriority,

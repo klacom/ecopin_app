@@ -28,6 +28,7 @@ class OfflineReports extends Table {
       boolean().withDefault(const Constant(false))();
   TextColumn get scaleLevel => text().nullable()();
   TextColumn get obstructionLevel => text().nullable()();
+  BoolColumn get hideIdentity => boolean().withDefault(const Constant(false))();
   TextColumn get citizenPriority => text().nullable()();
   TextColumn get priorityReason => text().nullable()();
   TextColumn get priorityExplanation => text().nullable()();
@@ -331,7 +332,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration {
@@ -369,6 +370,9 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(offlineReports, offlineReports.citizenPriority);
           await m.addColumn(offlineReports, offlineReports.priorityReason);
           await m.addColumn(offlineReports, offlineReports.priorityExplanation);
+        }
+        if (from < 9) {
+          await m.addColumn(offlineReports, offlineReports.hideIdentity);
         }
         if (from < 8) {
           await m.addColumn(offlineReports, offlineReports.ownerId);

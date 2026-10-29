@@ -1,6 +1,8 @@
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/trust_review_panel.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/support/official_contacts_screen.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/crew_urgency_review_panel.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
@@ -616,6 +618,7 @@ class _OfficerReportDetailsScreenState
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: const Text('Report Details', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: const [OfficialContactsButton()],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -655,6 +658,7 @@ class _OfficerReportDetailsScreenState
                   _buildReportDetailsSection(),
                   const SizedBox(height: 24),
                   _buildActionsSection(),
+                  CrewUrgencyReviewPanel(reportId: widget.reportId),
                   TrustReviewPanel(reportId: widget.reportId),
                   const SizedBox(height: 24),
                   _buildLifecycleSection(),

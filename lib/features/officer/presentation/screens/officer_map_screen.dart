@@ -21,7 +21,8 @@ import 'package:logging/logging.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 
 class OfficerMapScreen extends ConsumerStatefulWidget {
-  const OfficerMapScreen({super.key});
+  final TileProvider? tileProvider;
+  const OfficerMapScreen({super.key, this.tileProvider});
 
   @override
   ConsumerState<OfficerMapScreen> createState() => _OfficerMapScreenState();
@@ -197,6 +198,7 @@ class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
               ),
               children: [
                 TileLayer(
+                  tileProvider: widget.tileProvider,
                   urlTemplate: Theme.of(context).brightness == Brightness.dark
                       ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
                       : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
@@ -602,7 +604,18 @@ class _OfficerMapScreenState extends ConsumerState<OfficerMapScreen> {
           ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Operational reports could not load.'),
+              TextButton(
+                onPressed: () => ref.invalidate(reportsStreamProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

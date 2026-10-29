@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'fc_investigation_provider.dart';
+import '../location/crew_investigation_session.dart';
 import 'package:ecopin_app/core/services/location_search_service.dart';
 import '../presentation/controllers/fc_task_detail_presentation.dart';
 import 'fc_local_repository_provider.dart';
@@ -173,8 +175,10 @@ class FcTaskDetailNotifier extends Notifier<FcTaskDetailState> {
         'Finish every linked report before completing this task.',
       );
     }
+    final investigation = ref.read(fcInvestigationProvider(taskId));
+    final receipts = investigation.taskReceipts;
     final taskRepo = ref.read(cleanupTaskRepositoryProvider);
-    await taskRepo.markTaskComplete(taskId);
+    await taskRepo.markTaskComplete(taskId, investigations: receipts);
     if (ref.mounted) {
       state = state.copyWith(
         task: _patchTask(current, {'status': 'completed'}),
@@ -218,4 +222,20 @@ final taskAddressCacheProvider =
           CleanupTask.fromJson(data),
         ]);
       };
+    });
+
+/// Screen-owned subscription; action guards depend only on the session provider.
+final fcActiveInvestigationProvider = Provider.autoDispose
+    .family<CrewInvestigationSession, String>((ref, taskId) {
+      final session = ref.watch(fcInvestigationProvider(taskId));
+      void configure(FcTaskDetailState state) {
+        if (state.task != null) session.configure(state.task!, state.reports);
+      }
+
+      configure(ref.read(fcTaskDetailNotifierProvider(taskId)));
+      ref.listen(
+        fcTaskDetailNotifierProvider(taskId),
+        (_, state) => configure(state),
+      );
+      return session;
     });

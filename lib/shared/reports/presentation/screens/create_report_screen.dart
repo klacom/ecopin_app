@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_identity_toggle.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/reports/data/models/video_submission_policy.dart';
 import 'dart:io';
@@ -58,6 +59,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   int _currentStep = 0;
   static const int _totalSteps = 4;
   bool _isSubmitting = false;
+  bool _hideIdentity = false;
   String? _submissionError;
   String? _mediaError;
   bool _mediaPermissionDenied = false;
@@ -118,6 +120,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   void initState() {
     super.initState();
     _picker = widget.imagePicker ?? ImagePicker();
+    _hideIdentity = widget.prefillData?.hideIdentity ?? false;
     _reportLocation = widget.prefillData?.location ?? pasigInitialCenter;
     _locationConfirmed = widget.prefillData?.location != null;
     _addressRequested = _locationConfirmed;
@@ -547,6 +550,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         manualReviewReason: _manualReviewReason,
         videoPath: mainVideo?.path,
         onPrivateProperty: _onPrivateProperty,
+        hideIdentity: _hideIdentity,
         scaleLevel: _defaultScale,
         obstructionLevel: _defaultObstruction,
         photoLat: _photoVerificationResult?.latitude,
@@ -1371,6 +1375,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             style: TextStyle(
               color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
+          ),
+          ReportIdentityToggle(
+            value: _hideIdentity,
+            onChanged: _isSubmitting
+                ? null
+                : (value) => setState(() => _hideIdentity = value),
           ),
           if (_photosForReview.isNotEmpty) _photoReviewNotice(),
           const SizedBox(height: 24),

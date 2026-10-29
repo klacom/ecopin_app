@@ -11,11 +11,13 @@ class FcMarkCompleteButton extends StatefulWidget {
     required this.reports,
     required this.onComplete,
     this.isRefreshing = false,
+    this.investigationComplete = false,
   });
   final CleanupTask task;
   final List<ReportModel> reports;
   final Future<void> Function() onComplete;
   final bool isRefreshing;
+  final bool investigationComplete;
   @override
   State<FcMarkCompleteButton> createState() => _FcMarkCompleteButtonState();
 }
@@ -34,6 +36,7 @@ class _FcMarkCompleteButtonState extends State<FcMarkCompleteButton> {
     }.contains(widget.task.status.toLowerCase());
     final canComplete =
         !terminal &&
+        widget.investigationComplete &&
         !widget.isRefreshing &&
         widget.reports.length == taskReportIds(widget.task).length &&
         widget.reports.every(reportIsHandled);
@@ -83,6 +86,8 @@ class _FcMarkCompleteButtonState extends State<FcMarkCompleteButton> {
           Text(
             canComplete
                 ? 'Completion is saved locally, then checked by the server during sync.'
+                : !widget.investigationComplete
+                ? 'Complete the on-site investigation at every incident before updating task status.'
                 : 'Handle every linked report before completing this task.',
             style: Theme.of(context).textTheme.bodySmall,
           ),

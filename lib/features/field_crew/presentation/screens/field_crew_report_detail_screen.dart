@@ -1,4 +1,7 @@
 import '../../sync/fc_sync_settings.dart';
+import '../../providers/fc_investigation_provider.dart';
+import '../../providers/fc_task_detail_notifier.dart';
+import '../widgets/fc_investigation_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,7 +22,7 @@ import 'package:ecopin_app/features/field_crew/providers/field_crew_reports_prov
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
-import 'package:ecopin_app/shared/reports/presentation/widgets/trust_review_panel.dart';
+import 'package:ecopin_app/features/field_crew/presentation/widgets/crew_urgency_form.dart';
 
 class FieldCrewReportDetailScreen extends ConsumerWidget {
   final String reportId;
@@ -119,6 +122,7 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
     }
 
     final report = detailState.report!;
+    final observationTask = taskAsync?.value;
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     Widget? taskBanner;
@@ -183,9 +187,47 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                   // Phase 5: conflict summary banner (auto-dismisses after 12 s)
                   const FcConflictSummary(),
 
+                  if (taskId != null && isAssigned) ...[
+                    FcInvestigationCard(
+                      session: ref.watch(
+                        fcActiveInvestigationProvider(taskId!),
+                      ),
+                      reportId: reportId,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   // Metadata
                   FcReportMetadataCard(report: report),
-                  if (isAssigned) TrustReviewPanel(reportId: reportId),
+                  if (isAssigned &&
+                      report.citizenPriority == 'urgent' &&
+                      observationTask != null &&
+                      currentUserId != null)
+                    CrewUrgencyForm(
+                      key: ValueKey(
+                        '$reportId:${observationTask.id}:${observationTask.assignmentGeneration}:${report.reportClaimGeneration}',
+                      ),
+                      canSubmit:
+                          report.cleanupTaskId == observationTask.id &&
+                          const [
+                            'created',
+                            'pending',
+                            'assigned',
+                            'en_route',
+                            'in_progress',
+                            'partially_completed',
+                          ].contains(observationTask.status) &&
+                          observationTask.routeStatus == 'ready',
+                      onSave: (result, conditions) =>
+                          notifier.addUrgencyObservation(
+                            taskId: observationTask.id,
+                            observerId: currentUserId,
+                            assignmentGeneration:
+                                observationTask.assignmentGeneration,
+                            reportClaimGeneration: report.reportClaimGeneration,
+                            result: result,
+                            conditions: conditions,
+                          ),
+                    ),
                   const SizedBox(height: AppColors.spaceXL),
 
                   // Photo Verification + Action Buttons right below Before & After photos
@@ -196,9 +238,31 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                     evidenceError: detailState.evidenceError,
                     onViewOnMap: () => context.push('/field-crew/map'),
                     onStatusChange: (newStatus, hasBefore, hasAfter) async {
+                      if (const {
+                        'resolved',
+                        'completed',
+                        'closed',
+                      }.contains(newStatus.toLowerCase())) {
+                        try {
+                          if (taskId == null) {
+                            throw StateError(
+                              'Open the assigned task before recording completion.',
+                            );
+                          }
+                          ref
+                              .read(fcInvestigationProvider(taskId!))
+                              .requireIncident(reportId);
+                        } catch (error) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(error.toString())),
+                            );
+                          }
+                          return;
+                        }
+                      }
                       if (newStatus.toLowerCase() == 'resolved') {
-                        final issueType =
-                            report.issueType?.toLowerCase() ?? '';
+                        final issueType = report.issueType?.toLowerCase() ?? '';
                         final isScouting =
                             issueType == 'scouting' ||
                             issueType == 'acknowledge_only';
@@ -322,7 +386,7 @@ class _ReportPhotoSection extends ConsumerStatefulWidget {
   final String? evidenceError;
   final VoidCallback onViewOnMap;
   final Future<void> Function(String newStatus, bool hasBefore, bool hasAfter)
-      onStatusChange;
+  onStatusChange;
   final Future<void> Function(dynamic file, String type) onUpload;
   final Future<void> Function(FcPhotoSlot slot, String type) onDelete;
 
@@ -395,9 +459,7 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
       final urls = slots.map((p) => p.remoteUrl).toSet();
       for (final photo in remoteCollection) {
         final url = photo['url'] as String?;
-        if (url != null &&
-            !deletedIds.contains(photo['id']) &&
-            urls.add(url)) {
+        if (url != null && !deletedIds.contains(photo['id']) && urls.add(url)) {
           slots.add(
             FcPhotoSlot(remoteUrl: url, remoteId: photo['id'] as String?),
           );
@@ -407,12 +469,7 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
           remoteCollection.isEmpty &&
           !deletedIds.contains('legacy') &&
           legacyUrl?.isNotEmpty == true) {
-        slots.add(
-          FcPhotoSlot(
-            remoteUrl: legacyUrl,
-            remoteId: 'legacy',
-          ),
-        );
+        slots.add(FcPhotoSlot(remoteUrl: legacyUrl, remoteId: 'legacy'));
       }
       return slots;
     }
@@ -449,9 +506,7 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
       );
     }
     if (remoteUrl != null && remoteUrl.isNotEmpty) {
-      return FcPhotoSlot(
-        remoteUrl: remoteUrl,
-      );
+      return FcPhotoSlot(remoteUrl: remoteUrl);
     }
     return null;
   }
@@ -476,9 +531,12 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
     final currentLifecycle = widget.report.lifecycleStage?.toLowerCase();
     final bool isLifecycleAcknowledged =
         currentLifecycle != null &&
-        !['new', 'pending', 'under_review', 'submitted'].contains(
-          currentLifecycle,
-        );
+        ![
+          'new',
+          'pending',
+          'under_review',
+          'submitted',
+        ].contains(currentLifecycle);
 
     final bool effectivelyAcknowledged =
         isAcknowledged || isLifecycleAcknowledged;

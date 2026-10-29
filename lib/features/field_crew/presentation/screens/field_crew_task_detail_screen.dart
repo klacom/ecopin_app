@@ -1,4 +1,6 @@
 import '../../sync/fc_sync_settings.dart';
+import '../../providers/fc_investigation_provider.dart';
+import '../widgets/fc_investigation_card.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_deadline_indicator.dart';
 import '../controllers/fc_task_detail_presentation.dart';
@@ -116,6 +118,7 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
     final canAct =
         isAssigned &&
         !{'completed', 'cancelled'}.contains(task.status.toLowerCase());
+    final investigation = ref.watch(fcActiveInvestigationProvider(taskId));
     return RefreshIndicator(
       onRefresh: notifier.refresh,
       child: CustomScrollView(
@@ -133,6 +136,10 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
                     ),
                   const FcConflictSummary(),
                   FcTaskSidebarCard(task: task, address: state.resolvedAddress),
+                  if (canAct) ...[
+                    const SizedBox(height: 16),
+                    FcInvestigationCard(session: investigation),
+                  ],
                   if (!{
                     'completed',
                     'closed',
@@ -218,24 +225,28 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.all(20),
             sliver: SliverToBoxAdapter(
-              child: FcMarkCompleteButton(
-                task: task,
-                reports: reports,
-                isRefreshing: state.isLoading || reports.length != expected,
-                onComplete: () async {
-                  await notifier.markComplete();
-                  if (!context.mounted) return;
-                  ref
-                      .read(completedTasksProvider.notifier)
-                      .addCompletedTask(taskId);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Task completion saved on this device for sync.',
+              child: ListenableBuilder(
+                listenable: investigation,
+                builder: (context, _) => FcMarkCompleteButton(
+                  investigationComplete: investigation.canCompleteTask,
+                  task: task,
+                  reports: reports,
+                  isRefreshing: state.isLoading || reports.length != expected,
+                  onComplete: () async {
+                    await notifier.markComplete();
+                    if (!context.mounted) return;
+                    ref
+                        .read(completedTasksProvider.notifier)
+                        .addCompletedTask(taskId);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Task completion saved on this device for sync.',
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -253,6 +264,7 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
   ) async {
     final actor = Supabase.instance.client.auth.currentUser?.id;
     if (actor == null) return;
+    final investigation = ref.read(fcInvestigationProvider(taskId));
     final localPhoto = ref.read(fcLocalPhotoRepositoryProvider);
     final reportPhoto = await localPhoto.getActivePhoto(
       report.id,
@@ -348,6 +360,12 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
     try {
+      final receipt = investigation.receipt(report.id);
+      if (receipt['crew_id'] != actor) {
+        throw StateError(
+          'Account changed. Reopen the task before recording an outcome.',
+        );
+      }
       await ref
           .read(fcLocalRepositoryProvider)
           .enqueueReportOutcome(
@@ -357,6 +375,7 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
             outcome: outcome,
             observedAt: DateTime.now(),
             evidenceRefs: evidence,
+            investigation: receipt,
           );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_identity_toggle.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/reports/data/models/video_submission_policy.dart';
 import 'dart:io';
@@ -58,6 +59,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   int _currentStep = 0;
   static const int _totalSteps = 4;
   bool _isSubmitting = false;
+  bool _hideIdentity = false;
   String? _submissionError;
   String? _mediaError;
   bool _mediaPermissionDenied = false;
@@ -71,6 +73,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _landmarkController = TextEditingController();
   final _priorityExplanationController = TextEditingController();
   bool _urgent = false;
   String? _priorityReason;
@@ -119,6 +122,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   void initState() {
     super.initState();
     _picker = widget.imagePicker ?? ImagePicker();
+    _hideIdentity = widget.prefillData?.hideIdentity ?? false;
+    _landmarkController.text = widget.prefillData?.citizenLandmark ?? '';
     _reportLocation = widget.prefillData?.location ?? pasigInitialCenter;
     _locationConfirmed = widget.prefillData?.location != null;
     _addressRequested = _locationConfirmed;
@@ -143,6 +148,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     _mediaScroll.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
+    _landmarkController.dispose();
     _priorityExplanationController.dispose();
     _titleFocusNode.dispose();
     _descriptionFocusNode.dispose();
@@ -171,6 +177,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     if (!_canNavigateToStep(targetStep) || targetStep == _currentStep) return;
     _titleFocusNode.unfocus();
     _descriptionFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
     setState(() => _currentStep = targetStep);
     if (targetStep == 2 && _videoPolicy == null && !_loadingVideoPolicy) {
       _loadVideoPolicy();
@@ -537,6 +544,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       final result = await apiClient.createReport(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
+        citizenLandmark: _landmarkController.text.trim(),
         citizenPriority: _urgent ? 'urgent' : 'non_urgent',
         priorityReason: _urgent ? _priorityReason : null,
         priorityExplanation: _urgent
@@ -554,6 +562,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         manualReviewReason: _manualReviewReason,
         videoPath: mainVideo?.path,
         onPrivateProperty: _onPrivateProperty,
+        hideIdentity: _hideIdentity,
         scaleLevel: _defaultScale,
         obstructionLevel: _defaultObstruction,
         photoLat: _photoVerificationResult?.latitude,
@@ -1051,6 +1060,20 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             maxLines: 5,
           ),
           const SizedBox(height: 24),
+          AppTextField(
+            controller: _landmarkController,
+            labelText: 'Nearby landmark (optional)',
+            hintText:
+                'e.g. Beside the blue gate, across from the barangay hall',
+            maxLines: 2,
+            maxLength: 300,
+            textInputAction: TextInputAction.done,
+          ),
+          Text(
+            'Extra directions for the crew. The selected map pin and GPS location stay unchanged.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 24),
           ReportPriorityPicker(
             urgentEnabled:
                 !trust.isLoading && trust.asData?.value.urgentAllowed == true,
@@ -1379,6 +1402,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
+          ReportIdentityToggle(
+            value: _hideIdentity,
+            onChanged: _isSubmitting
+                ? null
+                : (value) => setState(() => _hideIdentity = value),
+          ),
           if (_photosForReview.isNotEmpty) _photoReviewNotice(),
           const SizedBox(height: 24),
           Container(
@@ -1459,6 +1488,19 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       ? 'No description added'
                       : _descriptionController.text,
                 ),
+                if (_landmarkController.text.trim().isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Citizen-provided landmark',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(_landmarkController.text.trim()),
+                  Text(
+                    'Extra directions only; the map pin is unchanged.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Text(
                   'Property and access',

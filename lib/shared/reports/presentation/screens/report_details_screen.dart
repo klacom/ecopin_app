@@ -8,6 +8,7 @@ import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_wi
 import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/support/official_contacts_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart' as pull_refresh;
@@ -178,6 +179,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
       appBar: AppBar(
         title: const Text('Report Details'),
         actions: [
+          const OfficialContactsButton(),
           reportAsync.maybeWhen(
             data: (report) {
               final isOwner =

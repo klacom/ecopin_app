@@ -1,6 +1,8 @@
 import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/trust_review_panel.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/support/official_contacts_screen.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/crew_urgency_review_panel.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,6 +15,7 @@ class OfficerReportDetail {
   final String? title;
   final String? issue;
   final String? description;
+  final String? citizenLandmark;
   final String? location;
   final String? status;
   final String? stage;
@@ -38,6 +41,7 @@ class OfficerReportDetail {
     this.title,
     this.issue,
     this.description,
+    this.citizenLandmark,
     this.location,
     this.status,
     this.stage,
@@ -65,6 +69,7 @@ class OfficerReportDetail {
       title: json['title'] as String?,
       issue: json['issue_type'] as String?,
       description: json['description'] as String?,
+      citizenLandmark: json['citizen_landmark'] as String?,
       location: json['location'] as String?,
       status: json['status'] as String?,
       stage: json['stage'] as String? ?? json['lifecycle_stage'] as String?,
@@ -616,6 +621,7 @@ class _OfficerReportDetailsScreenState
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: const Text('Report Details', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: const [OfficialContactsButton()],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -655,6 +661,7 @@ class _OfficerReportDetailsScreenState
                   _buildReportDetailsSection(),
                   const SizedBox(height: 24),
                   _buildActionsSection(),
+                  CrewUrgencyReviewPanel(reportId: widget.reportId),
                   TrustReviewPanel(reportId: widget.reportId),
                   const SizedBox(height: 24),
                   _buildLifecycleSection(),
@@ -792,6 +799,8 @@ class _OfficerReportDetailsScreenState
             _buildInfoRow('Title', _report?.title ?? 'N/A'),
             _buildInfoRow('Issue', _report?.issue ?? 'N/A'),
             _buildInfoRow('Description', _report?.description ?? 'N/A'),
+            if (_report?.citizenLandmark?.trim().isNotEmpty == true)
+              _buildInfoRow('Citizen-provided landmark (extra directions)', _report!.citizenLandmark!),
             if (_report?.rejectionReason != null && _report!.rejectionReason!.isNotEmpty)
               _buildInfoRow('Rejection Reason', _report!.rejectionReason!),
             if (_report?.onPrivateProperty == true) ...[
@@ -1274,7 +1283,7 @@ class _OfficerReportDetailsScreenState
           Text(note.actionDetails ?? '', style: const TextStyle(fontSize: 14)),
           const SizedBox(height: 8),
           Text(
-            '${note.userName ?? 'Unknown'} • ${_formatDateTime(note.createdAt)}',
+            '${note.userName ?? 'Unknown'} â€¢ ${_formatDateTime(note.createdAt)}',
             style: TextStyle(color: Colors.grey[600], fontSize: 12),
           ),
         ],

@@ -504,6 +504,7 @@ class FcLocalRepository {
     required DateTime observedAt,
     required List<String> evidenceRefs,
     String notes = '',
+    Map<String, dynamic>? investigation,
   }) {
     const allowed = {'cleaned', 'already_resolved', 'unable', 'skipped'};
     final claimGeneration = report.reportClaimGeneration > 0
@@ -537,6 +538,7 @@ class FcLocalRepository {
         'observed_at': observedAt.toUtc().toIso8601String(),
         'evidence_refs': List<String>.unmodifiable(evidenceRefs),
         'notes': notes,
+        if (investigation != null) 'investigation': Map<String, dynamic>.from(investigation),
       },
     );
   }

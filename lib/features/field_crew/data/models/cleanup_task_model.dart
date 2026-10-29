@@ -25,6 +25,7 @@ class CleanupTask {
   final String dispatchKind;
   final int fcVersion;
   final int assignmentGeneration;
+  final String? routeStatus;
   final String? assignedFieldCrewId;
   final Map<String, int> reportClaimGenerations;
   final List<String> satelliteReportIds;
@@ -55,6 +56,7 @@ class CleanupTask {
     this.dispatchKind = 'standard',
     this.fcVersion = 0,
     this.assignmentGeneration = 0,
+    this.routeStatus,
     this.assignedFieldCrewId,
     this.reportClaimGenerations = const {},
     this.satelliteReportIds = const [],
@@ -119,6 +121,7 @@ class CleanupTask {
           .toList(),
       dispatchKind: json['dispatch_kind']?.toString() ?? 'standard',
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
+      routeStatus: json['route_status']?.toString(),
       assignmentGeneration:
           int.tryParse(json['assignment_generation']?.toString() ?? '') ?? 0,
       assignedFieldCrewId: json['assigned_field_crew_id']?.toString(),
@@ -158,6 +161,7 @@ class CleanupTask {
       'dispatch_kind': dispatchKind,
       'fc_version': fcVersion,
       'assignment_generation': assignmentGeneration,
+      'route_status': routeStatus,
       'assigned_field_crew_id': assignedFieldCrewId,
       'report_claim_generations': reportClaimGenerations,
       'satellite_report_ids': satelliteReportIds,

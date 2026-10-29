@@ -8,13 +8,17 @@ class ReportPrefillData {
 
   /// Pre-filled title copied from the rejected report.
   final String? title;
+  final bool hideIdentity;
 
   /// Pre-filled description copied from the rejected report.
   final String? description;
+  final String? citizenLandmark;
 
   const ReportPrefillData({
     this.location,
     this.title,
+    this.hideIdentity = false,
     this.description,
+    this.citizenLandmark,
   });
 }

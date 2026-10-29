@@ -5,8 +5,10 @@ import 'package:logging/logging.dart';
 class ReportModel {
   final String id;
   final String? userId;
+  final bool hideIdentity;
   final String title;
   final String? description;
+  final String? citizenLandmark;
   final String? issueType;
   final LatLng location;
   final String locationPrecision;
@@ -41,6 +43,7 @@ class ReportModel {
   final String? slaBreachDuration;
   final int fcVersion;
   final int reportClaimGeneration;
+  final String? citizenPriority;
   final String? locationVerificationStatus;
   final double? photoDistanceMeters;
   final String? cleanupTaskId;
@@ -52,8 +55,10 @@ class ReportModel {
   ReportModel({
     required this.id,
     this.userId,
+    this.hideIdentity = false,
     required this.title,
     this.description,
+    this.citizenLandmark,
     this.issueType,
     required this.location,
     this.locationPrecision = 'exact',
@@ -89,6 +94,7 @@ class ReportModel {
     this.slaBreachDuration,
     this.fcVersion = 0,
     this.reportClaimGeneration = 0,
+    this.citizenPriority,
     this.locationVerificationStatus,
     this.photoDistanceMeters,
     this.cleanupTaskId,
@@ -147,8 +153,10 @@ class ReportModel {
     return ReportModel(
       id: json['id']?.toString() ?? '',
       userId: json['user_id']?.toString(),
+      hideIdentity: json['hide_identity'] == true,
       title: json['title']?.toString() ?? 'Untitled Report',
       description: json['description']?.toString(),
+      citizenLandmark: json['citizen_landmark']?.toString(),
       issueType: json['issue_type']?.toString(),
       location: latLng,
       locationPrecision: json['location_precision']?.toString() ?? 'exact',
@@ -229,6 +237,7 @@ class ReportModel {
       slaStartedAt: DateTime.tryParse(json['sla_started_at']?.toString() ?? ''),
       deadlineAt: DateTime.tryParse(json['deadline_at']?.toString() ?? ''),
       fcVersion: int.tryParse(json['fc_version']?.toString() ?? '') ?? 0,
+      citizenPriority: json['citizen_priority']?.toString(),
       reportClaimGeneration:
           int.tryParse(json['report_claim_generation']?.toString() ?? '') ?? 0,
       locationVerificationStatus: json['location_verification_status']
@@ -253,7 +262,9 @@ class ReportModel {
           : 'Brgy. ${barangay!.trim()}';
       parts.add(bgy);
     }
-    parts.add(city != null && city!.trim().isNotEmpty ? city!.trim() : 'Pasig City');
+    parts.add(
+      city != null && city!.trim().isNotEmpty ? city!.trim() : 'Pasig City',
+    );
     return parts.join(', ');
   }
 
@@ -281,10 +292,13 @@ class ReportModel {
   /// If the report was submitted with a manual review request, returns the citizen's explanation.
   String? get manualReviewRequestReason {
     final rawNotes = notes;
-    if (rawNotes == null || !rawNotes.startsWith('Reporter requested manual review:')) {
+    if (rawNotes == null ||
+        !rawNotes.startsWith('Reporter requested manual review:')) {
       return null;
     }
-    final afterPrefix = rawNotes.substring('Reporter requested manual review:'.length);
+    final afterPrefix = rawNotes.substring(
+      'Reporter requested manual review:'.length,
+    );
     if (afterPrefix.contains('Officer rejection reason:')) {
       return afterPrefix.split('Officer rejection reason:').first.trim();
     }
@@ -295,8 +309,13 @@ class ReportModel {
     return {
       'id': id,
       'user_id': userId,
+      'hide_identity': hideIdentity,
       'title': title,
       'description': description,
+      'citizen_landmark': citizenLandmark,
+      'street_address': streetAddress,
+      'barangay': barangay,
+      'city': city,
       'issue_type': issueType,
       'latitude': location.latitude,
       'longitude': location.longitude,
@@ -324,6 +343,7 @@ class ReportModel {
       'sla_breach_duration': slaBreachDuration,
       'fc_version': fcVersion,
       'report_claim_generation': reportClaimGeneration,
+      'citizen_priority': citizenPriority,
       'cleanup_task_id': cleanupTaskId,
       'before_photos': beforePhotos,
       'after_photos': afterPhotos,

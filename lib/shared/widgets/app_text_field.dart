@@ -12,6 +12,7 @@ class AppTextField extends StatefulWidget {
   final TextEditingController controller;
   final String? hintText;
   final int? maxLines;
+  final int? maxLength;
   final FocusNode? focusNode;
   final String? errorText;
   final TextInputAction? textInputAction;
@@ -31,6 +32,7 @@ class AppTextField extends StatefulWidget {
     required this.controller,
     this.hintText = "",
     this.maxLines = 1,
+    this.maxLength,
     this.focusNode,
     this.errorText,
     this.textInputAction,
@@ -72,6 +74,7 @@ class _AppTextFieldState extends State<AppTextField> {
         enableSuggestions: widget.inputType != 'password',
         obscureText: widget.inputType == 'password' ? _obscureText : false,
         maxLines: widget.maxLines,
+        maxLength: widget.maxLength,
         decoration: InputDecoration(
           labelText: widget.labelText,
           errorText: widget.errorText,

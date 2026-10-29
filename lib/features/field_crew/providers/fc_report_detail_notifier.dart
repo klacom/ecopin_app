@@ -3,6 +3,7 @@ import 'package:ecopin_app/features/field_crew/data/models/agency_response_model
 import 'package:ecopin_app/features/field_crew/data/repositories/field_crew_report_repository.dart';
 import 'package:ecopin_app/features/field_crew/providers/field_crew_reports_provider.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
+import 'package:ecopin_app/features/field_crew/data/models/crew_urgency_observation.dart' show crewUrgencyNote;
 
 /// Holds all screen state for a single report detail view.
 class FcReportDetailState {
@@ -148,6 +149,25 @@ class FcReportDetailNotifier extends Notifier<FcReportDetailState> {
       'action_type': 'manual_note',
     });
     state = state.copyWith(notes: [synthetic, ...state.notes]);
+  }
+
+  Future<void> addUrgencyObservation({
+    required String taskId,
+    required String observerId,
+    required int assignmentGeneration,
+    required int reportClaimGeneration,
+    required String result,
+    required String conditions,
+  }) async {
+    final saved = await _repo.logAgencyResponse(reportId, crewUrgencyNote(
+      taskId: taskId,
+      observerId: observerId,
+      assignmentGeneration: assignmentGeneration,
+      reportClaimGeneration: reportClaimGeneration,
+      result: result,
+      conditions: conditions,
+    ));
+    state = state.copyWith(notes: [saved, ...state.notes]);
   }
 
   /// Applies a shallow patch to a [ReportModel] by round-tripping through JSON.

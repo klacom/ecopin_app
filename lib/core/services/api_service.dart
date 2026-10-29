@@ -206,6 +206,17 @@ class ApiClient {
   // Report methods
 
   Future<dio.Response> getCitizenTrust() => _dio.get('/api/reports/trust/me');
+  Future<dio.Response> getCrewUrgencyObservations(String reportId) =>
+      _dio.get('/api/reports/$reportId/urgency-observations');
+  Future<dio.Response> reviewCrewUrgencyObservation(
+    String reportId,
+    String observationId, {
+    required String reason,
+    required String operationId,
+  }) => _dio.post(
+    '/api/reports/$reportId/urgency-observations/${Uri.encodeComponent(observationId)}/review',
+    data: {'reason': reason, 'operation_id': operationId},
+  );
   Future<dio.Response> getCitizenTrustReview(String reportId) =>
       _dio.get('/api/reports/$reportId/trust-review');
   Future<dio.Response> recordCitizenTrustReview(
@@ -221,12 +232,14 @@ class ApiClient {
   Future<dio.Response> createReport({
     required String title,
     required String description,
+    String? citizenLandmark,
     required double latitude,
     required double longitude,
     List<String>? imagePaths,
     List<String>? cleanImagePaths,
     String? videoPath,
     bool onPrivateProperty = false,
+    bool hideIdentity = false,
     String scaleLevel = 'medium',
     String obstructionLevel = 'none',
     String? citizenPriority,
@@ -280,9 +293,15 @@ class ApiClient {
               ownerId: drift.Value(ownerId),
               title: title,
               description: description,
+              citizenLandmark: drift.Value(
+                citizenLandmark?.trim().isEmpty == true
+                    ? null
+                    : citizenLandmark?.trim(),
+              ),
               latitude: latitude,
               longitude: longitude,
               onPrivateProperty: drift.Value(onPrivateProperty),
+              hideIdentity: drift.Value(hideIdentity),
               scaleLevel: drift.Value(scaleLevel),
               obstructionLevel: drift.Value(obstructionLevel),
               citizenPriority: drift.Value(citizenPriority),
@@ -320,8 +339,12 @@ class ApiClient {
     }
 
     final formData = dio.FormData();
+    formData.fields.add(MapEntry('hide_identity', hideIdentity.toString()));
     formData.fields.add(MapEntry('title', title));
     formData.fields.add(MapEntry('description', description));
+    if (citizenLandmark != null && citizenLandmark.trim().isNotEmpty) {
+      formData.fields.add(MapEntry('citizen_landmark', citizenLandmark.trim()));
+    }
     formData.fields.add(MapEntry('latitude', latitude.toString()));
     formData.fields.add(MapEntry('longitude', longitude.toString()));
     formData.fields.add(
@@ -388,7 +411,12 @@ class ApiClient {
       );
     }
 
-    return _dio.post(ApiConstants.createReport, data: formData);
+    return _dio.post(
+      hideIdentity
+          ? '${ApiConstants.createReport}/identity-protected'
+          : ApiConstants.createReport,
+      data: formData,
+    );
   }
 
   Future<dio.Response> getReportVideoPolicy() =>
@@ -692,7 +720,9 @@ class ApiClient {
     String? expectedUserId,
   }) async {
     return _dio.post(
-      '/api/reports/sync/batch',
+      payload.any((r) => r['hide_identity'] == true)
+          ? '/api/reports/sync/batch-protected'
+          : '/api/reports/sync/batch',
       data: {'reports': payload},
       options: dio.Options(
         extra: {'expectedUserId': expectedUserId, 'requiresSession': true},

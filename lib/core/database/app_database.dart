@@ -22,12 +22,14 @@ class OfflineReports extends Table {
   TextColumn get idempotencyKey => text().unique()();
   TextColumn get title => text()();
   TextColumn get description => text()();
+  TextColumn get citizenLandmark => text().nullable()();
   RealColumn get latitude => real()();
   RealColumn get longitude => real()();
   BoolColumn get onPrivateProperty =>
       boolean().withDefault(const Constant(false))();
   TextColumn get scaleLevel => text().nullable()();
   TextColumn get obstructionLevel => text().nullable()();
+  BoolColumn get hideIdentity => boolean().withDefault(const Constant(false))();
   TextColumn get citizenPriority => text().nullable()();
   TextColumn get priorityReason => text().nullable()();
   TextColumn get priorityExplanation => text().nullable()();
@@ -331,7 +333,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration {
@@ -340,6 +342,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 10) {
+          await m.addColumn(offlineReports, offlineReports.citizenLandmark);
+        }
         if (from < 2) {
           await m.createTable(offlineMedia);
         }
@@ -369,6 +374,9 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(offlineReports, offlineReports.citizenPriority);
           await m.addColumn(offlineReports, offlineReports.priorityReason);
           await m.addColumn(offlineReports, offlineReports.priorityExplanation);
+        }
+        if (from < 9) {
+          await m.addColumn(offlineReports, offlineReports.hideIdentity);
         }
         if (from < 8) {
           await m.addColumn(offlineReports, offlineReports.ownerId);

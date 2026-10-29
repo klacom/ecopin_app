@@ -18,12 +18,17 @@ final publicReportsProvider = FutureProvider<List<ReportModel>>((ref) async {
   return dataSource.getPublicReports();
 });
 
-final reportsStreamProvider = StreamProvider<List<ReportModel>>((ref) {
+final reportsStreamProvider = StreamProvider.autoDispose<List<ReportModel>>((
+  ref,
+) {
   final dataSource = ref.watch(reportDataSourceProvider);
   return dataSource.getReportsStream();
 });
 
-final reportDetailsProvider = FutureProvider.family<ReportModel, String>((ref, id) async {
+final reportDetailsProvider = FutureProvider.family<ReportModel, String>((
+  ref,
+  id,
+) async {
   final dataSource = ref.watch(reportDataSourceProvider);
   return dataSource.getReportById(id);
 });

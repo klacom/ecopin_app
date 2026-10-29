@@ -65,6 +65,17 @@ class $OfflineReportsTable extends OfflineReports
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _citizenLandmarkMeta = const VerificationMeta(
+    'citizenLandmark',
+  );
+  @override
+  late final GeneratedColumn<String> citizenLandmark = GeneratedColumn<String>(
+    'citizen_landmark',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _latitudeMeta = const VerificationMeta(
     'latitude',
   );
@@ -123,6 +134,21 @@ class $OfflineReportsTable extends OfflineReports
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hideIdentityMeta = const VerificationMeta(
+    'hideIdentity',
+  );
+  @override
+  late final GeneratedColumn<bool> hideIdentity = GeneratedColumn<bool>(
+    'hide_identity',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("hide_identity" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
   );
   static const VerificationMeta _citizenPriorityMeta = const VerificationMeta(
     'citizenPriority',
@@ -221,11 +247,13 @@ class $OfflineReportsTable extends OfflineReports
     idempotencyKey,
     title,
     description,
+    citizenLandmark,
     latitude,
     longitude,
     onPrivateProperty,
     scaleLevel,
     obstructionLevel,
+    hideIdentity,
     citizenPriority,
     priorityReason,
     priorityExplanation,
@@ -286,6 +314,15 @@ class $OfflineReportsTable extends OfflineReports
     } else if (isInserting) {
       context.missing(_descriptionMeta);
     }
+    if (data.containsKey('citizen_landmark')) {
+      context.handle(
+        _citizenLandmarkMeta,
+        citizenLandmark.isAcceptableOrUnknown(
+          data['citizen_landmark']!,
+          _citizenLandmarkMeta,
+        ),
+      );
+    }
     if (data.containsKey('latitude')) {
       context.handle(
         _latitudeMeta,
@@ -323,6 +360,15 @@ class $OfflineReportsTable extends OfflineReports
         obstructionLevel.isAcceptableOrUnknown(
           data['obstruction_level']!,
           _obstructionLevelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hide_identity')) {
+      context.handle(
+        _hideIdentityMeta,
+        hideIdentity.isAcceptableOrUnknown(
+          data['hide_identity']!,
+          _hideIdentityMeta,
         ),
       );
     }
@@ -412,6 +458,10 @@ class $OfflineReportsTable extends OfflineReports
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       )!,
+      citizenLandmark: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}citizen_landmark'],
+      ),
       latitude: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}latitude'],
@@ -432,6 +482,10 @@ class $OfflineReportsTable extends OfflineReports
         DriftSqlType.string,
         data['${effectivePrefix}obstruction_level'],
       ),
+      hideIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}hide_identity'],
+      )!,
       citizenPriority: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}citizen_priority'],
@@ -479,11 +533,13 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   final String idempotencyKey;
   final String title;
   final String description;
+  final String? citizenLandmark;
   final double latitude;
   final double longitude;
   final bool onPrivateProperty;
   final String? scaleLevel;
   final String? obstructionLevel;
+  final bool hideIdentity;
   final String? citizenPriority;
   final String? priorityReason;
   final String? priorityExplanation;
@@ -498,11 +554,13 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     required this.idempotencyKey,
     required this.title,
     required this.description,
+    this.citizenLandmark,
     required this.latitude,
     required this.longitude,
     required this.onPrivateProperty,
     this.scaleLevel,
     this.obstructionLevel,
+    required this.hideIdentity,
     this.citizenPriority,
     this.priorityReason,
     this.priorityExplanation,
@@ -522,6 +580,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     map['idempotency_key'] = Variable<String>(idempotencyKey);
     map['title'] = Variable<String>(title);
     map['description'] = Variable<String>(description);
+    if (!nullToAbsent || citizenLandmark != null) {
+      map['citizen_landmark'] = Variable<String>(citizenLandmark);
+    }
     map['latitude'] = Variable<double>(latitude);
     map['longitude'] = Variable<double>(longitude);
     map['on_private_property'] = Variable<bool>(onPrivateProperty);
@@ -531,6 +592,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     if (!nullToAbsent || obstructionLevel != null) {
       map['obstruction_level'] = Variable<String>(obstructionLevel);
     }
+    map['hide_identity'] = Variable<bool>(hideIdentity);
     if (!nullToAbsent || citizenPriority != null) {
       map['citizen_priority'] = Variable<String>(citizenPriority);
     }
@@ -563,6 +625,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       idempotencyKey: Value(idempotencyKey),
       title: Value(title),
       description: Value(description),
+      citizenLandmark: citizenLandmark == null && nullToAbsent
+          ? const Value.absent()
+          : Value(citizenLandmark),
       latitude: Value(latitude),
       longitude: Value(longitude),
       onPrivateProperty: Value(onPrivateProperty),
@@ -572,6 +637,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       obstructionLevel: obstructionLevel == null && nullToAbsent
           ? const Value.absent()
           : Value(obstructionLevel),
+      hideIdentity: Value(hideIdentity),
       citizenPriority: citizenPriority == null && nullToAbsent
           ? const Value.absent()
           : Value(citizenPriority),
@@ -606,11 +672,13 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String>(json['description']),
+      citizenLandmark: serializer.fromJson<String?>(json['citizenLandmark']),
       latitude: serializer.fromJson<double>(json['latitude']),
       longitude: serializer.fromJson<double>(json['longitude']),
       onPrivateProperty: serializer.fromJson<bool>(json['onPrivateProperty']),
       scaleLevel: serializer.fromJson<String?>(json['scaleLevel']),
       obstructionLevel: serializer.fromJson<String?>(json['obstructionLevel']),
+      hideIdentity: serializer.fromJson<bool>(json['hideIdentity']),
       citizenPriority: serializer.fromJson<String?>(json['citizenPriority']),
       priorityReason: serializer.fromJson<String?>(json['priorityReason']),
       priorityExplanation: serializer.fromJson<String?>(
@@ -632,11 +700,13 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       'idempotencyKey': serializer.toJson<String>(idempotencyKey),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String>(description),
+      'citizenLandmark': serializer.toJson<String?>(citizenLandmark),
       'latitude': serializer.toJson<double>(latitude),
       'longitude': serializer.toJson<double>(longitude),
       'onPrivateProperty': serializer.toJson<bool>(onPrivateProperty),
       'scaleLevel': serializer.toJson<String?>(scaleLevel),
       'obstructionLevel': serializer.toJson<String?>(obstructionLevel),
+      'hideIdentity': serializer.toJson<bool>(hideIdentity),
       'citizenPriority': serializer.toJson<String?>(citizenPriority),
       'priorityReason': serializer.toJson<String?>(priorityReason),
       'priorityExplanation': serializer.toJson<String?>(priorityExplanation),
@@ -654,11 +724,13 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     String? idempotencyKey,
     String? title,
     String? description,
+    Value<String?> citizenLandmark = const Value.absent(),
     double? latitude,
     double? longitude,
     bool? onPrivateProperty,
     Value<String?> scaleLevel = const Value.absent(),
     Value<String?> obstructionLevel = const Value.absent(),
+    bool? hideIdentity,
     Value<String?> citizenPriority = const Value.absent(),
     Value<String?> priorityReason = const Value.absent(),
     Value<String?> priorityExplanation = const Value.absent(),
@@ -673,6 +745,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     idempotencyKey: idempotencyKey ?? this.idempotencyKey,
     title: title ?? this.title,
     description: description ?? this.description,
+    citizenLandmark: citizenLandmark.present
+        ? citizenLandmark.value
+        : this.citizenLandmark,
     latitude: latitude ?? this.latitude,
     longitude: longitude ?? this.longitude,
     onPrivateProperty: onPrivateProperty ?? this.onPrivateProperty,
@@ -680,6 +755,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     obstructionLevel: obstructionLevel.present
         ? obstructionLevel.value
         : this.obstructionLevel,
+    hideIdentity: hideIdentity ?? this.hideIdentity,
     citizenPriority: citizenPriority.present
         ? citizenPriority.value
         : this.citizenPriority,
@@ -706,6 +782,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      citizenLandmark: data.citizenLandmark.present
+          ? data.citizenLandmark.value
+          : this.citizenLandmark,
       latitude: data.latitude.present ? data.latitude.value : this.latitude,
       longitude: data.longitude.present ? data.longitude.value : this.longitude,
       onPrivateProperty: data.onPrivateProperty.present
@@ -717,6 +796,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       obstructionLevel: data.obstructionLevel.present
           ? data.obstructionLevel.value
           : this.obstructionLevel,
+      hideIdentity: data.hideIdentity.present
+          ? data.hideIdentity.value
+          : this.hideIdentity,
       citizenPriority: data.citizenPriority.present
           ? data.citizenPriority.value
           : this.citizenPriority,
@@ -746,11 +828,13 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('citizenLandmark: $citizenLandmark, ')
           ..write('latitude: $latitude, ')
           ..write('longitude: $longitude, ')
           ..write('onPrivateProperty: $onPrivateProperty, ')
           ..write('scaleLevel: $scaleLevel, ')
           ..write('obstructionLevel: $obstructionLevel, ')
+          ..write('hideIdentity: $hideIdentity, ')
           ..write('citizenPriority: $citizenPriority, ')
           ..write('priorityReason: $priorityReason, ')
           ..write('priorityExplanation: $priorityExplanation, ')
@@ -770,11 +854,13 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     idempotencyKey,
     title,
     description,
+    citizenLandmark,
     latitude,
     longitude,
     onPrivateProperty,
     scaleLevel,
     obstructionLevel,
+    hideIdentity,
     citizenPriority,
     priorityReason,
     priorityExplanation,
@@ -793,11 +879,13 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           other.idempotencyKey == this.idempotencyKey &&
           other.title == this.title &&
           other.description == this.description &&
+          other.citizenLandmark == this.citizenLandmark &&
           other.latitude == this.latitude &&
           other.longitude == this.longitude &&
           other.onPrivateProperty == this.onPrivateProperty &&
           other.scaleLevel == this.scaleLevel &&
           other.obstructionLevel == this.obstructionLevel &&
+          other.hideIdentity == this.hideIdentity &&
           other.citizenPriority == this.citizenPriority &&
           other.priorityReason == this.priorityReason &&
           other.priorityExplanation == this.priorityExplanation &&
@@ -814,11 +902,13 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
   final Value<String> idempotencyKey;
   final Value<String> title;
   final Value<String> description;
+  final Value<String?> citizenLandmark;
   final Value<double> latitude;
   final Value<double> longitude;
   final Value<bool> onPrivateProperty;
   final Value<String?> scaleLevel;
   final Value<String?> obstructionLevel;
+  final Value<bool> hideIdentity;
   final Value<String?> citizenPriority;
   final Value<String?> priorityReason;
   final Value<String?> priorityExplanation;
@@ -833,11 +923,13 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     this.idempotencyKey = const Value.absent(),
     this.title = const Value.absent(),
     this.description = const Value.absent(),
+    this.citizenLandmark = const Value.absent(),
     this.latitude = const Value.absent(),
     this.longitude = const Value.absent(),
     this.onPrivateProperty = const Value.absent(),
     this.scaleLevel = const Value.absent(),
     this.obstructionLevel = const Value.absent(),
+    this.hideIdentity = const Value.absent(),
     this.citizenPriority = const Value.absent(),
     this.priorityReason = const Value.absent(),
     this.priorityExplanation = const Value.absent(),
@@ -853,11 +945,13 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     required String idempotencyKey,
     required String title,
     required String description,
+    this.citizenLandmark = const Value.absent(),
     required double latitude,
     required double longitude,
     this.onPrivateProperty = const Value.absent(),
     this.scaleLevel = const Value.absent(),
     this.obstructionLevel = const Value.absent(),
+    this.hideIdentity = const Value.absent(),
     this.citizenPriority = const Value.absent(),
     this.priorityReason = const Value.absent(),
     this.priorityExplanation = const Value.absent(),
@@ -877,11 +971,13 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Expression<String>? idempotencyKey,
     Expression<String>? title,
     Expression<String>? description,
+    Expression<String>? citizenLandmark,
     Expression<double>? latitude,
     Expression<double>? longitude,
     Expression<bool>? onPrivateProperty,
     Expression<String>? scaleLevel,
     Expression<String>? obstructionLevel,
+    Expression<bool>? hideIdentity,
     Expression<String>? citizenPriority,
     Expression<String>? priorityReason,
     Expression<String>? priorityExplanation,
@@ -897,11 +993,13 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
       if (title != null) 'title': title,
       if (description != null) 'description': description,
+      if (citizenLandmark != null) 'citizen_landmark': citizenLandmark,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
       if (onPrivateProperty != null) 'on_private_property': onPrivateProperty,
       if (scaleLevel != null) 'scale_level': scaleLevel,
       if (obstructionLevel != null) 'obstruction_level': obstructionLevel,
+      if (hideIdentity != null) 'hide_identity': hideIdentity,
       if (citizenPriority != null) 'citizen_priority': citizenPriority,
       if (priorityReason != null) 'priority_reason': priorityReason,
       if (priorityExplanation != null)
@@ -920,11 +1018,13 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Value<String>? idempotencyKey,
     Value<String>? title,
     Value<String>? description,
+    Value<String?>? citizenLandmark,
     Value<double>? latitude,
     Value<double>? longitude,
     Value<bool>? onPrivateProperty,
     Value<String?>? scaleLevel,
     Value<String?>? obstructionLevel,
+    Value<bool>? hideIdentity,
     Value<String?>? citizenPriority,
     Value<String?>? priorityReason,
     Value<String?>? priorityExplanation,
@@ -940,11 +1040,13 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       idempotencyKey: idempotencyKey ?? this.idempotencyKey,
       title: title ?? this.title,
       description: description ?? this.description,
+      citizenLandmark: citizenLandmark ?? this.citizenLandmark,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       onPrivateProperty: onPrivateProperty ?? this.onPrivateProperty,
       scaleLevel: scaleLevel ?? this.scaleLevel,
       obstructionLevel: obstructionLevel ?? this.obstructionLevel,
+      hideIdentity: hideIdentity ?? this.hideIdentity,
       citizenPriority: citizenPriority ?? this.citizenPriority,
       priorityReason: priorityReason ?? this.priorityReason,
       priorityExplanation: priorityExplanation ?? this.priorityExplanation,
@@ -974,6 +1076,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (citizenLandmark.present) {
+      map['citizen_landmark'] = Variable<String>(citizenLandmark.value);
+    }
     if (latitude.present) {
       map['latitude'] = Variable<double>(latitude.value);
     }
@@ -988,6 +1093,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     }
     if (obstructionLevel.present) {
       map['obstruction_level'] = Variable<String>(obstructionLevel.value);
+    }
+    if (hideIdentity.present) {
+      map['hide_identity'] = Variable<bool>(hideIdentity.value);
     }
     if (citizenPriority.present) {
       map['citizen_priority'] = Variable<String>(citizenPriority.value);
@@ -1024,11 +1132,13 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('citizenLandmark: $citizenLandmark, ')
           ..write('latitude: $latitude, ')
           ..write('longitude: $longitude, ')
           ..write('onPrivateProperty: $onPrivateProperty, ')
           ..write('scaleLevel: $scaleLevel, ')
           ..write('obstructionLevel: $obstructionLevel, ')
+          ..write('hideIdentity: $hideIdentity, ')
           ..write('citizenPriority: $citizenPriority, ')
           ..write('priorityReason: $priorityReason, ')
           ..write('priorityExplanation: $priorityExplanation, ')
@@ -6358,11 +6468,13 @@ typedef $$OfflineReportsTableCreateCompanionBuilder =
       required String idempotencyKey,
       required String title,
       required String description,
+      Value<String?> citizenLandmark,
       required double latitude,
       required double longitude,
       Value<bool> onPrivateProperty,
       Value<String?> scaleLevel,
       Value<String?> obstructionLevel,
+      Value<bool> hideIdentity,
       Value<String?> citizenPriority,
       Value<String?> priorityReason,
       Value<String?> priorityExplanation,
@@ -6379,11 +6491,13 @@ typedef $$OfflineReportsTableUpdateCompanionBuilder =
       Value<String> idempotencyKey,
       Value<String> title,
       Value<String> description,
+      Value<String?> citizenLandmark,
       Value<double> latitude,
       Value<double> longitude,
       Value<bool> onPrivateProperty,
       Value<String?> scaleLevel,
       Value<String?> obstructionLevel,
+      Value<bool> hideIdentity,
       Value<String?> citizenPriority,
       Value<String?> priorityReason,
       Value<String?> priorityExplanation,
@@ -6428,6 +6542,11 @@ class $$OfflineReportsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get citizenLandmark => $composableBuilder(
+    column: $table.citizenLandmark,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<double> get latitude => $composableBuilder(
     column: $table.latitude,
     builder: (column) => ColumnFilters(column),
@@ -6450,6 +6569,11 @@ class $$OfflineReportsTableFilterComposer
 
   ColumnFilters<String> get obstructionLevel => $composableBuilder(
     column: $table.obstructionLevel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hideIdentity => $composableBuilder(
+    column: $table.hideIdentity,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6528,6 +6652,11 @@ class $$OfflineReportsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get citizenLandmark => $composableBuilder(
+    column: $table.citizenLandmark,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get latitude => $composableBuilder(
     column: $table.latitude,
     builder: (column) => ColumnOrderings(column),
@@ -6550,6 +6679,11 @@ class $$OfflineReportsTableOrderingComposer
 
   ColumnOrderings<String> get obstructionLevel => $composableBuilder(
     column: $table.obstructionLevel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get hideIdentity => $composableBuilder(
+    column: $table.hideIdentity,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6622,6 +6756,11 @@ class $$OfflineReportsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get citizenLandmark => $composableBuilder(
+    column: $table.citizenLandmark,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<double> get latitude =>
       $composableBuilder(column: $table.latitude, builder: (column) => column);
 
@@ -6640,6 +6779,11 @@ class $$OfflineReportsTableAnnotationComposer
 
   GeneratedColumn<String> get obstructionLevel => $composableBuilder(
     column: $table.obstructionLevel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get hideIdentity => $composableBuilder(
+    column: $table.hideIdentity,
     builder: (column) => column,
   );
 
@@ -6716,11 +6860,13 @@ class $$OfflineReportsTableTableManager
                 Value<String> idempotencyKey = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> description = const Value.absent(),
+                Value<String?> citizenLandmark = const Value.absent(),
                 Value<double> latitude = const Value.absent(),
                 Value<double> longitude = const Value.absent(),
                 Value<bool> onPrivateProperty = const Value.absent(),
                 Value<String?> scaleLevel = const Value.absent(),
                 Value<String?> obstructionLevel = const Value.absent(),
+                Value<bool> hideIdentity = const Value.absent(),
                 Value<String?> citizenPriority = const Value.absent(),
                 Value<String?> priorityReason = const Value.absent(),
                 Value<String?> priorityExplanation = const Value.absent(),
@@ -6735,11 +6881,13 @@ class $$OfflineReportsTableTableManager
                 idempotencyKey: idempotencyKey,
                 title: title,
                 description: description,
+                citizenLandmark: citizenLandmark,
                 latitude: latitude,
                 longitude: longitude,
                 onPrivateProperty: onPrivateProperty,
                 scaleLevel: scaleLevel,
                 obstructionLevel: obstructionLevel,
+                hideIdentity: hideIdentity,
                 citizenPriority: citizenPriority,
                 priorityReason: priorityReason,
                 priorityExplanation: priorityExplanation,
@@ -6756,11 +6904,13 @@ class $$OfflineReportsTableTableManager
                 required String idempotencyKey,
                 required String title,
                 required String description,
+                Value<String?> citizenLandmark = const Value.absent(),
                 required double latitude,
                 required double longitude,
                 Value<bool> onPrivateProperty = const Value.absent(),
                 Value<String?> scaleLevel = const Value.absent(),
                 Value<String?> obstructionLevel = const Value.absent(),
+                Value<bool> hideIdentity = const Value.absent(),
                 Value<String?> citizenPriority = const Value.absent(),
                 Value<String?> priorityReason = const Value.absent(),
                 Value<String?> priorityExplanation = const Value.absent(),
@@ -6775,11 +6925,13 @@ class $$OfflineReportsTableTableManager
                 idempotencyKey: idempotencyKey,
                 title: title,
                 description: description,
+                citizenLandmark: citizenLandmark,
                 latitude: latitude,
                 longitude: longitude,
                 onPrivateProperty: onPrivateProperty,
                 scaleLevel: scaleLevel,
                 obstructionLevel: obstructionLevel,
+                hideIdentity: hideIdentity,
                 citizenPriority: citizenPriority,
                 priorityReason: priorityReason,
                 priorityExplanation: priorityExplanation,

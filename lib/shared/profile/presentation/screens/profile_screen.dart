@@ -3,6 +3,7 @@ import 'package:dio/dio.dart' as dio;
 import 'package:ecopin_app/core/utils/validators.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/support/official_contacts_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
@@ -484,7 +485,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: const Text('Profile'), actions: const [OfficialContactsButton()]),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(profileProvider);

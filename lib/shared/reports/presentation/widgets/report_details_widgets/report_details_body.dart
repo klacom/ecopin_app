@@ -85,6 +85,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
       title: widget.report.title,
       hideIdentity: widget.report.hideIdentity,
       description: widget.report.description,
+      citizenLandmark: widget.report.citizenLandmark,
     );
 
     context.push(ProtectedAppRoutes.createReport, extra: prefill);
@@ -397,6 +398,19 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             widget.report.description ?? 'No description provided.',
             style: const TextStyle(fontSize: 16),
           ),
+          if (widget.report.citizenLandmark?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Citizen-provided landmark',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            SelectableText(widget.report.citizenLandmark!),
+            Text(
+              'Extra directions only; map coordinates remain authoritative.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: 24),
           const Text(
             'Location & Date',

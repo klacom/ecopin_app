@@ -232,6 +232,7 @@ class ApiClient {
   Future<dio.Response> createReport({
     required String title,
     required String description,
+    String? citizenLandmark,
     required double latitude,
     required double longitude,
     List<String>? imagePaths,
@@ -292,6 +293,11 @@ class ApiClient {
               ownerId: drift.Value(ownerId),
               title: title,
               description: description,
+              citizenLandmark: drift.Value(
+                citizenLandmark?.trim().isEmpty == true
+                    ? null
+                    : citizenLandmark?.trim(),
+              ),
               latitude: latitude,
               longitude: longitude,
               onPrivateProperty: drift.Value(onPrivateProperty),
@@ -336,6 +342,9 @@ class ApiClient {
     formData.fields.add(MapEntry('hide_identity', hideIdentity.toString()));
     formData.fields.add(MapEntry('title', title));
     formData.fields.add(MapEntry('description', description));
+    if (citizenLandmark != null && citizenLandmark.trim().isNotEmpty) {
+      formData.fields.add(MapEntry('citizen_landmark', citizenLandmark.trim()));
+    }
     formData.fields.add(MapEntry('latitude', latitude.toString()));
     formData.fields.add(MapEntry('longitude', longitude.toString()));
     formData.fields.add(

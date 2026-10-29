@@ -65,6 +65,17 @@ class $OfflineReportsTable extends OfflineReports
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _citizenLandmarkMeta = const VerificationMeta(
+    'citizenLandmark',
+  );
+  @override
+  late final GeneratedColumn<String> citizenLandmark = GeneratedColumn<String>(
+    'citizen_landmark',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _latitudeMeta = const VerificationMeta(
     'latitude',
   );
@@ -236,6 +247,7 @@ class $OfflineReportsTable extends OfflineReports
     idempotencyKey,
     title,
     description,
+    citizenLandmark,
     latitude,
     longitude,
     onPrivateProperty,
@@ -301,6 +313,15 @@ class $OfflineReportsTable extends OfflineReports
       );
     } else if (isInserting) {
       context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('citizen_landmark')) {
+      context.handle(
+        _citizenLandmarkMeta,
+        citizenLandmark.isAcceptableOrUnknown(
+          data['citizen_landmark']!,
+          _citizenLandmarkMeta,
+        ),
+      );
     }
     if (data.containsKey('latitude')) {
       context.handle(
@@ -437,6 +458,10 @@ class $OfflineReportsTable extends OfflineReports
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       )!,
+      citizenLandmark: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}citizen_landmark'],
+      ),
       latitude: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}latitude'],
@@ -508,6 +533,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   final String idempotencyKey;
   final String title;
   final String description;
+  final String? citizenLandmark;
   final double latitude;
   final double longitude;
   final bool onPrivateProperty;
@@ -528,6 +554,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     required this.idempotencyKey,
     required this.title,
     required this.description,
+    this.citizenLandmark,
     required this.latitude,
     required this.longitude,
     required this.onPrivateProperty,
@@ -553,6 +580,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     map['idempotency_key'] = Variable<String>(idempotencyKey);
     map['title'] = Variable<String>(title);
     map['description'] = Variable<String>(description);
+    if (!nullToAbsent || citizenLandmark != null) {
+      map['citizen_landmark'] = Variable<String>(citizenLandmark);
+    }
     map['latitude'] = Variable<double>(latitude);
     map['longitude'] = Variable<double>(longitude);
     map['on_private_property'] = Variable<bool>(onPrivateProperty);
@@ -595,6 +625,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       idempotencyKey: Value(idempotencyKey),
       title: Value(title),
       description: Value(description),
+      citizenLandmark: citizenLandmark == null && nullToAbsent
+          ? const Value.absent()
+          : Value(citizenLandmark),
       latitude: Value(latitude),
       longitude: Value(longitude),
       onPrivateProperty: Value(onPrivateProperty),
@@ -639,6 +672,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String>(json['description']),
+      citizenLandmark: serializer.fromJson<String?>(json['citizenLandmark']),
       latitude: serializer.fromJson<double>(json['latitude']),
       longitude: serializer.fromJson<double>(json['longitude']),
       onPrivateProperty: serializer.fromJson<bool>(json['onPrivateProperty']),
@@ -666,6 +700,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       'idempotencyKey': serializer.toJson<String>(idempotencyKey),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String>(description),
+      'citizenLandmark': serializer.toJson<String?>(citizenLandmark),
       'latitude': serializer.toJson<double>(latitude),
       'longitude': serializer.toJson<double>(longitude),
       'onPrivateProperty': serializer.toJson<bool>(onPrivateProperty),
@@ -689,6 +724,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     String? idempotencyKey,
     String? title,
     String? description,
+    Value<String?> citizenLandmark = const Value.absent(),
     double? latitude,
     double? longitude,
     bool? onPrivateProperty,
@@ -709,6 +745,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     idempotencyKey: idempotencyKey ?? this.idempotencyKey,
     title: title ?? this.title,
     description: description ?? this.description,
+    citizenLandmark: citizenLandmark.present
+        ? citizenLandmark.value
+        : this.citizenLandmark,
     latitude: latitude ?? this.latitude,
     longitude: longitude ?? this.longitude,
     onPrivateProperty: onPrivateProperty ?? this.onPrivateProperty,
@@ -743,6 +782,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       description: data.description.present
           ? data.description.value
           : this.description,
+      citizenLandmark: data.citizenLandmark.present
+          ? data.citizenLandmark.value
+          : this.citizenLandmark,
       latitude: data.latitude.present ? data.latitude.value : this.latitude,
       longitude: data.longitude.present ? data.longitude.value : this.longitude,
       onPrivateProperty: data.onPrivateProperty.present
@@ -786,6 +828,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('citizenLandmark: $citizenLandmark, ')
           ..write('latitude: $latitude, ')
           ..write('longitude: $longitude, ')
           ..write('onPrivateProperty: $onPrivateProperty, ')
@@ -811,6 +854,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     idempotencyKey,
     title,
     description,
+    citizenLandmark,
     latitude,
     longitude,
     onPrivateProperty,
@@ -835,6 +879,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           other.idempotencyKey == this.idempotencyKey &&
           other.title == this.title &&
           other.description == this.description &&
+          other.citizenLandmark == this.citizenLandmark &&
           other.latitude == this.latitude &&
           other.longitude == this.longitude &&
           other.onPrivateProperty == this.onPrivateProperty &&
@@ -857,6 +902,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
   final Value<String> idempotencyKey;
   final Value<String> title;
   final Value<String> description;
+  final Value<String?> citizenLandmark;
   final Value<double> latitude;
   final Value<double> longitude;
   final Value<bool> onPrivateProperty;
@@ -877,6 +923,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     this.idempotencyKey = const Value.absent(),
     this.title = const Value.absent(),
     this.description = const Value.absent(),
+    this.citizenLandmark = const Value.absent(),
     this.latitude = const Value.absent(),
     this.longitude = const Value.absent(),
     this.onPrivateProperty = const Value.absent(),
@@ -898,6 +945,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     required String idempotencyKey,
     required String title,
     required String description,
+    this.citizenLandmark = const Value.absent(),
     required double latitude,
     required double longitude,
     this.onPrivateProperty = const Value.absent(),
@@ -923,6 +971,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Expression<String>? idempotencyKey,
     Expression<String>? title,
     Expression<String>? description,
+    Expression<String>? citizenLandmark,
     Expression<double>? latitude,
     Expression<double>? longitude,
     Expression<bool>? onPrivateProperty,
@@ -944,6 +993,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
       if (title != null) 'title': title,
       if (description != null) 'description': description,
+      if (citizenLandmark != null) 'citizen_landmark': citizenLandmark,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
       if (onPrivateProperty != null) 'on_private_property': onPrivateProperty,
@@ -968,6 +1018,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Value<String>? idempotencyKey,
     Value<String>? title,
     Value<String>? description,
+    Value<String?>? citizenLandmark,
     Value<double>? latitude,
     Value<double>? longitude,
     Value<bool>? onPrivateProperty,
@@ -989,6 +1040,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       idempotencyKey: idempotencyKey ?? this.idempotencyKey,
       title: title ?? this.title,
       description: description ?? this.description,
+      citizenLandmark: citizenLandmark ?? this.citizenLandmark,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       onPrivateProperty: onPrivateProperty ?? this.onPrivateProperty,
@@ -1023,6 +1075,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
+    }
+    if (citizenLandmark.present) {
+      map['citizen_landmark'] = Variable<String>(citizenLandmark.value);
     }
     if (latitude.present) {
       map['latitude'] = Variable<double>(latitude.value);
@@ -1077,6 +1132,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
+          ..write('citizenLandmark: $citizenLandmark, ')
           ..write('latitude: $latitude, ')
           ..write('longitude: $longitude, ')
           ..write('onPrivateProperty: $onPrivateProperty, ')
@@ -6412,6 +6468,7 @@ typedef $$OfflineReportsTableCreateCompanionBuilder =
       required String idempotencyKey,
       required String title,
       required String description,
+      Value<String?> citizenLandmark,
       required double latitude,
       required double longitude,
       Value<bool> onPrivateProperty,
@@ -6434,6 +6491,7 @@ typedef $$OfflineReportsTableUpdateCompanionBuilder =
       Value<String> idempotencyKey,
       Value<String> title,
       Value<String> description,
+      Value<String?> citizenLandmark,
       Value<double> latitude,
       Value<double> longitude,
       Value<bool> onPrivateProperty,
@@ -6481,6 +6539,11 @@ class $$OfflineReportsTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get citizenLandmark => $composableBuilder(
+    column: $table.citizenLandmark,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6589,6 +6652,11 @@ class $$OfflineReportsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get citizenLandmark => $composableBuilder(
+    column: $table.citizenLandmark,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get latitude => $composableBuilder(
     column: $table.latitude,
     builder: (column) => ColumnOrderings(column),
@@ -6685,6 +6753,11 @@ class $$OfflineReportsTableAnnotationComposer
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get citizenLandmark => $composableBuilder(
+    column: $table.citizenLandmark,
     builder: (column) => column,
   );
 
@@ -6787,6 +6860,7 @@ class $$OfflineReportsTableTableManager
                 Value<String> idempotencyKey = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> description = const Value.absent(),
+                Value<String?> citizenLandmark = const Value.absent(),
                 Value<double> latitude = const Value.absent(),
                 Value<double> longitude = const Value.absent(),
                 Value<bool> onPrivateProperty = const Value.absent(),
@@ -6807,6 +6881,7 @@ class $$OfflineReportsTableTableManager
                 idempotencyKey: idempotencyKey,
                 title: title,
                 description: description,
+                citizenLandmark: citizenLandmark,
                 latitude: latitude,
                 longitude: longitude,
                 onPrivateProperty: onPrivateProperty,
@@ -6829,6 +6904,7 @@ class $$OfflineReportsTableTableManager
                 required String idempotencyKey,
                 required String title,
                 required String description,
+                Value<String?> citizenLandmark = const Value.absent(),
                 required double latitude,
                 required double longitude,
                 Value<bool> onPrivateProperty = const Value.absent(),
@@ -6849,6 +6925,7 @@ class $$OfflineReportsTableTableManager
                 idempotencyKey: idempotencyKey,
                 title: title,
                 description: description,
+                citizenLandmark: citizenLandmark,
                 latitude: latitude,
                 longitude: longitude,
                 onPrivateProperty: onPrivateProperty,

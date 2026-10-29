@@ -54,6 +54,10 @@ class FcReportMetadataCard extends StatelessWidget {
           const SizedBox(height: AppColors.spaceMD),
           ResponseDeadlineIndicator(report: report, details: true),
           _buildInfoRow('Description', report.description ?? 'N/A', textColor),
+          if (report.citizenLandmark?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: AppColors.spaceMD),
+            _buildInfoRow('Citizen-provided landmark (extra directions)', report.citizenLandmark!, textColor),
+          ],
           Divider(color: dividerColor, height: 24),
           Row(
             children: [

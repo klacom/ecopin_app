@@ -8,6 +8,7 @@ class ReportModel {
   final bool hideIdentity;
   final String title;
   final String? description;
+  final String? citizenLandmark;
   final String? issueType;
   final LatLng location;
   final String locationPrecision;
@@ -57,6 +58,7 @@ class ReportModel {
     this.hideIdentity = false,
     required this.title,
     this.description,
+    this.citizenLandmark,
     this.issueType,
     required this.location,
     this.locationPrecision = 'exact',
@@ -154,6 +156,7 @@ class ReportModel {
       hideIdentity: json['hide_identity'] == true,
       title: json['title']?.toString() ?? 'Untitled Report',
       description: json['description']?.toString(),
+      citizenLandmark: json['citizen_landmark']?.toString(),
       issueType: json['issue_type']?.toString(),
       location: latLng,
       locationPrecision: json['location_precision']?.toString() ?? 'exact',
@@ -309,6 +312,10 @@ class ReportModel {
       'hide_identity': hideIdentity,
       'title': title,
       'description': description,
+      'citizen_landmark': citizenLandmark,
+      'street_address': streetAddress,
+      'barangay': barangay,
+      'city': city,
       'issue_type': issueType,
       'latitude': location.latitude,
       'longitude': location.longitude,

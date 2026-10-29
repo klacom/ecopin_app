@@ -22,6 +22,7 @@ class OfflineReports extends Table {
   TextColumn get idempotencyKey => text().unique()();
   TextColumn get title => text()();
   TextColumn get description => text()();
+  TextColumn get citizenLandmark => text().nullable()();
   RealColumn get latitude => real()();
   RealColumn get longitude => real()();
   BoolColumn get onPrivateProperty =>
@@ -332,7 +333,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration {
@@ -341,6 +342,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 10) {
+          await m.addColumn(offlineReports, offlineReports.citizenLandmark);
+        }
         if (from < 2) {
           await m.createTable(offlineMedia);
         }

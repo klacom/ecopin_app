@@ -12,11 +12,13 @@ class ReportPrefillData {
 
   /// Pre-filled description copied from the rejected report.
   final String? description;
+  final String? citizenLandmark;
 
   const ReportPrefillData({
     this.location,
     this.title,
     this.hideIdentity = false,
     this.description,
+    this.citizenLandmark,
   });
 }

@@ -52,27 +52,38 @@ class FcMetricsHeader extends ConsumerWidget {
               child: Semantics(
                 header: true,
                 child: Text(
-                  firstName == null ? 'Your assigned work' : 'Hello, $firstName',
+                  firstName == null
+                      ? 'Your assigned work'
+                      : 'Hello, $firstName',
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
             ),
             if (teamName != null) ...[
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  teamName,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    teamName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 ),
               ),
@@ -88,7 +99,9 @@ class FcMetricsHeader extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.35),
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceVariant.withOpacity(0.35),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: Theme.of(context).dividerColor.withOpacity(0.2),
@@ -110,7 +123,11 @@ class FcMetricsHeader extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      Container(width: 1, height: 28, color: Theme.of(context).dividerColor.withOpacity(0.2)),
+                      Container(
+                        width: 1,
+                        height: 28,
+                        color: Theme.of(context).dividerColor.withOpacity(0.2),
+                      ),
                       Expanded(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
@@ -118,11 +135,17 @@ class FcMetricsHeader extends ConsumerWidget {
                             icon: Icons.sentiment_satisfied_alt_rounded,
                             iconColor: Colors.amber,
                             label: 'Citizen CSAT',
-                            value: rating != null ? '${getSatisfactionEmoji(rating)}$rating' : '—',
+                            value: rating != null
+                                ? '${getSatisfactionEmoji(rating)}$rating'
+                                : '—',
                           ),
                         ),
                       ),
-                      Container(width: 1, height: 28, color: Theme.of(context).dividerColor.withOpacity(0.2)),
+                      Container(
+                        width: 1,
+                        height: 28,
+                        color: Theme.of(context).dividerColor.withOpacity(0.2),
+                      ),
                       Expanded(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
@@ -138,28 +161,38 @@ class FcMetricsHeader extends ConsumerWidget {
                   ),
                   if (teamCompleted != null && teamCompleted > 0) ...[
                     const SizedBox(height: 8),
-                    Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.15)),
+                    Divider(
+                      height: 1,
+                      color: Theme.of(context).dividerColor.withOpacity(0.15),
+                    ),
                     const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.groups_outlined, size: 14, color: Theme.of(context).colorScheme.primary),
+                        Icon(
+                          Icons.groups_outlined,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'Team ${teamName ?? "Crew"}: $teamCompleted cleared • ${teamRating != null ? "${getSatisfactionEmoji(teamRating)}$teamRating" : "No rating yet"}',
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 11,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 11,
+                                ),
                           ),
                         ),
                         const SizedBox(width: 4),
                         Icon(
                           Icons.chevron_right,
                           size: 14,
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.6),
                         ),
                       ],
                     ),
@@ -199,9 +232,9 @@ class _MetricItem extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -209,7 +242,9 @@ class _MetricItem extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+            color: Theme.of(
+              context,
+            ).textTheme.bodySmall?.color?.withOpacity(0.7),
             fontSize: 10,
           ),
         ),
@@ -217,4 +252,3 @@ class _MetricItem extends StatelessWidget {
     );
   }
 }
-

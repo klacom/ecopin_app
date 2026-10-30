@@ -4,6 +4,7 @@ import 'package:ecopin_app/core/utils/validators.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/shared/support/official_contacts_screen.dart';
+import 'package:ecopin_app/shared/support/help_support_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
@@ -863,6 +864,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     if (profile?['role'] == 'citizen') ...[
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.of(context).push<void>(
+                            MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+                          ),
+                          icon: const Icon(Icons.support_agent_outlined),
+                          label: const Text('Help & support'),
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,

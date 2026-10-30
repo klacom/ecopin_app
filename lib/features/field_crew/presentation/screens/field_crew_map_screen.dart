@@ -12,6 +12,8 @@ import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/features/field_crew/providers/my_route_provider.dart';
 import 'package:ecopin_app/features/field_crew/providers/cleanup_tasks_provider.dart';
+import 'package:ecopin_app/features/field_crew/providers/fc_route_order_provider.dart';
+import 'package:ecopin_app/features/field_crew/presentation/controllers/fc_route_order.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_shimmer_card.dart';
 import 'package:ecopin_app/core/services/location_service.dart';
 import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
@@ -376,6 +378,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
     final tasksAsync = ref.watch(myCleanupTasksProvider);
     final completedTasks = ref.watch(completedTasksProvider);
     final heldTasks = ref.watch(heldTasksProvider);
+    final routeOrder = ref.watch(fcRouteOrderProvider);
 
     // Cancel navigation if the active task gets completed
     ref.listen(completedTasksProvider, (previous, next) {
@@ -828,143 +831,74 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                 ),
               ),
 
-              // Unified Bottom Action Card
+              // Unified Bottom Action Card, with the map actions stacked above
+              // it so they follow the card's height.
               Positioned(
                 bottom:
                     16, // The parent Scaffold already reserves the bottom navigation bar.
                 left: 16,
                 right: 16,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color:
-                        (Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF1E1E1E)
-                                : Colors.white)
-                            .withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white10
-                          : Colors.grey.shade200,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: Theme.of(context).brightness == Brightness.dark
-                              ? 0.45
-                              : 0.08,
+                child: Column(
+                  verticalDirection: VerticalDirection.up,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color:
+                            (Theme.of(context).brightness == Brightness.dark
+                                    ? const Color(0xFF1E1E1E)
+                                    : Colors.white)
+                                .withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white10
+                              : Colors.grey.shade200,
                         ),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: _isNavigating
-                      ? SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              flutterTts.stop();
-                              setState(() {
-                                _isNavigating = false;
-                                _activeNavigationTaskId = null;
-                                _lastSpokenStepIndex = -1;
-                                _lastSpokenDistanceThreshold = 999999;
-                              });
-                            },
-                            icon: const Icon(Icons.close, color: Colors.white),
-                            label: Text(
-                              _routeSteps.isEmpty
-                                  ? 'Exit preview'
-                                  : 'Exit navigation',
-                              style: AppTypography.h4.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? 0.45
+                                  : 0.08,
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.error,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 0,
-                            ),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
-                        )
-                      : Builder(
-                          builder: (context) {
-                            // ignore: depend_on_referenced_packages
-                            final uncompletedTasks = tasks.where((t) {
-                              if (t.status.toLowerCase() == 'completed' ||
-                                  t.status.toLowerCase() == 'cancelled' ||
-                                  completedTasks.contains(t.id) ||
-                                  heldTasks.contains(t.id)) {
-                                return false;
-                              }
-                              return route.waypoints.any(
-                                (w) => w.cleanupTaskId == t.id,
-                              );
-                            }).toList();
-
-                            uncompletedTasks.sort((a, b) {
-                              final wpA = route.waypoints.firstWhere(
-                                (w) => w.cleanupTaskId == a.id,
-                              );
-                              final wpB = route.waypoints.firstWhere(
-                                (w) => w.cleanupTaskId == b.id,
-                              );
-                              return wpA.sequenceOrder.compareTo(
-                                wpB.sequenceOrder,
-                              );
-                            });
-                            final nextTask = uncompletedTasks.firstOrNull;
-                            if (nextTask == null) {
-                              return Center(
-                                child: Text(
-                                  'All Route Tasks Completed',
-                                  style: AppTypography.body.copyWith(
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              );
-                            }
-
-                            return SizedBox(
+                        ],
+                      ),
+                      child: _isNavigating
+                          ? SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                onPressed: _isStartingNavigation
-                                    ? null
-                                    : () {
-                                        _startLiveNavigation(nextTask);
-                                      },
-                                icon: _isStartingNavigation
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.5,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.near_me,
-                                        color: Colors.white,
-                                      ),
+                                onPressed: () {
+                                  flutterTts.stop();
+                                  setState(() {
+                                    _isNavigating = false;
+                                    _activeNavigationTaskId = null;
+                                    _lastSpokenStepIndex = -1;
+                                    _lastSpokenDistanceThreshold = 999999;
+                                  });
+                                },
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                ),
                                 label: Text(
-                                  _isStartingNavigation
-                                      ? 'Loading directions…'
-                                      : 'Start next job',
-                                  style: AppTypography.body.copyWith(
+                                  _routeSteps.isEmpty
+                                      ? 'Exit preview'
+                                      : 'Exit navigation',
+                                  style: AppTypography.h4.copyWith(
                                     color: Colors.white,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryDark,
-                                  disabledBackgroundColor: AppColors.primaryDark
-                                      .withValues(alpha: 0.6),
+                                  backgroundColor: AppColors.error,
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 16,
                                   ),
@@ -974,59 +908,140 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                                   elevation: 0,
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                ),
-              ),
+                            )
+                          : Builder(
+                              builder: (context) {
+                                final next = pickNextCrewStop(
+                                  tasks: tasks,
+                                  route: route,
+                                  completed: completedTasks,
+                                  held: heldTasks,
+                                  order: routeOrder,
+                                  origin: _currentLocation,
+                                );
+                                if (next == null) {
+                                  return Center(
+                                    child: Text(
+                                      'All Route Tasks Completed',
+                                      style: AppTypography.body.copyWith(
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                final nextTask = next.task;
 
-              // Map Action Buttons (TTS & Recenter)
-              Positioned(
-                bottom: 132, // Above the route action card.
-                right: 16,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_isNavigating && _routeSteps.isNotEmpty) ...[
-                      FloatingActionButton(
-                        heroTag: 'tts_mute_toggle',
-                        backgroundColor:
-                            Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF1E1E1E)
-                            : Colors.white,
-                        mini: true,
-                        child: Icon(
-                          _isTtsMuted ? Icons.volume_off : Icons.volume_up,
-                          color: _isTtsMuted
-                              ? AppColors.error
-                              : AppColors.primaryDark,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isTtsMuted = !_isTtsMuted;
-                          });
-                          if (_isTtsMuted) {
-                            flutterTts.stop();
-                          }
-                        },
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    _buildOrderSwitch(routeOrder),
+                                    const SizedBox(height: 8),
+                                    _buildNextSummary(next, routeOrder),
+                                    const SizedBox(height: 12),
+                                    ElevatedButton.icon(
+                                      onPressed: _isStartingNavigation
+                                          ? null
+                                          : () {
+                                              _startLiveNavigation(nextTask);
+                                            },
+                                      icon: _isStartingNavigation
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.near_me,
+                                              color: Colors.white,
+                                            ),
+                                      label: Text(
+                                        _isStartingNavigation
+                                            ? 'Loading directions…'
+                                            : 'Start next job',
+                                        style: AppTypography.body.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primaryDark,
+                                        disabledBackgroundColor: AppColors
+                                            .primaryDark
+                                            .withValues(alpha: 0.6),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        elevation: 0,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Map Action Buttons (TTS & Recenter)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isNavigating && _routeSteps.isNotEmpty) ...[
+                            FloatingActionButton(
+                              heroTag: 'tts_mute_toggle',
+                              backgroundColor:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? const Color(0xFF1E1E1E)
+                                  : Colors.white,
+                              mini: true,
+                              child: Icon(
+                                _isTtsMuted
+                                    ? Icons.volume_off
+                                    : Icons.volume_up,
+                                color: _isTtsMuted
+                                    ? AppColors.error
+                                    : AppColors.primaryDark,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isTtsMuted = !_isTtsMuted;
+                                });
+                                if (_isTtsMuted) {
+                                  flutterTts.stop();
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          FloatingActionButton(
+                            heroTag: 'recenter_map',
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF1E1E1E)
+                                : Colors.white,
+                            child: const Icon(
+                              Icons.my_location,
+                              color: AppColors.primaryDark,
+                            ),
+                            onPressed: () {
+                              if (_currentLocation != null) {
+                                _mapController.move(_currentLocation!, 15.0);
+                              }
+                            },
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                    ],
-                    FloatingActionButton(
-                      heroTag: 'recenter_map',
-                      backgroundColor:
-                          Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF1E1E1E)
-                          : Colors.white,
-                      child: const Icon(
-                        Icons.my_location,
-                        color: AppColors.primaryDark,
-                      ),
-                      onPressed: () {
-                        if (_currentLocation != null) {
-                          _mapController.move(_currentLocation!, 15.0);
-                        }
-                      },
                     ),
                   ],
                 ),
@@ -1036,6 +1051,71 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
         },
         loading: () => const _MapSkeleton(),
         error: (err, _) => _buildEmptyState(unavailable: true),
+      ),
+    );
+  }
+
+  Widget _buildOrderSwitch(CrewRouteOrder order) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      container: true,
+      label: 'Route order',
+      child: SegmentedButton<CrewRouteOrder>(
+        showSelectedIcon: false,
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+          textStyle: WidgetStatePropertyAll(
+            AppTypography.body.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? AppColors.primaryDark
+                : null,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? Colors.white
+                : scheme.onSurface,
+          ),
+        ),
+        segments: [
+          for (final value in CrewRouteOrder.values)
+            ButtonSegment(
+              value: value,
+              label: Text(value.label, textAlign: TextAlign.center),
+              tooltip: switch (value) {
+                CrewRouteOrder.priority =>
+                  'Most urgent job first, following the published route',
+                CrewRouteOrder.nearest => 'Closest job to you first',
+              },
+            ),
+        ],
+        selected: {order},
+        onSelectionChanged: (selection) =>
+            ref.read(fcRouteOrderProvider.notifier).select(selection.single),
+      ),
+    );
+  }
+
+  Widget _buildNextSummary(CrewNextStop next, CrewRouteOrder order) {
+    final detail = switch (order) {
+      CrewRouteOrder.priority => 'Stop ${next.waypoint.sequenceOrder}',
+      CrewRouteOrder.nearest =>
+        next.distanceMeters != null
+            ? '${_formatDistance(next.distanceMeters)} straight-line'
+            : 'Waiting for GPS, showing priority order',
+    };
+    return Semantics(
+      liveRegion: true,
+      child: Text(
+        'Next: ${next.task.title} · $detail',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }

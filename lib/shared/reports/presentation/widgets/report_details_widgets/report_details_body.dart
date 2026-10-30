@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/maps/presentation/widgets/navigation_links.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'report_video_player.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
@@ -486,6 +487,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               ),
             ),
           ),
+          if (widget.report.locationPrecision != 'approximate') ...[
+            const SizedBox(height: 12),
+            OpenInNavigationButtons(destination: widget.report.location),
+          ],
           const SizedBox(height: 24),
           const Text(
             'Evidence',

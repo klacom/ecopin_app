@@ -20,7 +20,6 @@ import 'package:ecopin_app/features/officer/presentation/screens/officer_report_
 import 'package:ecopin_app/features/officer/presentation/screens/officer_analytics_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_spatial_scan_screen.dart';
 import 'package:ecopin_app/features/officer/presentation/screens/officer_optimization_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_cluster_create_task.dart';
 import 'package:ecopin_app/features/citizen/presentation/screens/citizen_main_screen.dart';
 import 'package:ecopin_app/features/admin/presentation/screens/admin_main_screen.dart';
 import 'package:ecopin_app/features/admin/presentation/screens/admin_dashboard_screen.dart';
@@ -270,7 +269,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'create-task',
                     builder: (context, state) {
-                      return const OfficerClusterCreateTaskScreen();
+                      return const OfficerCreateCustomCleanupTaskScreen();
                     },
                   ),
                 ],

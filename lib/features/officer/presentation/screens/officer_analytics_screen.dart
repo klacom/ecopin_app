@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/officer/providers/officer_dashboard_provider.dart';
 
@@ -66,8 +65,6 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
                 _buildResolutionRateCard(stats, context),
                 const SizedBox(height: 16),
                 _buildIssueDistributionCard(stats, context),
-                const SizedBox(height: 16),
-                _buildTrendsCard(stats, context),
                 const SizedBox(height: 96),
               ],
             ),
@@ -223,103 +220,4 @@ class OfficerAnalyticsScreen extends ConsumerWidget {
       ],
     );
   }
-
-  Widget _buildTrendsCard(DashboardStats stats, BuildContext context) {
-    return _buildSectionContainer(
-      context,
-      Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Key Metrics',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMetricCard(
-                    'Total Reports',
-                    stats.totalReports.toString(),
-                    Icons.description,
-                    Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMetricCard(
-                    'Active Issues',
-                    (stats.unresolved + stats.inProgress).toString(),
-                    Icons.error_outline,
-                    Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMetricCard(
-                    'Completed',
-                    stats.resolved.toString(),
-                    Icons.check_circle,
-                    Colors.green,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMetricCard(
-                    'Pending Review',
-                    stats.waitingForFeedback.toString(),
-                    Icons.feedback,
-                    Colors.purple,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMetricCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppColors.radiusCard),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
 }
-
-

@@ -182,13 +182,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
           const OfficialContactsButton(),
           reportAsync.maybeWhen(
             data: (report) {
-              final isOwner =
-                  currentUserId != null &&
-                  report.userId != null &&
-                  report.userId == currentUserId;
-              final canWithdraw =
-                  !isOfficerUser && isOwner && report.canBeWithdrawn;
-
               final isRejected =
                   report.status.toLowerCase() == 'rejected' ||
                   report.validationStatus.toLowerCase() == 'rejected';
@@ -201,12 +194,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (canWithdraw)
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      tooltip: 'Withdraw report',
-                      onPressed: () => _handleWithdrawReport(report),
-                    ),
                   if (!isRejected)
                     ReportShareButton(
                       onShare: () => ReportShareHelper.shareReportPhoto(

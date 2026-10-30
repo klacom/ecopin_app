@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/utils/csat_rating_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
@@ -7,15 +8,8 @@ class FieldCrewPerformanceScreen extends ConsumerWidget {
   const FieldCrewPerformanceScreen({super.key});
 
   String _getSatisfactionEmoji(dynamic r) {
-    if (r == null) return '—';
-    final numVal = num.tryParse(r.toString());
-    if (numVal == null) return '—';
-    final rounded = numVal.round();
-    if (rounded >= 5) return '😄 Very Satisfied';
-    if (rounded == 4) return '😊 Satisfied';
-    if (rounded == 3) return '😐 Neutral';
-    if (rounded == 2) return '😕 Dissatisfied';
-    return '😢 Very Dissatisfied';
+    final entry = CsatRatingScale.fromAverage(r);
+    return entry == null ? '—' : '${entry.emoji} ${entry.label}';
   }
 
   @override

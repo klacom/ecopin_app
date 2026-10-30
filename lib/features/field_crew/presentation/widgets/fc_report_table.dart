@@ -116,10 +116,6 @@ class _FcReportTableState extends ConsumerState<FcReportTable> {
                                     value: 'already_resolved',
                                     child: Text('Already clear on arrival'),
                                   ),
-                                  PopupMenuItem(
-                                    value: 'cleaned',
-                                    child: Text('Record cleanup'),
-                                  ),
                                 ],
                               )
                             else

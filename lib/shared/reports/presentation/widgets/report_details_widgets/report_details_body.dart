@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/utils/csat_rating_scale.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/navigation_links.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'report_video_player.dart';
@@ -965,37 +966,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
     );
   }
 
-  String _getEmojiForRating(int rating) {
-    switch (rating) {
-      case 1:
-        return '😢';
-      case 2:
-        return '😕';
-      case 3:
-        return '😐';
-      case 4:
-        return '😊';
-      case 5:
-        return '😄';
-      default:
-        return '😐';
-    }
-  }
+  String _getEmojiForRating(int rating) => CsatRatingScale.emoji(rating);
 
-  String _getLabelForRating(int rating) {
-    switch (rating) {
-      case 1:
-        return 'Very Dissatisfied';
-      case 2:
-        return 'Dissatisfied';
-      case 3:
-        return 'Neutral';
-      case 4:
-        return 'Satisfied';
-      case 5:
-        return 'Very Satisfied';
-      default:
-        return 'Neutral';
-    }
-  }
+  String _getLabelForRating(int rating) => CsatRatingScale.label(rating);
 }

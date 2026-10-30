@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/utils/csat_rating_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,26 +19,15 @@ class FcMetricsHeader extends ConsumerWidget {
     final perfAsync = ref.watch(myCrewPerformanceProvider);
     final perf = perfAsync.value?['performance'] as Map<String, dynamic>?;
     final crewTeam = perfAsync.value?['crew_team'] as Map<String, dynamic>?;
-    final teamPerf = crewTeam?['performance'] as Map<String, dynamic>?;
 
     final totalCompleted = perf?['total_completed'] ?? 0;
     final rating = perf?['avg_satisfaction_rating'];
-    final avgHours = perf?['avg_turnaround_hours'];
 
     final teamName = crewTeam?['name'] as String?;
-    final teamRating = teamPerf?['avg_satisfaction_rating'];
-    final teamCompleted = teamPerf?['total_completed'];
 
     String getSatisfactionEmoji(dynamic r) {
-      if (r == null) return '';
-      final numVal = num.tryParse(r.toString());
-      if (numVal == null) return '';
-      final rounded = numVal.round();
-      if (rounded >= 5) return '😄 ';
-      if (rounded == 4) return '😊 ';
-      if (rounded == 3) return '😐 ';
-      if (rounded == 2) return '😕 ';
-      return '😢 ';
+      final entry = CsatRatingScale.fromAverage(r);
+      return entry == null ? '' : '${entry.emoji} ';
     }
 
     return Column(
@@ -141,62 +131,37 @@ class FcMetricsHeader extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      Container(
-                        width: 1,
-                        height: 28,
-                        color: Theme.of(context).dividerColor.withOpacity(0.2),
-                      ),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: _MetricItem(
-                            icon: Icons.timer_outlined,
-                            iconColor: Colors.blueAccent,
-                            label: 'Avg Speed',
-                            value: avgHours != null ? '${avgHours}h' : '—',
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Divider(
+                    height: 1,
+                    color: Theme.of(context).dividerColor.withOpacity(0.15),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'View full performance',
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 11,
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 14,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withOpacity(0.6),
                       ),
                     ],
                   ),
-                  if (teamCompleted != null && teamCompleted > 0) ...[
-                    const SizedBox(height: 8),
-                    Divider(
-                      height: 1,
-                      color: Theme.of(context).dividerColor.withOpacity(0.15),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.groups_outlined,
-                          size: 14,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Team ${teamName ?? "Crew"}: $teamCompleted cleared • ${teamRating != null ? "${getSatisfactionEmoji(teamRating)}$teamRating" : "No rating yet"}',
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 11,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.chevron_right,
-                          size: 14,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withOpacity(0.6),
-                        ),
-                      ],
-                    ),
-                  ],
                 ],
               ),
             ),

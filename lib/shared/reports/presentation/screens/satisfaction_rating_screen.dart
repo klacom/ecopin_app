@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/utils/csat_rating_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
@@ -31,11 +32,8 @@ class _SatisfactionRatingScreenState
   final _flagReasonController = TextEditingController();
 
   final List<Map<String, dynamic>> _emojis = [
-    {'emoji': '😡', 'label': 'Not satisfied', 'rating': 1},
-    {'emoji': '🙁', 'label': 'Slightly satisfied', 'rating': 2},
-    {'emoji': '😐', 'label': 'Neutral', 'rating': 3},
-    {'emoji': '😊', 'label': 'Satisfied', 'rating': 4},
-    {'emoji': '🤩', 'label': 'Super satisfied', 'rating': 5},
+    for (final entry in CsatRatingScale.entries)
+      {'emoji': entry.emoji, 'label': entry.label, 'rating': entry.rating},
   ];
 
   @override

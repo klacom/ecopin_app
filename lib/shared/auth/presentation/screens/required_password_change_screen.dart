@@ -206,12 +206,6 @@ class _RequiredPasswordChangeScreenState
                 ? null
                 : _submit,
           ),
-          const SizedBox(height: 16),
-          AppButton(
-            text: 'Back to sign in',
-            variant: ButtonVariant.link,
-            onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          ),
         ],
       ),
     ),

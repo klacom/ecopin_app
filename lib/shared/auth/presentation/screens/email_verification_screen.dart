@@ -141,8 +141,6 @@ class _EmailVerificationScreenState
       ],
       AppButton(text: _cooldownSeconds > 0 ? 'Resend in ${_cooldownSeconds}s' : 'Resend verification email',
         isLoading: _isResending, onPressed: widget.email.isEmpty || _isResending || _cooldownSeconds > 0 ? null : _resendVerification),
-      const SizedBox(height: 16),
-      AppButton(text: 'Back to sign in', variant: ButtonVariant.secondary, onPressed: () => context.go('/login')),
     ]),
   );
 }

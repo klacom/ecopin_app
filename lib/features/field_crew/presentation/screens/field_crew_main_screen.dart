@@ -1,3 +1,4 @@
+import 'package:ecopin_app/features/field_crew/sync/crew_heartbeat.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
@@ -59,6 +60,7 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(crewHeartbeatProvider);
     final profile = ref.watch(profileProvider);
     final avatar = profile.value?['avatar_url'] as String?;
     final theme = Theme.of(context);

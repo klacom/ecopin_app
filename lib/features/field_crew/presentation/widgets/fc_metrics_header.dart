@@ -48,16 +48,20 @@ class FcMetricsHeader extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Semantics(
-              header: true,
-              child: Text(
-                firstName == null ? 'Your assigned work' : 'Hello, $firstName',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  firstName == null ? 'Your assigned work' : 'Hello, $firstName',
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-            if (teamName != null)
+            if (teamName != null) ...[
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -72,6 +76,7 @@ class FcMetricsHeader extends ConsumerWidget {
                   ),
                 ),
               ),
+            ],
           ],
         ),
         const SizedBox(height: 12),
@@ -94,25 +99,40 @@ class FcMetricsHeader extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _MetricItem(
-                        icon: Icons.check_circle_outline,
-                        iconColor: Colors.green,
-                        label: 'Personal Done',
-                        value: '$totalCompleted',
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _MetricItem(
+                            icon: Icons.check_circle_outline,
+                            iconColor: Colors.green,
+                            label: 'Personal Done',
+                            value: '$totalCompleted',
+                          ),
+                        ),
                       ),
                       Container(width: 1, height: 28, color: Theme.of(context).dividerColor.withOpacity(0.2)),
-                      _MetricItem(
-                        icon: Icons.sentiment_satisfied_alt_rounded,
-                        iconColor: Colors.amber,
-                        label: 'Citizen CSAT',
-                        value: rating != null ? '${getSatisfactionEmoji(rating)}$rating' : '—',
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _MetricItem(
+                            icon: Icons.sentiment_satisfied_alt_rounded,
+                            iconColor: Colors.amber,
+                            label: 'Citizen CSAT',
+                            value: rating != null ? '${getSatisfactionEmoji(rating)}$rating' : '—',
+                          ),
+                        ),
                       ),
                       Container(width: 1, height: 28, color: Theme.of(context).dividerColor.withOpacity(0.2)),
-                      _MetricItem(
-                        icon: Icons.timer_outlined,
-                        iconColor: Colors.blueAccent,
-                        label: 'Avg Speed',
-                        value: avgHours != null ? '${avgHours}h' : '—',
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _MetricItem(
+                            icon: Icons.timer_outlined,
+                            iconColor: Colors.blueAccent,
+                            label: 'Avg Speed',
+                            value: avgHours != null ? '${avgHours}h' : '—',
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -125,11 +145,14 @@ class FcMetricsHeader extends ConsumerWidget {
                       children: [
                         Icon(Icons.groups_outlined, size: 14, color: Theme.of(context).colorScheme.primary),
                         const SizedBox(width: 6),
-                        Text(
-                          'Team ${teamName ?? "Crew"}: $teamCompleted cleared • ${teamRating != null ? "${getSatisfactionEmoji(teamRating)}$teamRating" : "No rating yet"}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 11,
+                        Expanded(
+                          child: Text(
+                            'Team ${teamName ?? "Crew"}: $teamCompleted cleared • ${teamRating != null ? "${getSatisfactionEmoji(teamRating)}$teamRating" : "No rating yet"}',
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 4),

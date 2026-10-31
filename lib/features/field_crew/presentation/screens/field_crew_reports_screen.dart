@@ -25,7 +25,7 @@ class _FieldCrewReportsScreenState
   String _selectedStatus = 'All Status';
   String _selectedType = 'All Types';
   String _selectedValidation = 'All Validation';
-  DeadlineState? _deadlineFilter;
+  String _selectedDeadline = 'All deadlines';
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +63,7 @@ class _FieldCrewReportsScreenState
               selectedStatus: _selectedStatus,
               selectedType: _selectedType,
               selectedValidation: _selectedValidation,
+              selectedDeadline: _selectedDeadline,
               availableTypes: issueTypesAsync.value ?? [],
               onSearchChanged: (val) {
                 setState(() => _searchQuery = val);
@@ -76,35 +77,18 @@ class _FieldCrewReportsScreenState
               onValidationChanged: (val) {
                 setState(() => _selectedValidation = val);
               },
+              onDeadlineChanged: (val) {
+                setState(() => _selectedDeadline = val);
+              },
               onReset: () {
                 setState(() {
                   _searchQuery = '';
                   _selectedStatus = 'All Status';
                   _selectedType = 'All Types';
                   _selectedValidation = 'All Validation';
-                  _deadlineFilter = null;
+                  _selectedDeadline = 'All deadlines';
                 });
               },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceLG),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final entry in <DeadlineState?, String>{
-                  null: 'All deadlines',
-                  DeadlineState.atRisk: 'At risk',
-                  DeadlineState.overdue: 'Overdue',
-                }.entries)
-                  ChoiceChip(
-                    label: Text(entry.value),
-                    selected: _deadlineFilter == entry.key,
-                    onSelected: (_) =>
-                        setState(() => _deadlineFilter = entry.key),
-                  ),
-              ],
             ),
           ),
           Expanded(
@@ -159,9 +143,11 @@ class _FieldCrewReportsScreenState
                     }
 
                     return searchMatch &&
-                        (_deadlineFilter == null ||
+                        (_selectedDeadline == 'All deadlines' ||
                             responseDeadline(report, now)?.state ==
-                                _deadlineFilter) &&
+                                (_selectedDeadline == 'At risk'
+                                    ? DeadlineState.atRisk
+                                    : DeadlineState.overdue)) &&
                         statusMatch &&
                         typeMatch &&
                         validationMatch;

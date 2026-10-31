@@ -44,10 +44,23 @@ extension ValidationStatusExtension on ValidationStatus {
 
 final pasigInitialCenter = LatLng(14.575, 121.08);
 
-// Pasig Bounds
+// SWMO depot (Pasig City Hall area); fallback map center for crew routes.
+// Keep in sync with ecopin-web/lib/map/pasigMapConstants.js.
+
+const LatLng pasigSwmoDepot = LatLng(14.561433, 121.075636);
+
+// Pasig Bounds (same box as web PASIG_BOUNDS)
 
 LatLngBounds get pasigBounds =>
-    LatLngBounds(LatLng(14.540, 121.050), LatLng(14.620, 121.130));
+    LatLngBounds(LatLng(14.52, 121.03), LatLng(14.64, 121.14));
+
+// Enforced on every Pasig-wide map via MapOptions.cameraConstraint.
+// Pair with minZoom: pasigMinZoom so the bounds always cover the viewport.
+
+const double pasigMinZoom = 11;
+
+CameraConstraint get pasigCameraConstraint =>
+    CameraConstraint.contain(bounds: pasigBounds);
 
 // To Globally show snackbars.
 
@@ -108,13 +121,16 @@ const List<String> funFacts = [
 
 // Create Report Issue Types - Notice: Kapag naging dynamic yung issue types sa suapbase, baka mapalitan.
 
-const List<String> issueTypes = [
-  'Waste',
-  'Flooding',
-  'Pollution',
-  'Illegal Logging',
-  'Others',
-];
+// Keys are the backend `report_issue_type` values; keep in sync with ecopin-web ISSUE_TYPES.
+
+const Map<String, String> issueTypeLabels = {
+  'waste': 'Waste',
+  'flooding': 'Flooding',
+  'pollution': 'Pollution',
+  'infrastructure': 'Infrastructure',
+  'illegal_logging': 'Illegal Logging',
+  'others': 'Others',
+};
 
 // Report photo constraints
 

@@ -24,6 +24,7 @@ import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/search_overlay.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_preview.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_controls.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_credits.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_info.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/map_privacy_consent_dialog.dart';
 
@@ -31,20 +32,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
-  final bool isFieldCrewMode;
-  final bool showOptimizedRoute;
-  final bool showOtherCrews;
-  final bool showBaseOfOperations;
   final TileProvider? tileProvider;
 
-  const MapScreen({
-    super.key,
-    this.isFieldCrewMode = false,
-    this.showOptimizedRoute = false,
-    this.showOtherCrews = false,
-    this.showBaseOfOperations = false,
-    this.tileProvider,
-  });
+  const MapScreen({super.key, this.tileProvider});
 
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
@@ -272,26 +262,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         (reportsAsync.value ?? _lastPage)?.reports ?? <ReportModel>[];
     final colorScheme = Theme.of(context).colorScheme;
     // Filter out rejected reports
-    var visibleReports = reports
+    final visibleReports = reports
         .where((r) => r.validationStatus.toLowerCase() != 'rejected')
         .toList();
-
-    if (widget.isFieldCrewMode) {
-      visibleReports = visibleReports
-          .where(
-            (r) =>
-                r.status.toLowerCase() == 'in progress' ||
-                r.status.toLowerCase() == 'acknowledged' ||
-                r.status.toLowerCase() == 'pending',
-          )
-          .toList();
-    }
 
     return Scaffold(
       body: Column(
         children: [
-          if (widget.isFieldCrewMode)
-            SafeArea(bottom: false, child: _buildMapToolbar(reportsAsync)),
           Expanded(
             child: IndexedStack(
               index: _listView ? 1 : 0,
@@ -304,7 +281,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       options: MapOptions(
                         initialCenter: pasigInitialCenter,
                         initialZoom: 15.0,
-                        minZoom: 3,
+                        minZoom: pasigMinZoom,
+                        cameraConstraint: pasigCameraConstraint,
                         maxZoom: 18,
                         interactionOptions: const InteractionOptions(
                           flags: InteractiveFlag.all,
@@ -375,12 +353,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             showHeadingSector: true,
                           ),
                         ),
-                        if (widget.showOptimizedRoute)
-                          const PolylineLayer(polylines: <Polyline<Object>>[]),
-                        if (widget.showBaseOfOperations)
-                          const MarkerLayer(markers: []),
-                        if (widget.showOtherCrews)
-                          const MarkerLayer(markers: []),
                         MyMarkerClusterLayer(
                           markers: visibleReports
                               .map(
@@ -403,77 +375,54 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ),
                       ],
                     ),
-                    if (!widget.isFieldCrewMode)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: SafeArea(
-                          bottom: false,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildMapToolbar(reportsAsync),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  right: 16,
-                                  top: 16,
-                                ),
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: ReportMapControls(
-                                    heatmap: _showHeatmap,
-                                    locating: _isLoadingLocation,
-                                    onSearch: () => showGeneralDialog(
-                                      context: context,
-                                      pageBuilder:
-                                          (_, animation, secondaryAnimation) =>
-                                              SearchOverlay(
-                                                mapController: _mapController,
-                                              ),
-                                    ),
-                                    onHeatmap: () => setState(
-                                      () => _showHeatmap = !_showHeatmap,
-                                    ),
-                                    onLocate: _getCurrentLocation,
-                                    onInfo: _showMapInfo,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: SafeArea(
+                        child: ReportMapCredits(openSource: _openSource),
                       ),
-                    if (widget.isFieldCrewMode)
-                      Positioned(
-                        top: 16,
-                        left: 16,
-                        right: 16,
-                        child: SafeArea(
-                          child: Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'Public map preview',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleSmall,
+                    ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SafeArea(
+                        bottom: false,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildMapToolbar(reportsAsync),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                right: 16,
+                                top: 16,
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: ReportMapControls(
+                                  heatmap: _showHeatmap,
+                                  locating: _isLoadingLocation,
+                                  onSearch: () => showGeneralDialog(
+                                    context: context,
+                                    pageBuilder:
+                                        (_, animation, secondaryAnimation) =>
+                                            SearchOverlay(
+                                              mapController: _mapController,
+                                            ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Open an assigned task for its route details and report response actions.',
+                                  onHeatmap: () => setState(
+                                    () => _showHeatmap = !_showHeatmap,
                                   ),
-                                ],
+                                  onLocate: _getCurrentLocation,
+                                  onInfo: _showMapInfo,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
+                    ),
                   ],
                 ),
                 if (_listOpened)
@@ -572,7 +521,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           padding: const EdgeInsets.all(8),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              if (widget.isFieldCrewMode) return status;
               if (_listView) {
                 return Align(alignment: Alignment.centerLeft, child: controls);
               }

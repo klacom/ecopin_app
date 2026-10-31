@@ -69,7 +69,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   bool _isPasswordValid() {
-    if (_requirements == null) return _passwordController.text.length >= 6;
+    if (_requirements == null) return _passwordController.text.length >= 8;
     final pwd = _passwordController.text;
     final minLength = _requirements!['password_min_length'] ?? 8;
     if (pwd.length < minLength) return false;

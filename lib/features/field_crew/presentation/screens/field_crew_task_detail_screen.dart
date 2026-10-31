@@ -1,11 +1,11 @@
-import '../../sync/fc_sync_settings.dart';
-import '../../providers/fc_investigation_provider.dart';
 import '../widgets/fc_investigation_card.dart';
 import '../widgets/cleanup_notes_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_deadline_indicator.dart';
 import '../controllers/fc_task_detail_presentation.dart';
 import '../widgets/fc_offline_ui.dart';
+import '../widgets/fc_pending_sync_badge.dart';
+import 'package:ecopin_app/shared/widgets/app_state_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
@@ -17,11 +17,8 @@ import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_photo_gal
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_task_sidebar_card.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_mark_complete_button.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_shimmer_card.dart';
-import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
-import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_conflict_summary.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
-import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FieldCrewTaskDetailScreen extends ConsumerWidget {
@@ -59,7 +56,7 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [if (state.task != null) _PendingSyncBadge(taskId: taskId)],
+        actions: [if (state.task != null) FcPendingSyncBadge(entityId: taskId)],
       ),
       body: _buildBody(context, ref, state, notifier),
     );
@@ -76,37 +73,13 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
     }
 
     if (state.errorMessage != null && state.task == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
-              const SizedBox(height: 16),
-              Text(
-                'Could not load task.',
-                style: AppTypography.h5.copyWith(
-                  color: AppColors.textPrimaryDark,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                state.errorMessage!,
-                style: AppTypography.caption.copyWith(color: AppColors.error),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: notifier.refresh,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryDark,
-                ),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+      return AppStateView(
+        title: 'Could not load task',
+        message:
+            'It may not be available offline yet. Check your connection and try again.',
+        icon: Icons.cloud_off,
+        actionLabel: 'Retry',
+        onAction: notifier.refresh,
       );
     }
 
@@ -217,10 +190,6 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
               reports: reports,
               taskId: taskId,
               onReturn: notifier.refresh,
-              onOutcome: canAct
-                  ? (report, outcome) =>
-                        _queueReportOutcome(context, ref, task, report, outcome)
-                  : null,
             ),
           ),
           SliverPadding(
@@ -263,130 +232,6 @@ class FieldCrewTaskDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _queueReportOutcome(
-    BuildContext context,
-    WidgetRef ref,
-    CleanupTask task,
-    ReportModel report,
-    String outcome,
-  ) async {
-    final actor = Supabase.instance.client.auth.currentUser?.id;
-    if (actor == null) return;
-    final investigation = ref.read(fcInvestigationProvider(taskId));
-    final localPhoto = ref.read(fcLocalPhotoRepositoryProvider);
-    final reportPhoto = await localPhoto.getActivePhoto(
-      report.id,
-      'report',
-      'after',
-    );
-    final beforePhoto = outcome == 'cleaned'
-        ? await localPhoto.getActivePhoto(report.id, 'report', 'before')
-        : null;
-    final hasBefore =
-        beforePhoto != null ||
-        report.beforePhotos.isNotEmpty ||
-        report.beforePhotoUrl?.trim().isNotEmpty == true;
-    final issueType = report.issueType?.toLowerCase() ?? '';
-    final isScouting =
-        issueType == 'scouting' || issueType == 'acknowledge_only';
-    final evidence = <String>[
-      if (reportPhoto != null)
-        'local-photo:${reportPhoto.localPhotoId}'
-      else if (report.afterPhotos.isNotEmpty)
-        for (final p in report.afterPhotos)
-          if ((p['url'] as String?)?.trim().isNotEmpty == true)
-            p['url'] as String
-          else if (report.afterPhotoUrl?.trim().isNotEmpty == true)
-            report.afterPhotoUrl!,
-    ];
-    if (!context.mounted) return;
-    if (!isScouting &&
-        (evidence.isEmpty || (outcome == 'cleaned' && !hasBefore))) {
-      final open = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(
-            outcome == 'already_resolved'
-                ? 'Photograph the clear site'
-                : 'Document your cleanup',
-          ),
-          content: SingleChildScrollView(
-            child: Text(
-              outcome == 'already_resolved'
-                  ? 'Open this report and capture one current photo in After Photos showing that the site is already clear. No Before photo is required. Do not upload the same photo twice. Then return here and select Already clear on arrival. This records an observation, not cleanup credit.'
-                  : 'Open this report. Capture a Before photo before starting work, then an After photo of the cleaned site. Return here and select Cleaned here. If the site was already clear when you arrived, use Already clear on arrival instead.',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Open report'),
-            ),
-          ],
-        ),
-      );
-      if (open == true && context.mounted) {
-        await context.push(
-          '/field-crew/tasks/${Uri.encodeComponent(task.id)}/reports/${Uri.encodeComponent(report.id)}',
-        );
-        if (context.mounted) {
-          await ref
-              .read(fcTaskDetailNotifierProvider(taskId).notifier)
-              .refresh();
-        }
-      }
-      return;
-    }
-    final notes = await showCleanupNotesDialog(
-      context,
-      title: outcome == 'already_resolved'
-          ? 'Site already clear?'
-          : 'Confirm physical cleanup',
-      description: outcome == 'already_resolved'
-          ? 'Describe the site on arrival. This records an observation, not cleanup credit.'
-          : 'Describe the cleanup performed. Before and After photos are required; the server records when this proof is accepted.',
-    );
-    if (notes == null || !context.mounted) return;
-    try {
-      final receipt = investigation.receipt(report.id);
-      if (receipt['crew_id'] != actor) {
-        throw StateError(
-          'Account changed. Reopen the task before recording an outcome.',
-        );
-      }
-      await ref
-          .read(fcLocalRepositoryProvider)
-          .enqueueReportOutcome(
-            task: task,
-            report: report,
-            crewId: actor,
-            outcome: outcome,
-            observedAt: DateTime.now(),
-            evidenceRefs: evidence,
-            notes: notes,
-            investigation: receipt,
-          );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Outcome saved offline. It will sync with its assignment receipt.',
-            ),
-          ),
-        );
-      }
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.toString())));
-      }
-    }
-  }
 }
 
 class _TaskDetailSkeleton extends StatelessWidget {
@@ -418,66 +263,4 @@ class _TaskDetailSkeleton extends StatelessWidget {
 }
 
 /// Small chip in the AppBar indicating pending sync.
-class _PendingSyncBadge extends ConsumerWidget {
-  final String taskId;
-  const _PendingSyncBadge({required this.taskId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final syncState = ref.watch(fcSyncStateProvider);
-    ref.watch(fcPendingWritesProvider);
-    final automatic = ref.watch(fcSyncSettingsProvider).autoSyncEnabled;
-    final localRepo = ref.watch(fcLocalRepositoryProvider);
-
-    return FutureBuilder<bool>(
-      key: ValueKey(syncState.lastSyncAt),
-      future: _hasPending(localRepo, ref, taskId),
-      builder: (context, snap) {
-        if (snap.data != true) return const SizedBox.shrink();
-        return _SyncChip(phase: syncState.phase, automatic: automatic);
-      },
-    );
-  }
-
-  Future<bool> _hasPending(
-    dynamic localRepo,
-    WidgetRef ref,
-    String taskId,
-  ) async {
-    final items = await localRepo.getPendingOutboxItems();
-    if (items.any((i) => i.entityId == taskId)) return true;
-    final photos = ref.read(fcLocalPhotoRepositoryProvider);
-    final uploads = await photos.getPendingUploads();
-    final deletes = await photos.getPendingDeletes();
-    return [...uploads, ...deletes].any((p) => p.entityId == taskId);
-  }
-}
-
 /// Small AppBar chip showing sync status.
-class _SyncChip extends StatelessWidget {
-  final FcSyncPhase phase;
-  final bool automatic;
-  const _SyncChip({required this.phase, required this.automatic});
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, color) = switch (phase) {
-      FcSyncPhase.syncing => ('Syncing…', AppColors.primaryDark),
-      FcSyncPhase.error => ('Sync Error', AppColors.error),
-      FcSyncPhase.partialFailure => ('Sync attention', AppColors.error),
-      _ => (automatic ? 'Sync queued' : 'Pending Sync', AppColors.warning),
-    };
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Chip(
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: Colors.white),
-        ),
-        backgroundColor: color,
-        padding: EdgeInsets.zero,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: -4),
-      ),
-    );
-  }
-}

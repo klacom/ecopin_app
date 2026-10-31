@@ -21,7 +21,6 @@ class FcTaskListTile extends StatelessWidget {
       onTap: () => context.push('/field-crew/tasks/${task.id}'),
       borderRadius: BorderRadius.circular(AppColors.radiusCard),
       child: Container(
-        margin: const EdgeInsets.only(bottom: AppColors.spaceMD),
         padding: const EdgeInsets.all(AppColors.spaceLG),
         decoration: BoxDecoration(
           color: cardColor,

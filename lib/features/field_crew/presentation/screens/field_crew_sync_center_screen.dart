@@ -322,10 +322,6 @@ class _FieldCrewSyncCenterScreenState
                   FcLastSyncResultCard(state: state),
                 const FcConflictSummary(),
                 FcSyncPreferencesCard(locked: busy),
-                TextButton(
-                  onPressed: busy ? null : _refresh,
-                  child: const Text('Refresh queue and connection'),
-                ),
               ],
             ),
           ),

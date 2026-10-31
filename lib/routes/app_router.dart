@@ -1,38 +1,19 @@
+import 'package:latlong2/latlong.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/errors/presentations/unauthorized_screen.dart';
+import 'package:ecopin_app/shared/widgets/app_state_view.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/landing_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/login_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/register_screen.dart';
 import 'package:ecopin_app/shared/auth/presentation/screens/email_verification_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_cleanup_tasks_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_clusters_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_dashboard_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_main_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_map_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_profile_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_reports_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_response_logs_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_cluster_details_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_cleanup_task_details_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_create_custom_cleanup_task_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_report_details_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_analytics_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_spatial_scan_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_optimization_screen.dart';
+import 'package:ecopin_app/shared/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:ecopin_app/features/citizen/presentation/screens/citizen_main_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_main_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_dashboard_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_users_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_settings_screen.dart';
-import 'package:ecopin_app/features/admin/presentation/screens/admin_audit_logs_screen.dart';
 import 'package:ecopin_app/shared/maps/presentation/screens/maps_screen.dart';
 import 'package:ecopin_app/shared/notifications/presentation/screens/notifications_screen.dart';
 import 'package:ecopin_app/shared/profile/presentation/screens/profile_screen.dart';
 import 'package:ecopin_app/shared/reports/presentation/screens/create_report_screen.dart';
 import 'package:ecopin_app/shared/reports/presentation/screens/reports_screen.dart';
 import 'package:ecopin_app/shared/splash/splash_screen.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_crew_management_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_main_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_dashboard_screen.dart';
 import 'package:ecopin_app/features/field_crew/presentation/screens/field_crew_tasks_screen.dart';
@@ -55,6 +36,10 @@ import 'package:flutter/material.dart';
 // Guides user to Public and Protected Routes
 
 final Logger log = Logger("App Router");
+
+/// Task-scoped (/tasks/:id/reports/:reportId) and standalone (/reports/:reportId) report routes share one screen.
+Widget _crewReportDetail(String reportId, String? taskId) =>
+    FieldCrewReportDetailScreen(reportId: reportId, taskId: taskId);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.read(authNotifierProvider);
@@ -79,11 +64,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (path == PublicAppRoutes.splash) {
         // If logged in, redirect based on role
         if (loggedIn) {
-          if (role == UserRole.admin) {
-            return AdminAppRoutes.dashboard;
-          } else if (role == UserRole.officer) {
-            log.info('Officer role disabled on mobile: redirecting from splash to landing');
-            return PublicAppRoutes.landing;
+          if (role == UserRole.admin || role == UserRole.officer) {
+            log.info('Web-only role on mobile: showing sign-out screen');
+            return PublicAppRoutes.unauthorized;
           } else if (role == UserRole.fieldCrew) {
             log.info('Redirecting from splash to Field Crew Dashboard');
             return FieldCrewAppRoutes.dashboard;
@@ -101,35 +84,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       final isPublicRoute = PublicAppRoutes.publicRoutes.contains(path);
-      final isOfficerRoute = path.startsWith('/officer/');
-      final isAdminRoute = path.startsWith('/admin/');
       final isFieldCrewRoute = path.startsWith('/field-crew/');
       final isProtectedRoute = ProtectedAppRoutes.protectedRoutes.any(
         (route) => path.startsWith(route),
       );
 
       log.info(
-        'Route checks - IsPublicRoute: $isPublicRoute, IsOfficerRoute: $isOfficerRoute, IsAdminRoute: $isAdminRoute, IsProtectedRoute: $isProtectedRoute',
+        'Route checks - IsPublicRoute: $isPublicRoute, IsProtectedRoute: $isProtectedRoute',
       );
 
-      if (isAdminRoute && (!loggedIn || role != UserRole.admin)) {
+      // Officer and admin sessions have no mobile workspace: keep them on the
+      // sign-out screen instead of bouncing between /landing and the auth listener.
+      if (loggedIn && (role == UserRole.officer || role == UserRole.admin)) {
         return PublicAppRoutes.unauthorized;
-      }
-
-      if (loggedIn &&
-          role == UserRole.admin &&
-          !isAdminRoute &&
-          path != PublicAppRoutes.unauthorized) {
-        return AdminAppRoutes.dashboard;
       }
 
       if (loggedIn && isPublicRoute && path != PublicAppRoutes.unauthorized) {
         // Route based on role
         log.info('Redirecting based on role: $role');
-        if (role == UserRole.officer) {
-          log.info('Officer role disabled on mobile: redirecting to landing');
-          return PublicAppRoutes.landing;
-        } else if (role == UserRole.fieldCrew) {
+        if (role == UserRole.fieldCrew) {
           log.info('Redirecting to Field Crew Dashboard');
           return FieldCrewAppRoutes.dashboard;
         } else {
@@ -146,16 +119,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (loggedIn) {
         log.info('Role-based check - Role: $role');
 
-        if (isOfficerRoute) {
-          log.info(
-            'Redirecting to citizen maps - Officer route disabled on mobile',
-          );
-          return ProtectedAppRoutes.maps;
-        }
-
-        if (isFieldCrewRoute &&
-            role != UserRole.fieldCrew &&
-            role != UserRole.officer) {
+        if (isFieldCrewRoute && role != UserRole.fieldCrew) {
           log.info(
             'Redirecting to citizen maps - unauthorized on Field Crew route',
           );
@@ -163,10 +127,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
 
         // Check if path is a protected route (including nested routes)
-        if (!isOfficerRoute &&
-            !isAdminRoute &&
-            !isFieldCrewRoute &&
-            !isProtectedRoute) {
+        if (!isFieldCrewRoute && !isProtectedRoute) {
           log.info('Redirecting to citizen maps - not in any route category');
           return ProtectedAppRoutes.maps;
         }
@@ -190,6 +151,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: PublicAppRoutes.register,
         builder: (_, _) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: PublicAppRoutes.forgotPassword,
+        builder: (_, _) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: PublicAppRoutes.emailVerification,
@@ -243,139 +208,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return CreateReportScreen(prefillData: prefill);
         },
       ),
-      // Officer Shell Route
-      ShellRoute(
-        builder: (context, state, child) => OfficerMainScreen(child: child),
-        routes: [
-          GoRoute(
-            path: OfficerAppRoutes.dashboard,
-            builder: (_, _) => const OfficerDashboardScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.maps,
-            builder: (_, _) => const OfficerMapScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.clusters,
-            builder: (_, _) => const OfficerClustersScreen(),
-            routes: [
-              GoRoute(
-                path: ':id',
-                builder: (context, state) {
-                  final id = state.pathParameters['id']!;
-                  return OfficerClusterDetailsScreen(clusterId: id);
-                },
-                routes: [
-                  GoRoute(
-                    path: 'create-task',
-                    builder: (context, state) {
-                      return const OfficerCreateCustomCleanupTaskScreen();
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.cleanupTasks,
-            builder: (_, state) {
-              final status =
-                  state.uri.queryParameters['status'] ??
-                  (state.extra is Map
-                      ? (state.extra as Map)['status']?.toString()
-                      : null);
-              final crewId =
-                  state.uri.queryParameters['crewId'] ??
-                  (state.extra is Map
-                      ? (state.extra as Map)['crewId']?.toString()
-                      : null);
-              final crewName =
-                  state.uri.queryParameters['crewName'] ??
-                  (state.extra is Map
-                      ? (state.extra as Map)['crewName']?.toString()
-                      : null);
-              return OfficerCleanupTasksScreen(
-                initialStatus: status,
-                initialCrewId: crewId,
-                initialCrewName: crewName,
-              );
-            },
-            routes: [
-              GoRoute(
-                path: 'create',
-                builder: (_, _) => const OfficerCreateCustomCleanupTaskScreen(),
-              ),
-              GoRoute(
-                path: ':id',
-                builder: (context, state) {
-                  final id = state.pathParameters['id']!;
-                  return OfficerCleanupTaskDetailsScreen(taskId: id);
-                },
-              ),
-            ],
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.reports,
-            builder: (_, state) {
-              final filter =
-                  state.uri.queryParameters['filter'] ??
-                  (state.extra is Map
-                      ? (state.extra as Map)['filter']?.toString()
-                      : null);
-              final status =
-                  state.uri.queryParameters['status'] ??
-                  (state.extra is Map
-                      ? (state.extra as Map)['status']?.toString()
-                      : null);
-              return OfficerReportsScreen(
-                initialStatus: status,
-                initialValidation: filter == 'manual_review'
-                    ? 'manual_review'
-                    : null,
-                initialOverdue: filter == 'overdue',
-              );
-            },
-            routes: [
-              GoRoute(
-                path: ':id',
-                builder: (context, state) {
-                  final id = state.pathParameters['id']!;
-                  return OfficerReportDetailsScreen(reportId: id);
-                },
-              ),
-            ],
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.responseLogs,
-            builder: (_, _) => const OfficerResponseLogsScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.analytics,
-            builder: (_, _) => const OfficerAnalyticsScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.spatialScan,
-            builder: (_, _) => const OfficerSpatialScanScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.optimization,
-            builder: (_, _) => const OfficerOptimizationScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.crewManagement,
-            builder: (_, _) => const OfficerCrewManagementScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.profile,
-            builder: (_, _) => const OfficerProfileScreen(),
-          ),
-          GoRoute(
-            path: OfficerAppRoutes.notifications,
-            builder: (_, _) =>
-                const NotificationsScreen(role: UserRole.officer),
-          ),
-        ],
-      ),
       // Field Crew Shell Route
       ShellRoute(
         builder: (context, state, child) => FieldCrewMainScreen(child: child),
@@ -386,7 +218,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: FieldCrewAppRoutes.map,
-            builder: (_, _) => const FieldCrewMapScreen(),
+            builder: (_, state) {
+              final lat = double.tryParse(state.uri.queryParameters['lat'] ?? '');
+              final lng = double.tryParse(state.uri.queryParameters['lng'] ?? '');
+              return FieldCrewMapScreen(
+                focus: lat == null || lng == null ? null : LatLng(lat, lng),
+              );
+            },
           ),
           GoRoute(
             path: FieldCrewAppRoutes.tasks,
@@ -402,11 +240,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'reports/:reportId',
                     builder: (context, state) {
-                      final taskId = state.pathParameters['id']!;
-                      final reportId = state.pathParameters['reportId']!;
-                      return FieldCrewReportDetailScreen(
-                        taskId: taskId,
-                        reportId: reportId,
+                      return _crewReportDetail(
+                        state.pathParameters['reportId']!,
+                        state.pathParameters['id'],
                       );
                     },
                   ),
@@ -421,11 +257,9 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':reportId',
                 builder: (context, state) {
-                  final reportId = state.pathParameters['reportId']!;
-                  final taskId = state.extra as String?;
-                  return FieldCrewReportDetailScreen(
-                    reportId: reportId,
-                    taskId: taskId,
+                  return _crewReportDetail(
+                    state.pathParameters['reportId']!,
+                    state.extra as String?,
                   );
                 },
               ),
@@ -454,93 +288,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      ShellRoute(
-        builder: (context, state, child) => AdminMainScreen(child: child),
-        routes: [
-          GoRoute(
-            path: AdminAppRoutes.dashboard,
-            builder: (_, _) => const AdminDashboardScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.users,
-            builder: (_, _) => const AdminUsersScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.settings,
-            builder: (_, _) => const AdminSettingsScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.auditLogs,
-            builder: (_, _) => const AdminAuditLogsScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.profile,
-            builder: (_, _) => const ProfileScreen(),
-          ),
-          GoRoute(
-            path: AdminAppRoutes.notifications,
-            builder: (_, _) => const NotificationsScreen(role: UserRole.admin),
-          ),
-        ],
-      ),
     ],
     errorBuilder: (context, state) {
       final role = ref.read(authNotifierProvider).state.role;
       String homePath = PublicAppRoutes.landing;
-      if (role == UserRole.officer) {
-        homePath = OfficerAppRoutes.dashboard;
+      if (role == UserRole.officer || role == UserRole.admin) {
+        homePath = PublicAppRoutes.unauthorized;
       } else if (role == UserRole.fieldCrew) {
         homePath = FieldCrewAppRoutes.dashboard;
-      } else if (role == UserRole.admin) {
-        homePath = AdminAppRoutes.dashboard;
       } else if (role == UserRole.citizen) {
         homePath = ProtectedAppRoutes.maps;
       }
 
       return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.redAccent,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Page Not Found',
-                style: TextStyle(
-                  fontSize: 24,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'No route for ${state.uri.path}',
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => context.go(homePath),
-                icon: const Icon(Icons.home),
-                label: const Text('Go to Home'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-            ],
-          ),
+        body: AppStateView(
+          title: 'Page not found',
+          message: 'No page exists at ${state.uri.path}.',
+          icon: Icons.explore_off_outlined,
+          actionLabel: 'Go to Home',
+          onAction: () => context.go(homePath),
         ),
       );
     },

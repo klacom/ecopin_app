@@ -1,5 +1,6 @@
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/my_marker_cluster_layer.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/features/field_crew/providers/my_route_provider.dart';
@@ -20,7 +22,6 @@ import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.da
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
-import 'package:dio/dio.dart' as dio;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -28,8 +29,11 @@ import '../../data/models/crew_navigation_plan.dart';
 import '../../data/repositories/crew_navigation_cache.dart';
 
 class FieldCrewMapScreen extends ConsumerStatefulWidget {
-  const FieldCrewMapScreen({super.key, this.tileProvider});
+  const FieldCrewMapScreen({super.key, this.tileProvider, this.focus});
   final TileProvider? tileProvider;
+
+  /// Optional report location to center on (from a report's View on Map action).
+  final LatLng? focus;
 
   @override
   ConsumerState<FieldCrewMapScreen> createState() => _FieldCrewMapScreenState();
@@ -253,27 +257,16 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
       var saved = false;
       var directionsSaved = false;
       if (online) {
-        final client = dio.Dio(
-          dio.BaseOptions(
-            connectTimeout: const Duration(seconds: 3),
-            receiveTimeout: const Duration(seconds: 3),
-          ),
-        );
-        final cancel = dio.CancelToken();
         try {
-          final url =
-              'https://router.project-osrm.org/route/v1/driving/'
-              '${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}'
-              '?steps=true&geometries=geojson&overview=full';
-          final response = await client
-              .get(url, cancelToken: cancel)
-              .timeout(
-                const Duration(seconds: 3),
-                onTimeout: () {
-                  cancel.cancel('Navigation request timed out');
-                  throw TimeoutException('Navigation request timed out');
-                },
-              );
+          final response = await ref
+              .read(apiClientProvider)
+              .getDrivingDirections(
+                fromLat: origin.latitude,
+                fromLng: origin.longitude,
+                toLat: destination.latitude,
+                toLng: destination.longitude,
+              )
+              .timeout(const Duration(seconds: 8));
           plan = CrewNavigationPlan.fromOsrm(
             Map<String, dynamic>.from(response.data as Map),
           );
@@ -293,8 +286,6 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
           }
         } catch (error) {
           debugPrint('[NAV] Online directions unavailable: $error');
-        } finally {
-          client.close(force: true);
         }
       }
       if (plan == null && owner != null) {
@@ -426,8 +417,12 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
               .where((w) => w.waypointType == 'task')
               .length;
           final center =
-              route.startDepot ?? const LatLng(14.561433, 121.075636);
+              route.startDepot ?? pasigSwmoDepot;
 
+          // #0052CC disappears on dark tiles, so routes switch to the lighter brand blue there.
+          final routeColor = Theme.of(context).brightness == Brightness.dark
+              ? AppColors.linkDark
+              : AppColors.primaryDark;
           final mainRoutePoints = _isNavigating
               ? _liveNavigationPolyline
               : <LatLng>[];
@@ -438,7 +433,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                   points: waypoint.polyline
                       .map((p) => LatLng(p.latitude, p.longitude))
                       .toList(),
-                  color: Theme.of(context).colorScheme.primary,
+                  color: routeColor,
                   strokeWidth: 4,
                 ),
               )
@@ -455,8 +450,8 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
               markers.add(
                 Marker(
                   point: pos,
-                  width: 36,
-                  height: 36,
+                  width: 48,
+                  height: 48,
                   child: Container(
                     decoration: BoxDecoration(
                       color: AppColors.primaryDark,
@@ -471,7 +466,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                       ],
                     ),
                     child: const Center(
-                      child: Text('🏢', style: TextStyle(fontSize: 16)),
+                      child: Text('🏢', style: TextStyle(fontSize: 22)),
                     ),
                   ),
                 ),
@@ -567,7 +562,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
               microRouteLines.add(
                 Polyline(
                   points: positions,
-                  color: AppColors.primaryDark.withValues(alpha: 0.7),
+                  color: routeColor.withValues(alpha: 0.8),
                   strokeWidth: 3.0,
                   pattern: StrokePattern.dashed(segments: [5.0, 10.0]),
                 ),
@@ -580,7 +575,12 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
               // Map
               FlutterMap(
                 mapController: _mapController,
-                options: MapOptions(initialCenter: center, initialZoom: 14.0),
+                options: MapOptions(
+                  initialCenter: widget.focus ?? center,
+                  initialZoom: widget.focus != null ? 17.0 : 14.0,
+                  minZoom: pasigMinZoom,
+                  cameraConstraint: pasigCameraConstraint,
+                ),
                 children: [
                   TileLayer(
                     tileProvider: widget.tileProvider,
@@ -595,7 +595,7 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                       polylines: [
                         Polyline(
                           points: mainRoutePoints,
-                          color: AppColors.primaryDark,
+                          color: routeColor,
                           strokeWidth: 4.0,
                         ),
                       ],
@@ -892,9 +892,9 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                                   _routeSteps.isEmpty
                                       ? 'Exit preview'
                                       : 'Exit navigation',
-                                  style: AppTypography.h4.copyWith(
+                                  style: AppTypography.body.copyWith(
                                     color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
@@ -1004,7 +1004,6 @@ class _FieldCrewMapScreenState extends ConsumerState<FieldCrewMapScreen> {
                                       Brightness.dark
                                   ? const Color(0xFF1E1E1E)
                                   : Colors.white,
-                              mini: true,
                               child: Icon(
                                 _isTtsMuted
                                     ? Icons.volume_off

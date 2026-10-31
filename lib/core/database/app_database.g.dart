@@ -183,6 +183,17 @@ class $OfflineReportsTable extends OfflineReports
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _issueTypeMeta = const VerificationMeta(
+    'issueType',
+  );
+  @override
+  late final GeneratedColumn<String> issueType = GeneratedColumn<String>(
+    'issue_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _imagePathsMeta = const VerificationMeta(
     'imagePaths',
   );
@@ -257,6 +268,7 @@ class $OfflineReportsTable extends OfflineReports
     citizenPriority,
     priorityReason,
     priorityExplanation,
+    issueType,
     imagePaths,
     videoPath,
     syncStatus,
@@ -399,6 +411,12 @@ class $OfflineReportsTable extends OfflineReports
         ),
       );
     }
+    if (data.containsKey('issue_type')) {
+      context.handle(
+        _issueTypeMeta,
+        issueType.isAcceptableOrUnknown(data['issue_type']!, _issueTypeMeta),
+      );
+    }
     if (data.containsKey('image_paths')) {
       context.handle(
         _imagePathsMeta,
@@ -498,6 +516,10 @@ class $OfflineReportsTable extends OfflineReports
         DriftSqlType.string,
         data['${effectivePrefix}priority_explanation'],
       ),
+      issueType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issue_type'],
+      ),
       imagePaths: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}image_paths'],
@@ -543,6 +565,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   final String? citizenPriority;
   final String? priorityReason;
   final String? priorityExplanation;
+  final String? issueType;
   final String? imagePaths;
   final String? videoPath;
   final int syncStatus;
@@ -564,6 +587,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     this.citizenPriority,
     this.priorityReason,
     this.priorityExplanation,
+    this.issueType,
     this.imagePaths,
     this.videoPath,
     required this.syncStatus,
@@ -601,6 +625,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     }
     if (!nullToAbsent || priorityExplanation != null) {
       map['priority_explanation'] = Variable<String>(priorityExplanation);
+    }
+    if (!nullToAbsent || issueType != null) {
+      map['issue_type'] = Variable<String>(issueType);
     }
     if (!nullToAbsent || imagePaths != null) {
       map['image_paths'] = Variable<String>(imagePaths);
@@ -647,6 +674,9 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       priorityExplanation: priorityExplanation == null && nullToAbsent
           ? const Value.absent()
           : Value(priorityExplanation),
+      issueType: issueType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(issueType),
       imagePaths: imagePaths == null && nullToAbsent
           ? const Value.absent()
           : Value(imagePaths),
@@ -684,6 +714,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       priorityExplanation: serializer.fromJson<String?>(
         json['priorityExplanation'],
       ),
+      issueType: serializer.fromJson<String?>(json['issueType']),
       imagePaths: serializer.fromJson<String?>(json['imagePaths']),
       videoPath: serializer.fromJson<String?>(json['videoPath']),
       syncStatus: serializer.fromJson<int>(json['syncStatus']),
@@ -710,6 +741,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       'citizenPriority': serializer.toJson<String?>(citizenPriority),
       'priorityReason': serializer.toJson<String?>(priorityReason),
       'priorityExplanation': serializer.toJson<String?>(priorityExplanation),
+      'issueType': serializer.toJson<String?>(issueType),
       'imagePaths': serializer.toJson<String?>(imagePaths),
       'videoPath': serializer.toJson<String?>(videoPath),
       'syncStatus': serializer.toJson<int>(syncStatus),
@@ -734,6 +766,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     Value<String?> citizenPriority = const Value.absent(),
     Value<String?> priorityReason = const Value.absent(),
     Value<String?> priorityExplanation = const Value.absent(),
+    Value<String?> issueType = const Value.absent(),
     Value<String?> imagePaths = const Value.absent(),
     Value<String?> videoPath = const Value.absent(),
     int? syncStatus,
@@ -765,6 +798,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     priorityExplanation: priorityExplanation.present
         ? priorityExplanation.value
         : this.priorityExplanation,
+    issueType: issueType.present ? issueType.value : this.issueType,
     imagePaths: imagePaths.present ? imagePaths.value : this.imagePaths,
     videoPath: videoPath.present ? videoPath.value : this.videoPath,
     syncStatus: syncStatus ?? this.syncStatus,
@@ -808,6 +842,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
       priorityExplanation: data.priorityExplanation.present
           ? data.priorityExplanation.value
           : this.priorityExplanation,
+      issueType: data.issueType.present ? data.issueType.value : this.issueType,
       imagePaths: data.imagePaths.present
           ? data.imagePaths.value
           : this.imagePaths,
@@ -838,6 +873,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           ..write('citizenPriority: $citizenPriority, ')
           ..write('priorityReason: $priorityReason, ')
           ..write('priorityExplanation: $priorityExplanation, ')
+          ..write('issueType: $issueType, ')
           ..write('imagePaths: $imagePaths, ')
           ..write('videoPath: $videoPath, ')
           ..write('syncStatus: $syncStatus, ')
@@ -848,7 +884,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     ownerId,
     id,
     idempotencyKey,
@@ -864,12 +900,13 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
     citizenPriority,
     priorityReason,
     priorityExplanation,
+    issueType,
     imagePaths,
     videoPath,
     syncStatus,
     syncError,
     createdAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -889,6 +926,7 @@ class OfflineReport extends DataClass implements Insertable<OfflineReport> {
           other.citizenPriority == this.citizenPriority &&
           other.priorityReason == this.priorityReason &&
           other.priorityExplanation == this.priorityExplanation &&
+          other.issueType == this.issueType &&
           other.imagePaths == this.imagePaths &&
           other.videoPath == this.videoPath &&
           other.syncStatus == this.syncStatus &&
@@ -912,6 +950,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
   final Value<String?> citizenPriority;
   final Value<String?> priorityReason;
   final Value<String?> priorityExplanation;
+  final Value<String?> issueType;
   final Value<String?> imagePaths;
   final Value<String?> videoPath;
   final Value<int> syncStatus;
@@ -933,6 +972,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     this.citizenPriority = const Value.absent(),
     this.priorityReason = const Value.absent(),
     this.priorityExplanation = const Value.absent(),
+    this.issueType = const Value.absent(),
     this.imagePaths = const Value.absent(),
     this.videoPath = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -955,6 +995,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     this.citizenPriority = const Value.absent(),
     this.priorityReason = const Value.absent(),
     this.priorityExplanation = const Value.absent(),
+    this.issueType = const Value.absent(),
     this.imagePaths = const Value.absent(),
     this.videoPath = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -981,6 +1022,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Expression<String>? citizenPriority,
     Expression<String>? priorityReason,
     Expression<String>? priorityExplanation,
+    Expression<String>? issueType,
     Expression<String>? imagePaths,
     Expression<String>? videoPath,
     Expression<int>? syncStatus,
@@ -1004,6 +1046,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       if (priorityReason != null) 'priority_reason': priorityReason,
       if (priorityExplanation != null)
         'priority_explanation': priorityExplanation,
+      if (issueType != null) 'issue_type': issueType,
       if (imagePaths != null) 'image_paths': imagePaths,
       if (videoPath != null) 'video_path': videoPath,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -1028,6 +1071,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     Value<String?>? citizenPriority,
     Value<String?>? priorityReason,
     Value<String?>? priorityExplanation,
+    Value<String?>? issueType,
     Value<String?>? imagePaths,
     Value<String?>? videoPath,
     Value<int>? syncStatus,
@@ -1050,6 +1094,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
       citizenPriority: citizenPriority ?? this.citizenPriority,
       priorityReason: priorityReason ?? this.priorityReason,
       priorityExplanation: priorityExplanation ?? this.priorityExplanation,
+      issueType: issueType ?? this.issueType,
       imagePaths: imagePaths ?? this.imagePaths,
       videoPath: videoPath ?? this.videoPath,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -1106,6 +1151,9 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
     if (priorityExplanation.present) {
       map['priority_explanation'] = Variable<String>(priorityExplanation.value);
     }
+    if (issueType.present) {
+      map['issue_type'] = Variable<String>(issueType.value);
+    }
     if (imagePaths.present) {
       map['image_paths'] = Variable<String>(imagePaths.value);
     }
@@ -1142,6 +1190,7 @@ class OfflineReportsCompanion extends UpdateCompanion<OfflineReport> {
           ..write('citizenPriority: $citizenPriority, ')
           ..write('priorityReason: $priorityReason, ')
           ..write('priorityExplanation: $priorityExplanation, ')
+          ..write('issueType: $issueType, ')
           ..write('imagePaths: $imagePaths, ')
           ..write('videoPath: $videoPath, ')
           ..write('syncStatus: $syncStatus, ')
@@ -6478,6 +6527,7 @@ typedef $$OfflineReportsTableCreateCompanionBuilder =
       Value<String?> citizenPriority,
       Value<String?> priorityReason,
       Value<String?> priorityExplanation,
+      Value<String?> issueType,
       Value<String?> imagePaths,
       Value<String?> videoPath,
       Value<int> syncStatus,
@@ -6501,6 +6551,7 @@ typedef $$OfflineReportsTableUpdateCompanionBuilder =
       Value<String?> citizenPriority,
       Value<String?> priorityReason,
       Value<String?> priorityExplanation,
+      Value<String?> issueType,
       Value<String?> imagePaths,
       Value<String?> videoPath,
       Value<int> syncStatus,
@@ -6589,6 +6640,11 @@ class $$OfflineReportsTableFilterComposer
 
   ColumnFilters<String> get priorityExplanation => $composableBuilder(
     column: $table.priorityExplanation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get issueType => $composableBuilder(
+    column: $table.issueType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6702,6 +6758,11 @@ class $$OfflineReportsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get issueType => $composableBuilder(
+    column: $table.issueType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get imagePaths => $composableBuilder(
     column: $table.imagePaths,
     builder: (column) => ColumnOrderings(column),
@@ -6802,6 +6863,9 @@ class $$OfflineReportsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get issueType =>
+      $composableBuilder(column: $table.issueType, builder: (column) => column);
+
   GeneratedColumn<String> get imagePaths => $composableBuilder(
     column: $table.imagePaths,
     builder: (column) => column,
@@ -6870,6 +6934,7 @@ class $$OfflineReportsTableTableManager
                 Value<String?> citizenPriority = const Value.absent(),
                 Value<String?> priorityReason = const Value.absent(),
                 Value<String?> priorityExplanation = const Value.absent(),
+                Value<String?> issueType = const Value.absent(),
                 Value<String?> imagePaths = const Value.absent(),
                 Value<String?> videoPath = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
@@ -6891,6 +6956,7 @@ class $$OfflineReportsTableTableManager
                 citizenPriority: citizenPriority,
                 priorityReason: priorityReason,
                 priorityExplanation: priorityExplanation,
+                issueType: issueType,
                 imagePaths: imagePaths,
                 videoPath: videoPath,
                 syncStatus: syncStatus,
@@ -6914,6 +6980,7 @@ class $$OfflineReportsTableTableManager
                 Value<String?> citizenPriority = const Value.absent(),
                 Value<String?> priorityReason = const Value.absent(),
                 Value<String?> priorityExplanation = const Value.absent(),
+                Value<String?> issueType = const Value.absent(),
                 Value<String?> imagePaths = const Value.absent(),
                 Value<String?> videoPath = const Value.absent(),
                 Value<int> syncStatus = const Value.absent(),
@@ -6935,6 +7002,7 @@ class $$OfflineReportsTableTableManager
                 citizenPriority: citizenPriority,
                 priorityReason: priorityReason,
                 priorityExplanation: priorityExplanation,
+                issueType: issueType,
                 imagePaths: imagePaths,
                 videoPath: videoPath,
                 syncStatus: syncStatus,

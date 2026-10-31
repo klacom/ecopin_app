@@ -1,9 +1,11 @@
-import '../../sync/fc_sync_settings.dart';
 import '../../providers/fc_investigation_provider.dart';
 import '../../providers/fc_task_detail_notifier.dart';
 import '../widgets/fc_investigation_card.dart';
 import '../widgets/cleanup_notes_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
+import '../widgets/fc_pending_sync_badge.dart';
+import 'package:ecopin_app/shared/widgets/app_state_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/core/database/app_database.dart';
@@ -68,7 +70,7 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
           ),
         ),
         actions: [
-          if (detailState.report != null) _PendingSyncBadge(reportId: reportId),
+          if (detailState.report != null) FcPendingSyncBadge(entityId: reportId),
         ],
       ),
       body: _buildBody(context, ref, detailState, taskAsync),
@@ -86,39 +88,15 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
     }
 
     if (detailState.errorMessage != null && detailState.report == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
-              const SizedBox(height: 16),
-              Text(
-                'Could not load report.',
-                style: AppTypography.h5.copyWith(
-                  color: AppColors.textPrimaryDark,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                detailState.errorMessage!,
-                style: AppTypography.caption.copyWith(color: AppColors.error),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref
-                    .read(fcReportDetailNotifierProvider(reportId).notifier)
-                    .refresh(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryDark,
-                ),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
+      return AppStateView(
+        title: 'Could not load report',
+        message:
+            'It may not be available offline yet. Check your connection and try again.',
+        icon: Icons.cloud_off,
+        actionLabel: 'Retry',
+        onAction: () => ref
+            .read(fcReportDetailNotifierProvider(reportId).notifier)
+            .refresh(),
       );
     }
 
@@ -237,7 +215,9 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
                     isAssigned: isAssigned,
                     evidencePhotos: detailState.evidence,
                     evidenceError: detailState.evidenceError,
-                    onViewOnMap: () => context.push('/field-crew/map'),
+                    onViewOnMap: () => context.push(
+                      '${FieldCrewAppRoutes.map}?lat=${report.location.latitude}&lng=${report.location.longitude}',
+                    ),
                     onStatusChange: (newStatus, hasBefore, hasAfter) async {
                       String? completionNotes;
                       if (const {
@@ -607,70 +587,7 @@ class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
 // Pending sync badge
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PendingSyncBadge extends ConsumerWidget {
-  final String reportId;
-  const _PendingSyncBadge({required this.reportId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final syncState = ref.watch(fcSyncStateProvider);
-    ref.watch(fcPendingWritesProvider);
-    final automatic = ref.watch(fcSyncSettingsProvider).autoSyncEnabled;
-    final localRepo = ref.watch(fcLocalRepositoryProvider);
-
-    return FutureBuilder<bool>(
-      key: ValueKey(syncState.lastSyncAt),
-      future: _hasPending(localRepo, ref, reportId),
-      builder: (context, snap) {
-        if (snap.data != true) return const SizedBox.shrink();
-        return _SyncChip(phase: syncState.phase, automatic: automatic);
-      },
-    );
-  }
-
-  Future<bool> _hasPending(
-    dynamic localRepo,
-    WidgetRef ref,
-    String reportId,
-  ) async {
-    final items = await localRepo.getPendingOutboxItems();
-    if (items.any((i) => i.entityId == reportId)) return true;
-    final photos = ref.read(fcLocalPhotoRepositoryProvider);
-    final uploads = await photos.getPendingUploads();
-    final deletes = await photos.getPendingDeletes();
-    return [...uploads, ...deletes].any((p) => p.entityId == reportId);
-  }
-}
-
 /// Small AppBar chip showing sync status.
-class _SyncChip extends StatelessWidget {
-  final FcSyncPhase phase;
-  final bool automatic;
-  const _SyncChip({required this.phase, required this.automatic});
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, color) = switch (phase) {
-      FcSyncPhase.syncing => ('Syncing…', AppColors.primaryDark),
-      FcSyncPhase.error => ('Sync Error', AppColors.error),
-      FcSyncPhase.partialFailure => ('Sync attention', AppColors.error),
-      _ => (automatic ? 'Sync queued' : 'Pending Sync', AppColors.warning),
-    };
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Chip(
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: Colors.white),
-        ),
-        backgroundColor: color,
-        padding: EdgeInsets.zero,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: -4),
-      ),
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Loading skeleton
 // ─────────────────────────────────────────────────────────────────────────────

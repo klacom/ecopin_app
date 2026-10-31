@@ -28,6 +28,9 @@ class AppColors {
   static const Color backgroundLight = Color(0xFFFFFFFF);
   static const Color backgroundDark = Color(0xFF121212);
 
+  /// Light canvas for the citizen tab shell only (pushed screens stay on [backgroundLight]).
+  static const Color tabCanvasLight = Color(0xFFF2F4F7);
+
   // ── Status ────────────────────────────────────────────────
   static const Color success = Color(0xFF2E7D32);
   static const Color warning = Color(0xFFF9A825);
@@ -58,8 +61,8 @@ class AppColors {
 
   // ── Border Radius tokens ──────────────────────────────────
   static const double radiusButton = 999;
-  static const double radiusCard = 24;
-  static const double radiusInput = 16;
+  static const double radiusCard = 16;
+  static const double radiusInput = 12;
   static const double radiusDialog = 24;
   static const double radiusChip = 999;
 }

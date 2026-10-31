@@ -5,6 +5,8 @@ import 'package:ecopin_app/features/field_crew/providers/cleanup_tasks_provider.
 import 'package:ecopin_app/features/field_crew/providers/my_route_provider.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_notifier.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
+import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/shared/notifications/presentation/widgets/notification_badge_action.dart';
 import '../controllers/fc_dashboard_presentation.dart';
 import '../controllers/fc_sync_ui_providers.dart';
 import '../widgets/fc_metrics_header.dart';
@@ -82,6 +84,7 @@ class FieldCrewDashboardScreen extends ConsumerWidget {
                     Expanded(child: FcMetricsHeader()),
                     SizedBox(width: 8),
                     FcSyncStatusBar(),
+                    NotificationBadgeAction(role: UserRole.fieldCrew),
                   ],
                 ),
                 if (assignments.isLoading)
@@ -158,7 +161,7 @@ class FieldCrewDashboardScreen extends ConsumerWidget {
                     FcTaskQueueCard(task: task),
                   if (active.length > 3)
                     Text(
-                      '${active.length - 3} more in Tasks',
+                      '${active.length - 3} more in the Tasks tab',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                 ],
@@ -195,10 +198,6 @@ class FieldCrewDashboardScreen extends ConsumerWidget {
                       ],
                     ],
                   ),
-                TextButton(
-                  onPressed: () => context.go(FieldCrewAppRoutes.tasks),
-                  child: const Text('View all assignments'),
-                ),
                 const _PreparationLink(),
                 Text(
                   'May include cached records. Pull to refresh.',

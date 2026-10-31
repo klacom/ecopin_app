@@ -33,6 +33,7 @@ class OfflineReports extends Table {
   TextColumn get citizenPriority => text().nullable()();
   TextColumn get priorityReason => text().nullable()();
   TextColumn get priorityExplanation => text().nullable()();
+  TextColumn get issueType => text().nullable()();
 
   // Media files (stored as comma-separated paths or JSON)
   TextColumn get imagePaths => text().nullable()();
@@ -333,7 +334,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration {
@@ -344,6 +345,9 @@ class AppDatabase extends _$AppDatabase {
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 10) {
           await m.addColumn(offlineReports, offlineReports.citizenLandmark);
+        }
+        if (from < 11) {
+          await m.addColumn(offlineReports, offlineReports.issueType);
         }
         if (from < 2) {
           await m.createTable(offlineMedia);

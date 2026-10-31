@@ -92,13 +92,14 @@ class FcRouteTimelinePanel extends StatelessWidget {
     final inProgress = taskInfo?.status == 'in_progress';
 
     Color bgColor = AppColors.primaryDark;
-    Color textColor = Colors.black;
+    Color textColor = Colors.white; // on brand blue #0052CC
 
     if (isCompleted) {
       bgColor = AppColors.success;
       textColor = Colors.white;
     } else if (inProgress) {
       bgColor = AppColors.warning;
+      textColor = Colors.black; // white on amber fails contrast
     }
 
     return Container(

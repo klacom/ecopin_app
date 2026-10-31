@@ -12,13 +12,11 @@ class FcReportTable extends ConsumerStatefulWidget {
     super.key,
     required this.reports,
     required this.taskId,
-    this.onOutcome,
     this.onReturn,
   });
   final List<ReportModel> reports;
   final String taskId;
   final Future<void> Function()? onReturn;
-  final void Function(ReportModel, String)? onOutcome;
   @override
   ConsumerState<FcReportTable> createState() => _FcReportTableState();
 }
@@ -105,21 +103,7 @@ class _FcReportTableState extends ConsumerState<FcReportTable> {
                                 style: text.titleMedium,
                               ),
                             ),
-                            if (widget.onOutcome != null &&
-                                !reportIsHandled(report))
-                              PopupMenuButton<String>(
-                                tooltip: 'Actions for ${report.title}',
-                                onSelected: (value) =>
-                                    widget.onOutcome!(report, value),
-                                itemBuilder: (_) => const [
-                                  PopupMenuItem(
-                                    value: 'already_resolved',
-                                    child: Text('Already clear on arrival'),
-                                  ),
-                                ],
-                              )
-                            else
-                              const Icon(Icons.chevron_right),
+                            const Icon(Icons.chevron_right),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -151,13 +135,6 @@ class _FcReportTableState extends ConsumerState<FcReportTable> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                        const SizedBox(height: 12),
-                        Text(
-                          'Open report',
-                          style: text.labelLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
                       ],
                     ),
                   ),

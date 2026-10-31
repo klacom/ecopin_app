@@ -3,6 +3,8 @@ import 'package:dio/dio.dart' as dio;
 import 'package:ecopin_app/core/utils/validators.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/shared/widgets/app_button.dart';
+import 'package:ecopin_app/shared/widgets/app_text_field.dart';
 import 'package:ecopin_app/shared/support/official_contacts_screen.dart';
 import 'package:ecopin_app/shared/support/help_support_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,7 +32,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final Logger _log = Logger("Profile Screen");
-  final _formKey = GlobalKey<FormState>();
+  String? _nameError;
   late TextEditingController _fullNameController;
   late TextEditingController _emailController;
   bool _isSaving = false;
@@ -115,7 +117,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    if (_formKey.currentState!.validate() && !_isSaving) {
+    final nameMissing = _fullNameController.text.trim().isEmpty;
+    setState(() => _nameError = nameMissing ? 'Please enter your full name' : null);
+    if (!nameMissing && !_isSaving) {
       setState(() {
         _isSaving = true;
       });
@@ -513,7 +517,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               padding: const EdgeInsets.all(24),
               physics: const AlwaysScrollableScrollPhysics(),
               child: Form(
-                key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -571,37 +574,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    if (profile?['role'] == 'officer' &&
-                        avatarUrl != null &&
-                        avatarUrl.isNotEmpty)
-                      TextButton.icon(
-                        onPressed: _isUploading ? null : _removeAvatar,
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('Remove photo'),
+                    if (avatarUrl != null && avatarUrl.isNotEmpty) ...[
+                      AppButton(
+                        text: 'Remove photo',
+                        icon: Icons.delete_outline,
+                        variant: ButtonVariant.link,
+                        isLoading: _isUploading,
+                        onPressed: _removeAvatar,
                       ),
-                    TextFormField(
+                      const SizedBox(height: AppColors.spaceMD),
+                    ],
+                    AppTextField(
                       controller: _fullNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your full name';
-                        }
-                        return null;
-                      },
+                      labelText: 'Full Name',
+                      errorText: _nameError,
+                      textInputAction: TextInputAction.done,
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    AppTextField(
                       controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.email),
-                      ),
-                      enabled: false,
+                      labelText: 'Email',
+                      inputType: 'email',
+                      isLoading: true, // read-only: the sign-in email cannot be edited here
                     ),
                     const SizedBox(height: 16),
                     Container(
@@ -639,51 +633,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: AppColors.spaceMD),
 
-                    if (profile?['role'] == 'officer') ...[
-                      TextFormField(
-                        initialValue: 'Officer',
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Assigned permissions role',
-                          helperText: 'Managed by your administrator.',
-                          prefixIcon: Icon(Icons.badge_outlined),
-                        ),
-                      ),
-                      const SizedBox(height: AppColors.spaceMD),
-                      DropdownButtonFormField<ThemeMode>(
-                        key: ValueKey(ref.watch(themeModeProvider)),
-                        initialValue: ref.watch(themeModeProvider),
-                        decoration: const InputDecoration(
-                          labelText: 'Theme preference',
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: ThemeMode.light,
-                            child: Text('Light'),
-                          ),
-                          DropdownMenuItem(
-                            value: ThemeMode.dark,
-                            child: Text('Dark'),
-                          ),
-                          DropdownMenuItem(
-                            value: ThemeMode.system,
-                            child: Text('System'),
-                          ),
-                        ],
-                        onChanged: (mode) {
-                          if (mode != null) {
-                            ref
-                                .read(themeModeProvider.notifier)
-                                .setThemeMode(mode);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: AppColors.spaceMD),
-                    ],
-
                     // Dark Mode Switch
-                    if (profile?['role'] != 'officer')
-                      Container(
+                    Container(
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(
@@ -736,59 +687,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                     // Field Crew Dedicated Performance & CSAT Screen Entry
                     if (profile?['role'] == 'field_crew') ...[
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () => context.push(FieldCrewAppRoutes.performance),
-                          icon: const Icon(
-                            Icons.insights_outlined,
-                            color: AppColors.primary,
-                          ),
-                          label: const Text(
-                            'My Performance & CSAT',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: AppColors.spaceMD,
-                            ),
-                            side: const BorderSide(color: AppColors.primary),
-                          ),
-                        ),
+                      AppButton(
+                        text: 'My Performance & CSAT',
+                        icon: Icons.insights_outlined,
+                        variant: ButtonVariant.secondary,
+                        onPressed: () => context.push(FieldCrewAppRoutes.performance),
                       ),
                       const SizedBox(height: AppColors.spaceMD),
                     ],
 
                     // Change Password Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _changePassword,
-                        icon: Icon(
-                          Icons.lock_reset,
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                              ? Colors.black
-                              : null,
-                        ),
-                        label: Text(
-                          'Change Password',
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).brightness == Brightness.light
-                                ? Colors.black
-                                : null,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AppColors.spaceMD,
-                          ),
-                        ),
-                      ),
+                    AppButton(
+                      text: 'Change Password',
+                      icon: Icons.lock_reset,
+                      variant: ButtonVariant.secondary,
+                      onPressed: _changePassword,
                     ),
                     const SizedBox(height: AppColors.spaceMD),
 
@@ -834,65 +747,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                     ],
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: _isSaving
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text('Save Changes'),
-                      ),
+                    AppButton(
+                      text: 'Save Changes',
+                      isLoading: _isSaving,
+                      onPressed: _saveProfile,
                     ),
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: _logout,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: BorderSide(color: Colors.red),
-                        ),
-                        child: const Text(
-                          'Log Out',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
+                    AppButton(
+                      text: 'Log Out',
+                      variant: ButtonVariant.secondary,
+                      onPressed: _logout,
                     ),
                     if (profile?['role'] == 'citizen') ...[
                       const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () => Navigator.of(context).push<void>(
-                            MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
-                          ),
-                          icon: const Icon(Icons.support_agent_outlined),
-                          label: const Text('Help & support'),
+                      AppButton(
+                        text: 'Help & support',
+                        icon: Icons.support_agent_outlined,
+                        variant: ButtonVariant.secondary,
+                        onPressed: () => Navigator.of(context).push<void>(
+                          MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextButton.icon(
-                          onPressed: _isSaving ? null : _deleteAccount,
-                          icon: const Icon(
-                            Icons.delete_forever_outlined,
-                            color: AppColors.error,
-                            size: 20,
-                          ),
-                          label: const Text(
-                            'Delete Account',
-                            style: TextStyle(
-                              color: AppColors.error,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                      AppButton(
+                        text: 'Delete Account',
+                        icon: Icons.delete_forever_outlined,
+                        variant: ButtonVariant.danger,
+                        onPressed: _isSaving ? null : _deleteAccount,
                       ),
                     ],
                     const SizedBox(height: 128),

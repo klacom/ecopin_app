@@ -8,7 +8,7 @@ import 'package:ecopin_app/routes/app_routes.dart';
 
 // Displays a notification bell icon with a badge for unread count.
 // Navigates to the role-scoped notifications path so the correct shell
-// (OfficerMainScreen, AdminMainScreen, etc.) is preserved — not the citizen shell.
+// (field crew or citizen) is preserved — not the citizen shell.
 class NotificationBadgeAction extends ConsumerWidget {
   const NotificationBadgeAction({super.key, this.role});
   // A role-scoped page may provide its known destination; guards stay authoritative.
@@ -16,10 +16,6 @@ class NotificationBadgeAction extends ConsumerWidget {
 
   String _notificationsRouteForRole(UserRole? role) {
     switch (role) {
-      case UserRole.officer:
-        return OfficerAppRoutes.notifications;
-      case UserRole.admin:
-        return AdminAppRoutes.notifications;
       case UserRole.fieldCrew:
         return FieldCrewAppRoutes.notifications;
       default:
@@ -36,15 +32,11 @@ class NotificationBadgeAction extends ConsumerWidget {
     // Determine destination role:
     // 1. Explicit role passed in widget constructor
     // 2. Auth state role
-    // 3. Fallback based on current route location (e.g. /officer/* -> officer)
+    // 3. Fallback based on current route location (e.g. /field-crew/* -> field crew)
     UserRole? resolvedRole = role ?? ref.watch(authNotifierProvider).state.role;
     if (resolvedRole == null || resolvedRole == UserRole.citizen) {
       final location = GoRouterState.of(context).matchedLocation;
-      if (location.startsWith('/officer')) {
-        resolvedRole = UserRole.officer;
-      } else if (location.startsWith('/admin')) {
-        resolvedRole = UserRole.admin;
-      } else if (location.startsWith('/field-crew')) {
+      if (location.startsWith('/field-crew')) {
         resolvedRole = UserRole.fieldCrew;
       }
     }

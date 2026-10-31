@@ -340,7 +340,7 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
 
           const Text(
             'If you will clean this site: take Before photo(s) before starting and press Mark as Acknowledged, then take After photo(s) when finished and press Mark as Complete.\n\n'
-            'Already clear when you arrive? Take one current photo in After Photos. A Before photo is not required for this observation. Do not upload the same photo twice. Return to Task Details and select Already clear on arrival; this records an observation, not cleanup credit.',
+            'Already clear when you arrive? Take a current photo (up to 5) in After Photos. A Before photo is not required for this observation. Do not upload the same photo twice. Return to Task Details and select Already clear on arrival; this records an observation, not cleanup credit.',
           ),
           const SizedBox(height: AppColors.spaceLG),
 
@@ -590,20 +590,33 @@ class _FcPhotoUploadSectionState extends State<FcPhotoUploadSection> {
           // Delete button (top-right) — only shown when assigned and enabled.
           if (widget.isAssigned && isEnabled)
             Positioned(
-              top: 4,
-              right: 4,
-              child: GestureDetector(
-                onTap: () => _confirmDelete(context, slot, type),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: Colors.white,
+              top: 0,
+              right: 0,
+              child: Semantics(
+                button: true,
+                label: 'Delete photo',
+                // 48dp hit area around the 28dp visual button.
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _confirmDelete(context, slot, type),
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Center(
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

@@ -1,6 +1,4 @@
-import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/shared/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_details_body.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_share_helper.dart';
@@ -171,8 +169,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final reportAsync = ref.watch(reportDetailsProvider(widget.reportId));
-    final authState = ref.watch(authNotifierProvider);
-    final isOfficerUser = authState.state.role == UserRole.officer;
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     return Scaffold(
@@ -222,8 +218,7 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
                 currentUserId != null &&
                 report.userId != null &&
                 report.userId == currentUserId;
-            final canWithdraw =
-                !isOfficerUser && isOwner && report.canBeWithdrawn;
+            final canWithdraw = isOwner && report.canBeWithdrawn;
 
             return ReportDetailsBody(
               report: report,
@@ -234,7 +229,6 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
               onFetchCleanupTask: report.clusterId != null
                   ? () => _fetchCleanupTask(report.clusterId!)
                   : null,
-              isOfficerUser: isOfficerUser,
               onWithdraw: canWithdraw
                   ? () => _handleWithdrawReport(report)
                   : null,

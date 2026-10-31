@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/features/field_crew/providers/my_performance_provider.dart';
+import 'package:ecopin_app/shared/widgets/app_state_view.dart';
 
 class FieldCrewPerformanceScreen extends ConsumerWidget {
   const FieldCrewPerformanceScreen({super.key});
@@ -17,6 +18,33 @@ class FieldCrewPerformanceScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final perfAsync = ref.watch(myCrewPerformanceProvider);
+
+    // Never show zero-state numbers while data is loading or unavailable.
+    if (!perfAsync.hasValue) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'My Performance & CSAT',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          elevation: 0,
+        ),
+        body: perfAsync.hasError
+            ? AppStateView(
+                title: 'Performance could not load',
+                message:
+                    'Your results are unavailable right now, for example while offline. Try again when connected.',
+                icon: Icons.insights_outlined,
+                actionLabel: 'Retry',
+                onAction: () => ref.invalidate(myCrewPerformanceProvider),
+              )
+            : const Center(
+                child: CircularProgressIndicator(
+                  semanticsLabel: 'Loading performance',
+                ),
+              ),
+      );
+    }
 
     final perf = perfAsync.value?['performance'] as Map<String, dynamic>?;
     final crewTeam = perfAsync.value?['crew_team'] as Map<String, dynamic>?;

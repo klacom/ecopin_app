@@ -3,9 +3,6 @@ import 'dart:async';
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/shared/auth/data/models/auth_state.dart';
-import 'package:ecopin_app/features/officer/providers/officer_clusters_provider.dart';
-import 'package:ecopin_app/features/officer/providers/officer_cleanup_tasks_provider.dart';
-import 'package:ecopin_app/features/officer/presentation/screens/officer_response_logs_screen.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/shared/reports/providers/citizen_trust_provider.dart';
 import 'package:flutter/material.dart';
@@ -35,15 +32,6 @@ class AuthNotifier extends ChangeNotifier {
 
   void _clearCachedData() {
     // Clear cached data from providers when switching accounts
-    if (_ref.container.exists(officerClustersProvider)) {
-      _ref.read(officerClustersProvider.notifier).reset();
-    }
-    if (_ref.container.exists(officerCleanupTasksProvider)) {
-      _ref.read(officerCleanupTasksProvider.notifier).reset();
-    }
-    if (_ref.container.exists(officerResponseLogsProvider)) {
-      _ref.read(officerResponseLogsProvider.notifier).reset();
-    }
     // Invalidate profile provider to reset it
     _ref.invalidate(profileProvider);
     _ref.invalidate(citizenTrustProvider);

@@ -179,6 +179,7 @@ class _RequiredPasswordChangeScreenState
                 'Password rules are unavailable. Reload them before continuing.',
               ),
             ),
+            const SizedBox(height: 16),
             AppButton(
               text: 'Reload password rules',
               variant: ButtonVariant.secondary,

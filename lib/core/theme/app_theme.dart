@@ -115,6 +115,7 @@ class AppTheme {
       // ── Text Button ────────────────────────────────────────
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
           foregroundColor: isDark ? AppColors.linkDark : colorScheme.primary,
           textStyle: AppTypography.button.copyWith(
             color: isDark ? AppColors.linkDark : colorScheme.primary,
@@ -217,7 +218,10 @@ class AppTheme {
             Radius.circular(AppColors.radiusDialog),
           ),
         ),
-        titleTextStyle: AppTypography.h3.copyWith(color: textColor),
+        titleTextStyle: AppTypography.h5.copyWith(
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
         contentTextStyle: AppTypography.body.copyWith(color: textColor),
       ),
 
@@ -286,6 +290,7 @@ class AppTheme {
           warning: isDark ? const Color(0xFFFCD34D) : const Color(0xFFB45309),
           error: isDark ? const Color(0xFFFCA5A5) : AppColors.error,
           info: isDark ? AppColors.linkDark : const Color(0xFF0369A1),
+          feedback: isDark ? const Color(0xFFC4B5FD) : const Color(0xFF6D28D9),
         ),
       ],
     );
@@ -299,6 +304,7 @@ class AppStatusColors extends ThemeExtension<AppStatusColors> {
     required this.warning,
     required this.error,
     required this.info,
+    required this.feedback,
   });
 
   final Color success;
@@ -306,18 +312,23 @@ class AppStatusColors extends ThemeExtension<AppStatusColors> {
   final Color error;
   final Color info;
 
+  /// Purple: waiting_for_feedback (canonical status matrix, see DESIGN.md).
+  final Color feedback;
+
   @override
   AppStatusColors copyWith({
     Color? success,
     Color? warning,
     Color? error,
     Color? info,
+    Color? feedback,
   }) {
     return AppStatusColors(
       success: success ?? this.success,
       warning: warning ?? this.warning,
       error: error ?? this.error,
       info: info ?? this.info,
+      feedback: feedback ?? this.feedback,
     );
   }
 
@@ -329,6 +340,7 @@ class AppStatusColors extends ThemeExtension<AppStatusColors> {
       warning: Color.lerp(warning, other.warning, t)!,
       error: Color.lerp(error, other.error, t)!,
       info: Color.lerp(info, other.info, t)!,
+      feedback: Color.lerp(feedback, other.feedback, t)!,
     );
   }
 }

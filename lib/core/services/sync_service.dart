@@ -55,6 +55,7 @@ class SyncService {
             'citizen_priority': r.citizenPriority,
             'priority_reason': r.priorityReason,
             'priority_explanation': r.priorityExplanation,
+            'issue_type': r.issueType,
             'created_at': r.createdAt.toUtc().toIso8601String(),
           },
         )

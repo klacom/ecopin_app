@@ -165,6 +165,23 @@ class ApiClient {
     return _dio.post(ApiConstants.resendVerification, data: {'email': email});
   }
 
+  Future<dio.Response> forgotPassword(String email) async {
+    return _dio.post(ApiConstants.forgotPassword, data: {'email': email});
+  }
+
+  /// Turn-by-turn driving directions relayed by the backend (no direct calls to public routers).
+  Future<dio.Response> getDrivingDirections({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) async {
+    return _dio.get(
+      ApiConstants.drivingDirections,
+      queryParameters: {'from': '$fromLng,$fromLat', 'to': '$toLng,$toLat'},
+    );
+  }
+
   Future<dio.Response> getPasswordRequirements() async {
     return _dio.get(ApiConstants.passwordRequirements);
   }
@@ -245,6 +262,7 @@ class ApiClient {
     String? citizenPriority,
     String? priorityReason,
     String? priorityExplanation,
+    String? issueType,
     double? photoLat,
     double? photoLng,
     double? photoAccuracy,
@@ -307,6 +325,7 @@ class ApiClient {
               citizenPriority: drift.Value(citizenPriority),
               priorityReason: drift.Value(priorityReason),
               priorityExplanation: drift.Value(priorityExplanation),
+              issueType: drift.Value(issueType),
               imagePaths: drift.Value(imageList),
               videoPath: drift.Value(videoPath),
             ),
@@ -362,6 +381,9 @@ class ApiClient {
       formData.fields.add(
         MapEntry('priority_explanation', priorityExplanation),
       );
+    }
+    if (issueType != null) {
+      formData.fields.add(MapEntry('issue_type', issueType));
     }
     formData.fields.add(
       MapEntry('request_manual_review', requestManualReview.toString()),

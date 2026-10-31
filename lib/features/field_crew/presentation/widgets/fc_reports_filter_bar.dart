@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 
-class FcReportsFilterBar extends StatelessWidget {
+class FcReportsFilterBar extends StatefulWidget {
   final String searchQuery;
   final String selectedStatus;
   final String selectedType;
   final String selectedValidation;
+  final String selectedDeadline;
   final List<String> availableTypes;
   final Function(String) onSearchChanged;
   final Function(String) onStatusChanged;
   final Function(String) onTypeChanged;
   final Function(String) onValidationChanged;
+  final Function(String) onDeadlineChanged;
   final VoidCallback onReset;
 
   const FcReportsFilterBar({
@@ -20,16 +22,62 @@ class FcReportsFilterBar extends StatelessWidget {
     required this.selectedStatus,
     required this.selectedType,
     required this.selectedValidation,
+    required this.selectedDeadline,
     required this.availableTypes,
     required this.onSearchChanged,
     required this.onStatusChanged,
     required this.onTypeChanged,
     required this.onValidationChanged,
+    required this.onDeadlineChanged,
     required this.onReset,
   });
 
+  /// Deadline filter values (labels double as the stored selection).
+  static const deadlineOptions = ['All deadlines', 'At risk', 'Overdue'];
+
+  @override
+  State<FcReportsFilterBar> createState() => _FcReportsFilterBarState();
+}
+
+class _FcReportsFilterBarState extends State<FcReportsFilterBar> {
+  late final TextEditingController _search = TextEditingController(
+    text: widget.searchQuery,
+  );
+
+  @override
+  void didUpdateWidget(FcReportsFilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset (or any parent change) must clear the visible search text too.
+    if (widget.searchQuery != _search.text) {
+      _search.text = widget.searchQuery;
+    }
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  bool get _anyFilterActive =>
+      widget.searchQuery.isNotEmpty ||
+      widget.selectedStatus != 'All Status' ||
+      widget.selectedType != 'All Types' ||
+      widget.selectedValidation != 'All Validation' ||
+      widget.selectedDeadline != 'All deadlines';
+
   @override
   Widget build(BuildContext context) {
+    final selectedStatus = widget.selectedStatus;
+    final selectedType = widget.selectedType;
+    final selectedValidation = widget.selectedValidation;
+    final selectedDeadline = widget.selectedDeadline;
+    final onSearchChanged = widget.onSearchChanged;
+    final onStatusChanged = widget.onStatusChanged;
+    final onTypeChanged = widget.onTypeChanged;
+    final onValidationChanged = widget.onValidationChanged;
+    final onDeadlineChanged = widget.onDeadlineChanged;
+    final onReset = widget.onReset;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final officerColor = AppColors.primaryDark;
     final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
@@ -42,6 +90,7 @@ class FcReportsFilterBar extends StatelessWidget {
           children: [
             Expanded(
               child: TextField(
+                controller: _search,
                 onChanged: onSearchChanged,
                 style: AppTypography.body.copyWith(color: textColor),
                 decoration: InputDecoration(
@@ -80,10 +129,7 @@ class FcReportsFilterBar extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              if (searchQuery.isNotEmpty ||
-                  selectedStatus != 'All Status' ||
-                  selectedType != 'All Types' ||
-                  selectedValidation != 'All Validation')
+              if (_anyFilterActive)
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: ActionChip(
@@ -123,6 +169,20 @@ class FcReportsFilterBar extends StatelessWidget {
                     deleteIconColor: officerColor,
                   ),
                 ),
+              if (selectedDeadline != 'All deadlines')
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Chip(
+                    label: Text(
+                      selectedDeadline,
+                      style: TextStyle(color: textColor),
+                    ),
+                    backgroundColor: fillColor,
+                    side: BorderSide(color: officerColor),
+                    onDeleted: () => onDeadlineChanged('All deadlines'),
+                    deleteIconColor: officerColor,
+                  ),
+                ),
               if (selectedValidation != 'All Validation')
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
@@ -145,9 +205,19 @@ class FcReportsFilterBar extends StatelessWidget {
   }
 
   void _showFilterBottomSheet(BuildContext context) {
+    final selectedStatus = widget.selectedStatus;
+    final selectedType = widget.selectedType;
+    final selectedValidation = widget.selectedValidation;
+    final selectedDeadline = widget.selectedDeadline;
+    final availableTypes = widget.availableTypes;
+    final onStatusChanged = widget.onStatusChanged;
+    final onTypeChanged = widget.onTypeChanged;
+    final onValidationChanged = widget.onValidationChanged;
+    final onDeadlineChanged = widget.onDeadlineChanged;
     String tempStatus = selectedStatus;
     String tempType = selectedType;
     String tempValidation = selectedValidation;
+    String tempDeadline = selectedDeadline;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final officerColor = AppColors.primaryDark;
     final fillColor = isDark ? AppColors.surfaceDark : Colors.grey.shade100;
@@ -247,6 +317,12 @@ class FcReportsFilterBar extends StatelessWidget {
                     (value) => tempType = value,
                   ),
                   choices(
+                    'Response deadline',
+                    FcReportsFilterBar.deadlineOptions,
+                    tempDeadline,
+                    (value) => tempDeadline = value,
+                  ),
+                  choices(
                     'Validation',
                     validationOptions,
                     tempValidation,
@@ -257,6 +333,7 @@ class FcReportsFilterBar extends StatelessWidget {
                       onStatusChanged(tempStatus);
                       onTypeChanged(tempType);
                       onValidationChanged(tempValidation);
+                      onDeadlineChanged(tempDeadline);
                       Navigator.pop(ctx);
                     },
                     style: ElevatedButton.styleFrom(

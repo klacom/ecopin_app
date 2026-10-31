@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/shared/notifications/providers/notifications_provider.dart';
 import 'package:ecopin_app/core/services/location_service.dart';
@@ -86,14 +87,9 @@ class _CitizenMainScreenState extends ConsumerState<CitizenMainScreen> {
     final unreadAsync = ref.watch(unreadNotificationsCountProvider);
     final unread = unreadAsync.value ?? 0;
     final theme = Theme.of(context);
+    // Tab shell canvas token: the raised navbar silhouette needs contrast against the page.
     final canvas = theme.brightness == Brightness.light
-        ? Color(
-            Color.alphaBlend(
-              (theme.dividerTheme.color ?? theme.colorScheme.outlineVariant)
-                  .withValues(alpha: .5),
-              theme.scaffoldBackgroundColor,
-            ).toARGB32(),
-          )
+        ? AppColors.tabCanvasLight
         : theme.scaffoldBackgroundColor;
     return Scaffold(
       backgroundColor: canvas,

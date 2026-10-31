@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Weights mirror ecopin-web globals.css type scale (display/h1 700, h2/h3 600, h4-h6 500, body 400, button 600).
 class AppTypography {
   AppTypography._();
   static const String family = 'Outfit';
@@ -24,7 +25,7 @@ class AppTypography {
 
   static const TextStyle h2 = TextStyle(
     fontFamily: family,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     fontSize: 32,
     height: 1.15,
     letterSpacing: -0.5,
@@ -32,7 +33,7 @@ class AppTypography {
 
   static const TextStyle h3 = TextStyle(
     fontFamily: family,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     fontSize: 28,
     height: 1.15,
     letterSpacing: -0.5,
@@ -40,21 +41,21 @@ class AppTypography {
 
   static const TextStyle h4 = TextStyle(
     fontFamily: family,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w500,
     fontSize: 24,
     height: 1.2,
   );
 
   static const TextStyle h5 = TextStyle(
     fontFamily: family,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w500,
     fontSize: 20,
     height: 1.3,
   );
 
   static const TextStyle h6 = TextStyle(
     fontFamily: family,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w500,
     fontSize: 18,
     height: 1.3,
   );
@@ -62,7 +63,7 @@ class AppTypography {
   // ── Body ──────────────────────────────────────────────────
   static const TextStyle bodyLarge = TextStyle(
     fontFamily: family,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w400,
     fontSize: 18,
     height: 1.5,
   );
@@ -84,7 +85,7 @@ class AppTypography {
   // ── Caption ───────────────────────────────────────────────
   static const TextStyle caption = TextStyle(
     fontFamily: family,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w400,
     fontSize: 12,
     height: 1.3,
     letterSpacing: 0.2,

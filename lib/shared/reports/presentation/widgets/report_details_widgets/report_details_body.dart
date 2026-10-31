@@ -33,7 +33,6 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
   final CleanupTaskModel? cleanupTask;
   final bool isLoadingCleanupTask;
   final VoidCallback? onFetchCleanupTask;
-  final bool isOfficerUser;
   final TileProvider? tileProvider;
   final VideoPlayerController Function(Uri source)? videoControllerFactory;
   final VoidCallback? onWithdraw;
@@ -46,7 +45,6 @@ class ReportDetailsBody extends ConsumerStatefulWidget {
     this.cleanupTask,
     required this.isLoadingCleanupTask,
     this.onFetchCleanupTask,
-    this.isOfficerUser = false,
     this.tileProvider,
     this.videoControllerFactory,
     this.onWithdraw,
@@ -195,7 +193,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                       widget.report.severityFactors!['explanation'],
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey.shade800,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -266,7 +264,9 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade700,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -275,7 +275,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                             style: TextStyle(
                               fontSize: 12,
                               fontStyle: FontStyle.italic,
-                              color: Colors.grey.shade800,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ],
@@ -356,8 +356,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             ),
           ],
           // Show Create New Report button for rejected reports
-          if (widget.report.validationStatus.toLowerCase() == 'rejected' &&
-              !widget.isOfficerUser) ...[
+          if (widget.report.validationStatus.toLowerCase() == 'rejected') ...[
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -373,7 +372,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               ' You can edit all fields and must add new evidence photos.',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontStyle: FontStyle.italic,
               ),
               textAlign: TextAlign.center,
@@ -387,7 +386,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
           const SizedBox(height: 8),
           Text(
             'Issue: ${widget.report.issueType ?? "General"}',
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           const Divider(),
@@ -434,7 +436,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               padding: const EdgeInsets.only(left: 32, bottom: 4),
               child: Text(
                 '${widget.report.location.latitude.toStringAsFixed(6)}, ${widget.report.location.longitude.toStringAsFixed(6)}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           InfoRow(icon: Icons.calendar_today, text: dateStr),
@@ -582,188 +587,13 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                 },
               ),
             ),
-          if (!widget.isOfficerUser) VerifiedCleanupProof(key: ValueKey(widget.report.id), reportId: widget.report.id),
-          if (widget.isOfficerUser && (widget.report.status.toLowerCase() == 'resolved' ||
-              widget.report.status.toLowerCase() == 'waiting_for_feedback' ||
-              widget.report.status.toLowerCase() == 'closed')) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Before & After',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          VerifiedCleanupProof(
+              key: ValueKey(widget.report.id),
+              reportId: widget.report.id,
             ),
-            const SizedBox(height: 8),
-            if (widget.isLoadingCleanupTask)
-              const Center(child: CircularProgressIndicator())
-            else if (widget.report.beforePhotoUrl != null ||
-                widget.report.afterPhotoUrl != null ||
-                widget.cleanupTask != null)
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        if ((widget.cleanupTask?.beforePhotoUrl != null) ||
-                            (widget.report.beforePhotoUrl != null))
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: PrivateMediaImage.cached(
-                              imageUrl:
-                                  widget.cleanupTask?.beforePhotoUrl ??
-                                  widget.report.beforePhotoUrl!,
-                              height: 150,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
-                                height: 150,
-                                color: Colors.grey.shade200,
-                                child: const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                height: 150,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: Colors.grey.shade200,
-                                ),
-                                child: const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        size: 40,
-                                        color: Colors.red,
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text('Image not available'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          Container(
-                            height: 150,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.grey.shade200,
-                            ),
-                            child: const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.image_not_supported_outlined,
-                                    size: 40,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text('Before'),
-                                ],
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Before',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        if ((widget.cleanupTask?.afterPhotoUrl != null) ||
-                            (widget.report.afterPhotoUrl != null))
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: PrivateMediaImage.cached(
-                              imageUrl:
-                                  widget.cleanupTask?.afterPhotoUrl ??
-                                  widget.report.afterPhotoUrl!,
-                              height: 150,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
-                                height: 150,
-                                color: Colors.grey.shade200,
-                                child: const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                height: 150,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: Colors.grey.shade200,
-                                ),
-                                child: const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        size: 40,
-                                        color: Colors.red,
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text('Image not available'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          Container(
-                            height: 150,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.grey.shade200,
-                            ),
-                            child: const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.image_not_supported_outlined,
-                                    size: 40,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text('After'),
-                                ],
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'After',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            else
-              const Text(
-                'No before/after photos available yet.',
-                style: TextStyle(fontSize: 14),
-              ),
-          ],
           const SizedBox(height: 32),
           // Satisfaction rating button if waiting for feedback or resolved (citizen only)
-          if (!widget.isOfficerUser &&
-              (widget.report.status.toLowerCase() == 'waiting_for_feedback' ||
+          if ((widget.report.status.toLowerCase() == 'waiting_for_feedback' ||
                   widget.report.status.toLowerCase() == 'resolved')) ...[
             const Text(
               'The issue has been resolved! Please rate the service.',
@@ -777,11 +607,10 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          SatisfactionRatingScreen(
-                            reportId: widget.report.id,
-                            report: widget.report,
-                          ),
+                      builder: (context) => SatisfactionRatingScreen(
+                        reportId: widget.report.id,
+                        report: widget.report,
+                      ),
                     ),
                   );
                 },
@@ -791,8 +620,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             const SizedBox(height: 16),
           ],
           // Show satisfaction rating if already closed (citizen only)
-          if (!widget.isOfficerUser &&
-              widget.report.status.toLowerCase() == 'closed' &&
+          if (widget.report.status.toLowerCase() == 'closed' &&
               widget.report.satisfactionRating != null) ...[
             const Text(
               'Your Satisfaction Rating',
@@ -819,8 +647,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             ),
             const SizedBox(height: 16),
           ],
-          if (!widget.isOfficerUser &&
-              widget.onWithdraw != null &&
+          if (widget.onWithdraw != null &&
               widget.report.canBeWithdrawn) ...[
             const SizedBox(height: 16),
             Card(
@@ -864,28 +691,6 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             const SizedBox(height: 16),
           ],
           const SizedBox(height: 100),
-          // Shared details link to the authorized officer tools instead of no-op actions.
-          if (widget.isOfficerUser) ...[
-            const SizedBox(height: 24),
-            Text(
-              'Officer tools',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Review and update this report in your officer workspace.',
-            ),
-            const SizedBox(height: 16),
-            AppButton(
-              text: 'Open officer report tools',
-              onPressed: () => context.push(
-                OfficerAppRoutes.reportDetails.replaceFirst(
-                  ':id',
-                  widget.report.id,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

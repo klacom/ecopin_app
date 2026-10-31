@@ -13,6 +13,7 @@ import 'required_password_change_screen.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/auth/providers/auth_notifier.dart';
 import 'package:ecopin_app/core/constants/app_constants.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -74,10 +75,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      _showError('Please enter email and password');
-      return;
-    }
+    // Field-level messages above already say what is missing; do not repeat them in a second banner.
+    if (email.isEmpty || password.isEmpty) return;
 
     setState(() => _isLoading = true);
 
@@ -345,6 +344,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           onPressed: _isLoading ? null : _login,
         ),
         const SizedBox(height: AppColors.spaceMD),
+        AppButton(
+          text: 'Forgot password?',
+          variant: ButtonVariant.link,
+          onPressed: _isLoading ? null : () => context.push(PublicAppRoutes.forgotPassword),
+        ),
         AppButton(
           text: 'Create an account',
           variant: ButtonVariant.link,

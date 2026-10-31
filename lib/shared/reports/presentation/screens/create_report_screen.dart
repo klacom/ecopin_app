@@ -77,6 +77,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   final _priorityExplanationController = TextEditingController();
   bool _urgent = false;
   String? _priorityReason;
+  String? _issueType;
   bool get _priorityComplete =>
       !_urgent ||
       (_priorityReason != null &&
@@ -153,6 +154,37 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     _titleFocusNode.dispose();
     _descriptionFocusNode.dispose();
     super.dispose();
+  }
+
+  bool get _hasEnteredData =>
+      _titleController.text.trim().isNotEmpty ||
+      _descriptionController.text.trim().isNotEmpty ||
+      _landmarkController.text.trim().isNotEmpty ||
+      _issueType != null ||
+      _capturedImages.isNotEmpty ||
+      _capturedVideos.isNotEmpty;
+
+  Future<bool> _confirmDiscard() async {
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Discard this report?'),
+        content: const Text(
+          'Your title, details and photos have not been submitted and will be lost.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep editing'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    return discard ?? false;
   }
 
   bool _canNavigateToStep(int targetStep) {
@@ -546,6 +578,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
         description: _descriptionController.text.trim(),
         citizenLandmark: _landmarkController.text.trim(),
         citizenPriority: _urgent ? 'urgent' : 'non_urgent',
+        issueType: _issueType,
         priorityReason: _urgent ? _priorityReason : null,
         priorityExplanation: _urgent
             ? _priorityExplanationController.text.trim()
@@ -665,11 +698,13 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     final bool isPrefilled = widget.prefillData?.title != null;
 
     return PopScope(
-      canPop: _currentStep == 0 && !_isSubmitting,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        if (_currentStep > 0 && !_isSubmitting) {
+      canPop: _currentStep == 0 && !_isSubmitting && !_hasEnteredData,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop || _isSubmitting) return;
+        if (_currentStep > 0) {
           _prevStep();
+        } else if (await _confirmDiscard() && context.mounted) {
+          Navigator.of(context).pop();
         }
       },
       child: Stack(
@@ -693,26 +728,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             ),
             body: Column(
               children: [
-                LinearProgressIndicator(
-                  semanticsLabel: 'Step ${_currentStep + 1} of $_totalSteps',
-                  value: (_currentStep + 1) / _totalSteps,
-                  backgroundColor: colorScheme.surfaceContainerHighest,
-                  color: AppColors.accent, // Civic blue
-                  minHeight: 4,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 8,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Step ${_currentStep + 1} of $_totalSteps · ${['Location', 'Details', 'Photos and video', 'Review'][_currentStep]}',
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                  ),
-                ),
                 _buildStepNavHeader(colorScheme),
                 Expanded(
                   child: PageView(
@@ -848,61 +863,12 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     );
   }
 
+  /// One primary action per step. Going back uses the AppBar arrow or the step bar above.
   Widget _buildStepBottomButtons({
     required String nextText,
     required VoidCallback? onNext,
-    VoidCallback? onPrev,
     bool isLoading = false,
-  }) {
-    if (onPrev == null) {
-      return AppButton(text: nextText, isLoading: isLoading, onPressed: onNext);
-    }
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-        final shouldStack = constraints.maxWidth < 280 || textScale > 1.3;
-        if (shouldStack) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AppButton(
-                text: nextText,
-                isLoading: isLoading,
-                onPressed: onNext,
-              ),
-              const SizedBox(height: 12),
-              AppButton(
-                text: 'Back',
-                variant: ButtonVariant.secondary,
-                onPressed: isLoading ? null : onPrev,
-              ),
-            ],
-          );
-        }
-        return Row(
-          children: [
-            Expanded(
-              flex: 1,
-              child: AppButton(
-                text: 'Back',
-                variant: ButtonVariant.secondary,
-                onPressed: isLoading ? null : onPrev,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 2,
-              child: AppButton(
-                text: nextText,
-                isLoading: isLoading,
-                onPressed: onNext,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  }) => AppButton(text: nextText, isLoading: isLoading, onPressed: onNext);
 
   Widget _buildStep1Location(ColorScheme colorScheme) {
     return SingleChildScrollView(
@@ -910,11 +876,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Step 1: Location',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
           Text(
             'Tap the map to place the pin, or move the map and use its center.',
             style: TextStyle(
@@ -1005,6 +966,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: colorScheme.surface,
+              border: Border.all(color: colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1034,11 +996,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Step 2: Details',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 24),
           AppTextField(
             controller: _titleController,
             focusNode: _titleFocusNode,
@@ -1071,6 +1028,30 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           ),
           Text(
             'Extra directions for the crew. The selected map pin and GPS location stay unchanged.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Concern category (optional)',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final entry in issueTypeLabels.entries)
+                ChoiceChip(
+                  label: Text(entry.value),
+                  selected: _issueType == entry.key,
+                  onSelected: (selected) =>
+                      setState(() => _issueType = selected ? entry.key : null),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Helps route the report. Our review may adjust it after checking your photos.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 24),
@@ -1107,7 +1088,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           _buildStepBottomButtons(
             nextText: 'Next: Attach Media',
             onNext: canProceed ? _nextStep : null,
-            onPrev: _prevStep,
           ),
         ],
       ),
@@ -1122,11 +1102,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Step 3: Media',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
           Text(
             'Add photos or a video. At least one is required.',
             style: TextStyle(
@@ -1302,6 +1277,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: colorScheme.surface,
+                border: Border.all(color: colorScheme.outlineVariant),
               ),
               child: Row(
                 children: [
@@ -1366,7 +1342,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           _buildStepBottomButtons(
             nextText: 'Next: Review',
             onNext: hasMedia && !_isSelectingMedia ? _nextStep : null,
-            onPrev: _prevStep,
           ),
         ],
       ),
@@ -1391,11 +1366,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Step 4: Review',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
           Text(
             'Review the details before sending your report.',
             style: TextStyle(
@@ -1414,6 +1384,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: colorScheme.surface,
+              border: Border.all(color: colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -1433,7 +1404,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       key: const ValueKey('edit-details-button'),
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
-                        minimumSize: const Size(48, 24),
+                        minimumSize: const Size(48, 48),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: () => _jumpToStep(1),
@@ -1466,7 +1437,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       key: const ValueKey('edit-location-button'),
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
-                        minimumSize: const Size(48, 24),
+                        minimumSize: const Size(48, 48),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: () => _jumpToStep(0),
@@ -1543,7 +1514,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                       key: const ValueKey('edit-media-button'),
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
-                        minimumSize: const Size(48, 24),
+                        minimumSize: const Size(48, 48),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: () => _jumpToStep(2),
@@ -1614,7 +1585,6 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             nextText: 'Submit Report',
             isLoading: _isSubmitting,
             onNext: _isSubmitting || !_priorityComplete || !_consentGiven ? null : _submitReport,
-            onPrev: _isSubmitting ? null : _prevStep,
           ),
         ],
       ),

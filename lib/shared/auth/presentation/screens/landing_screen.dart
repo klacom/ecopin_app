@@ -49,8 +49,6 @@ class LandingScreen extends StatelessWidget {
                                         width: 136,
                                         height: 40,
                                         fit: BoxFit.contain,
-                                        color: Colors.white,
-                                        colorBlendMode: BlendMode.srcIn,
                                         semanticLabel: 'EcoPin AI',
                                       ),
                                     ),
@@ -151,7 +149,7 @@ class LandingScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: surface,
                         borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(28),
+                          top: Radius.circular(24),
                         ),
                       ),
                       child: SafeArea(

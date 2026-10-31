@@ -23,6 +23,7 @@ class ReportMarkerStyle {
           warning: AppColors.warning,
           error: Theme.of(context).colorScheme.error,
           info: AppColors.info,
+          feedback: const Color(0xFF6D28D9),
         );
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     final (fill, icon) = switch (reportStatusKey(status)) {
@@ -30,9 +31,9 @@ class ReportMarkerStyle {
       'submitted' ||
       'pending' ||
       'rejected' => (colors.error, Icons.error_outline),
-      'in_progress' || 'acknowledged' => (colors.warning, Icons.schedule),
+      'in_progress' || 'acknowledged' => (colors.info, Icons.schedule),
       'resolved' => (colors.success, Icons.check),
-      'waiting_for_feedback' => (colors.info, Icons.chat_bubble_outline),
+      'waiting_for_feedback' => (colors.feedback, Icons.chat_bubble_outline),
       'pending_owner_consent' => (colors.info, Icons.lock_outline),
       'closed' => (muted, Icons.done_all),
       _ => (muted, Icons.help_outline),

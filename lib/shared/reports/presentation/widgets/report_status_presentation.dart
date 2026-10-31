@@ -21,16 +21,19 @@ Color reportStatusColor(BuildContext context, String value) {
   final theme = Theme.of(context);
   final colors = theme.extension<AppStatusColors>();
   final dark = theme.brightness == Brightness.dark;
+  // Canonical matrix (mirrors ecopin-web statusHelpers.js REPORT_STATUS_COLORS):
+  // unresolved=red, in_progress=blue, waiting_for_feedback=purple, resolved=green, closed=grey.
   return switch (reportStatusKey(value)) {
-    'resolved' || 'closed' =>
+    'resolved' =>
       colors?.success ??
           (dark ? AppColors.environmentalDark : AppColors.success),
     'in_progress' || 'acknowledged' || 'pending_owner_consent' =>
       colors?.info ?? (dark ? AppColors.linkDark : AppColors.accent),
-    'waiting_for_feedback' || 'unresolved' || 'pending' =>
-      colors?.warning ??
-          (dark ? const Color(0xFFE5B55E) : const Color(0xFF9C6500)),
-    'rejected' => colors?.error ?? theme.colorScheme.error,
-    _ => theme.colorScheme.onSurfaceVariant,
+    'waiting_for_feedback' =>
+      colors?.feedback ??
+          (dark ? const Color(0xFFC4B5FD) : const Color(0xFF6D28D9)),
+    'unresolved' || 'pending' || 'submitted' || 'rejected' =>
+      colors?.error ?? theme.colorScheme.error,
+    _ => theme.colorScheme.onSurfaceVariant, // closed + unknown
   };
 }

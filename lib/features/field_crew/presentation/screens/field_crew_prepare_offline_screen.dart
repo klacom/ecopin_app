@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_notifier.dart';
-import 'package:ecopin_app/features/field_crew/sync/fc_sync_settings.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
 import '../widgets/fc_offline_ui.dart';
 import '../widgets/fc_offline_package_details.dart';
@@ -16,34 +17,9 @@ class FieldCrewPrepareOfflineScreen extends ConsumerStatefulWidget {
 
 class _FieldCrewPrepareOfflineScreenState
     extends ConsumerState<FieldCrewPrepareOfflineScreen> {
-  bool _savingMode = false;
-  String? _modeError;
-  Future<void> _pauseSync() async {
-    if (_savingMode) return;
-    setState(() {
-      _savingMode = true;
-      _modeError = null;
-    });
-    try {
-      await ref
-          .read(fcSyncSettingsProvider.notifier)
-          .setMode(FcSyncMode.offlineOnly);
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => _modeError =
-              'Sync mode could not save. Your previous preference remains. Please try again.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _savingMode = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final package = ref.watch(fcOfflinePackageNotifierProvider);
-    final settings = ref.watch(fcSyncSettingsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Prepare offline')),
       body: SafeArea(
@@ -89,7 +65,7 @@ class _FieldCrewPrepareOfflineScreenState
                     ? 'Try preparation again'
                     : 'Prepare assigned work',
                 isLoading: package.isDownloading,
-                onPressed: package.isDownloading || _savingMode
+                onPressed: package.isDownloading
                     ? null
                     : () => ref
                           .read(fcOfflinePackageNotifierProvider.notifier)
@@ -99,48 +75,11 @@ class _FieldCrewPrepareOfflineScreenState
                 'Updating preparation refreshes cached records. It does not commit queued changes or confirm that reports are complete.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-              if (package.isReady)
-                FcOfflineCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Queued sync preference',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        settings.mode == FcSyncMode.offlineOnly
-                            ? 'Offline Only is enabled. Queued work stays on this device until you change mode and sync on an allowed connection.'
-                            : 'You can pause queued syncing for field work. Offline Only pauses sync, not the device connection or explicit preparation downloads.',
-                      ),
-                      if (settings.mode != FcSyncMode.offlineOnly) ...[
-                        const SizedBox(height: 16),
-                        AppButton(
-                          text: 'Enable Offline Only',
-                          variant: ButtonVariant.secondary,
-                          isLoading: _savingMode,
-                          onPressed: package.isDownloading || _savingMode
-                              ? null
-                              : _pauseSync,
-                        ),
-                      ],
-                      if (_modeError != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Semantics(
-                            liveRegion: true,
-                            child: Text(
-                              _modeError!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+              TextButton.icon(
+                onPressed: () => context.push(FieldCrewAppRoutes.syncCenter),
+                icon: const Icon(Icons.sync),
+                label: const Text('Queued sync preferences are in Sync Center'),
+              ),
             ],
           ),
         ),

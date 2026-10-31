@@ -15,11 +15,10 @@ NotificationDestination? notificationDestination(
   final encoded = Uri.encodeComponent(id);
   final prefix = switch (role) {
     UserRole.citizen => ProtectedAppRoutes.reports,
-    UserRole.officer => OfficerAppRoutes.reports,
     UserRole.fieldCrew => FieldCrewAppRoutes.reports,
-    UserRole.admin => null,
+    UserRole.officer || UserRole.admin => null,
   };
-  // There is no admin report route, nor a task ID in the current notification
+  // There is no officer or admin mobile route, nor a task ID in the current notification
   // contract. Do not invent a deep link or infer an identifier from the body.
   return prefix == null
       ? null

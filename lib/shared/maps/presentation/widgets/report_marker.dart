@@ -20,7 +20,7 @@ class ReportMarkerStyle {
         Theme.of(context).extension<AppStatusColors>() ??
         AppStatusColors(
           success: AppColors.success,
-          warning: AppColors.warning,
+          warning: const Color(0xFFB45309),
           error: Theme.of(context).colorScheme.error,
           info: AppColors.info,
           feedback: const Color(0xFF6D28D9),

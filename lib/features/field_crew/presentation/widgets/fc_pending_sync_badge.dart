@@ -56,7 +56,7 @@ class FcSyncChip extends StatelessWidget {
       ),
       _ => (
         automatic ? 'Sync queued' : 'Pending Sync',
-        AppColors.warning,
+        AppColors.warningFill,
         Colors.black87,
       ),
     };

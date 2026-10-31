@@ -1,5 +1,6 @@
 import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
@@ -18,7 +19,7 @@ class FcReportListTile extends StatelessWidget {
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final borderColor = isDark ? Colors.white10 : Colors.grey.shade100;
     final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
-    final validationColor = _getValidationColor(report.validationStatus);
+    final validationColor = _getValidationColor(context, report.validationStatus);
 
     return InkWell(
       onTap: onTap,
@@ -110,14 +111,15 @@ class FcReportListTile extends StatelessWidget {
     );
   }
 
-  Color _getValidationColor(String status) {
+  Color _getValidationColor(BuildContext context, String status) {
+    final colors = Theme.of(context).extension<AppStatusColors>()!;
     switch (status.toLowerCase()) {
       case 'validated':
-        return AppColors.success;
+        return colors.success;
       case 'rejected':
-        return AppColors.error;
+        return colors.error;
       default:
-        return AppColors.warning;
+        return colors.warning;
     }
   }
 }

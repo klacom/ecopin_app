@@ -28,7 +28,7 @@ class SnackbarHelper {
      messengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(message, style: const TextStyle(color: Colors.black)), 
-        backgroundColor: AppColors.warning
+        backgroundColor: AppColors.warningFill
       ),
     );
   }

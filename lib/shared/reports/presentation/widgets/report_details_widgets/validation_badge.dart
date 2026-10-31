@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 
 class ValidationBadge extends StatelessWidget {
@@ -8,6 +9,7 @@ class ValidationBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final statusColors = Theme.of(context).extension<AppStatusColors>()!;
     Color color;
     String label;
     IconData icon;
@@ -15,22 +17,22 @@ class ValidationBadge extends StatelessWidget {
     switch (status.toLowerCase()) {
       case 'pending_ai_validation':
       case 'pending':
-        color = AppColors.info;
+        color = statusColors.info;
         label = 'PENDING AI';
         icon = Icons.hourglass_empty;
         break;
       case 'approved':
-        color = AppColors.success;
+        color = statusColors.success;
         label = 'APPROVED';
         icon = Icons.verified;
         break;
       case 'manual_review':
-        color = AppColors.warning;
+        color = statusColors.warning;
         label = 'MANUAL REVIEW';
         icon = Icons.rate_review;
         break;
       case 'rejected':
-        color = AppColors.error;
+        color = statusColors.error;
         label = 'REJECTED';
         icon = Icons.error_outline;
         break;

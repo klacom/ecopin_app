@@ -1,5 +1,6 @@
 import 'package:ecopin_app/features/field_crew/sync/crew_heartbeat.dart';
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,13 +66,7 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
     final avatar = profile.value?['avatar_url'] as String?;
     final theme = Theme.of(context);
     final canvas = theme.brightness == Brightness.light
-        ? Color(
-            Color.alphaBlend(
-              (theme.dividerTheme.color ?? theme.colorScheme.outlineVariant)
-                  .withValues(alpha: .5),
-              theme.scaffoldBackgroundColor,
-            ).toARGB32(),
-          )
+        ? AppColors.tabCanvasLight
         : theme.scaffoldBackgroundColor;
     return Scaffold(
       backgroundColor: canvas,

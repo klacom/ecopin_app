@@ -33,9 +33,12 @@ class AppColors {
 
   // ── Status ────────────────────────────────────────────────
   static const Color success = Color(0xFF2E7D32);
-  static const Color warning = Color(0xFFF9A825);
+  // Text, icons and badges read AppStatusColors from the theme instead.
+  /// Bright amber for fills under dark text only (sync chips, warning snackbars).
+  static const Color warningFill = Color(0xFFF9A825);
   static const Color error = Color(0xFFD32F2F);
-  static const Color info = Color(0xFF0288D1);
+  /// Light-theme information blue; white text on it passes 4.5:1.
+  static const Color info = Color(0xFF0369A1);
 
   // ── Surface / Elevated ────────────────────────────────────
   static const Color surfaceLight = Color(0xFFFFFFFF);

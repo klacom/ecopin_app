@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/features/field_crew/data/models/agency_response_model.dart';
@@ -66,7 +67,7 @@ class FcActivityLog extends StatelessWidget {
             separatorBuilder: (context, index) => Divider(color: dividerColor, height: 24),
             itemBuilder: (context, index) {
               final response = responses[index];
-              return _buildLogItem(response, textColor);
+              return _buildLogItem(context, response, textColor);
             },
           ),
         ],
@@ -74,17 +75,18 @@ class FcActivityLog extends StatelessWidget {
     );
   }
 
-  Widget _buildLogItem(AgencyResponse res, Color textColor) {
+  Widget _buildLogItem(BuildContext context, AgencyResponse res, Color textColor) {
+    final status = Theme.of(context).extension<AppStatusColors>()!;
     IconData icon;
     Color iconColor;
     switch (res.actionType) {
       case 'status_update':
         icon = Icons.sync;
-        iconColor = AppColors.info;
+        iconColor = status.info;
         break;
       case 'manual_note':
         icon = Icons.note;
-        iconColor = AppColors.warning;
+        iconColor = status.warning;
         break;
       case 'evidence_upload':
         icon = Icons.camera_alt;

@@ -779,11 +779,12 @@ class _SyncBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (syncStatus) {
-      FcLocalPhotoSyncStatus.pending => ('Pending', AppColors.warning),
-      FcLocalPhotoSyncStatus.inFlight => ('Uploading', AppColors.primaryDark),
-      FcLocalPhotoSyncStatus.failed => ('Failed', AppColors.error),
-      _ => ('', Colors.transparent),
+    // Amber takes dark text; white fails contrast on it.
+    final (label, color, textColor) = switch (syncStatus) {
+      FcLocalPhotoSyncStatus.pending => ('Pending', AppColors.warningFill, Colors.black87),
+      FcLocalPhotoSyncStatus.inFlight => ('Uploading', AppColors.primaryDark, Colors.white),
+      FcLocalPhotoSyncStatus.failed => ('Failed', AppColors.error, Colors.white),
+      _ => ('', Colors.transparent, Colors.white),
     };
 
     if (label.isEmpty) return const SizedBox.shrink();
@@ -796,9 +797,9 @@ class _SyncBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 9,
-          color: Colors.white,
+          color: textColor,
           fontWeight: FontWeight.w600,
         ),
       ),

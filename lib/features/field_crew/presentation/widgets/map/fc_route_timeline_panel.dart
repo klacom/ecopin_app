@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/theme/typography.dart';
 import 'package:ecopin_app/features/field_crew/data/models/route_model.dart';
@@ -98,7 +99,7 @@ class FcRouteTimelinePanel extends StatelessWidget {
       bgColor = AppColors.success;
       textColor = Colors.white;
     } else if (inProgress) {
-      bgColor = AppColors.warning;
+      bgColor = AppColors.warningFill;
       textColor = Colors.black; // white on amber fails contrast
     }
 
@@ -152,7 +153,7 @@ class FcRouteTimelinePanel extends StatelessWidget {
         color: isCompleted
             ? AppColors.success.withValues(alpha: 0.05)
             : (inProgress
-                ? AppColors.warning.withValues(alpha: 0.05)
+                ? AppColors.warningFill.withValues(alpha: 0.05)
                 : cardColor),
         borderRadius: BorderRadius.circular(AppColors.radiusCard),
         boxShadow: [
@@ -167,7 +168,7 @@ class FcRouteTimelinePanel extends StatelessWidget {
           color: isCompleted
               ? AppColors.success.withValues(alpha: 0.3)
               : (inProgress
-                  ? AppColors.warning.withValues(alpha: 0.5)
+                  ? AppColors.warningFill.withValues(alpha: 0.5)
                   : borderColor),
           width: (isCompleted || inProgress) ? 2 : 1,
         ),
@@ -198,7 +199,7 @@ class FcRouteTimelinePanel extends StatelessWidget {
             const SizedBox(height: AppColors.spaceSM),
             Text('MICRO-ROUTE SEQUENCE', style: AppTypography.caption.copyWith(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: AppColors.spaceSM),
-            ..._buildMicroRouteSequence(taskInfo, wp.sequenceOrder, textColor),
+            ..._buildMicroRouteSequence(context, taskInfo, wp.sequenceOrder, textColor),
             const SizedBox(height: AppColors.spaceMD),
           ],
           SizedBox(
@@ -236,7 +237,8 @@ class FcRouteTimelinePanel extends StatelessWidget {
     }
   }
 
-  List<Widget> _buildMicroRouteSequence(CleanupTask task, int sequenceOrder, Color textColor) {
+  List<Widget> _buildMicroRouteSequence(BuildContext context, CleanupTask task, int sequenceOrder, Color textColor) {
+    final status = Theme.of(context).extension<AppStatusColors>()!;
     if (task.reports == null) return [];
     
     // Sort reports according to reportSequence
@@ -296,7 +298,7 @@ class FcRouteTimelinePanel extends StatelessWidget {
                     child: Text(
                       isPending ? '🔍 Acknowledge & Validate' : '🧹 Start Cleanup',
                       style: TextStyle(
-                        color: isPending ? AppColors.info : AppColors.success,
+                        color: isPending ? status.info : status.success,
                         fontWeight: FontWeight.bold,
                         fontSize: 9,
                       ),

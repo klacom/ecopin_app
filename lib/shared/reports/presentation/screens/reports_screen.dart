@@ -2,6 +2,7 @@ import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline
 import 'dart:math' as math;
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/theme/app_theme.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/status_badge.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/validation_badge.dart';
@@ -311,7 +312,7 @@ class _ReportListItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppColors.radiusCard),
         side: BorderSide(
           color: theme.dividerTheme.color ?? theme.colorScheme.outlineVariant,
         ),

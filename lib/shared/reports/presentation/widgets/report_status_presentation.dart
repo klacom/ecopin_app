@@ -32,8 +32,10 @@ Color reportStatusColor(BuildContext context, String value) {
     'waiting_for_feedback' =>
       colors?.feedback ??
           (dark ? const Color(0xFFC4B5FD) : const Color(0xFF6D28D9)),
-    'unresolved' || 'pending' || 'submitted' || 'rejected' =>
-      colors?.error ?? theme.colorScheme.error,
+    'unresolved' ||
+    'pending' ||
+    'submitted' ||
+    'rejected' => colors?.error ?? theme.colorScheme.error,
     _ => theme.colorScheme.onSurfaceVariant, // closed + unknown
   };
 }

@@ -60,7 +60,9 @@ class AuthNotifier extends ChangeNotifier {
       _ref.read(notificationServiceProvider).subscribeToNotifications();
     }
 
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
       final hasConnection = !results.contains(ConnectivityResult.none);
       if (hasConnection) {
         final currentSession = _supabase.auth.currentSession;
@@ -115,7 +117,9 @@ class AuthNotifier extends ChangeNotifier {
         }
 
         if (roleString == 'officer' || roleString == 'lgu') {
-          _log.warning('Officer role temporarily disabled on mobile application');
+          _log.warning(
+            'Officer role temporarily disabled on mobile application',
+          );
           await Supabase.instance.client.auth.signOut();
           try {
             final prefs = await SharedPreferences.getInstance();
@@ -161,7 +165,7 @@ class AuthNotifier extends ChangeNotifier {
         _state = AppAuthState.authenticated(role);
       } catch (e, stackTrace) {
         _log.severe('Error fetching user role: $e', stackTrace);
-        
+
         // Offline fallback
         try {
           final prefs = await SharedPreferences.getInstance();
@@ -177,7 +181,7 @@ class AuthNotifier extends ChangeNotifier {
             final cachedRole = cachedRoleStr == 'lgu'
                 ? UserRole.officer
                 : UserRole.values.firstWhere(
-                    (r) => r.name == cachedRoleStr, 
+                    (r) => r.name == cachedRoleStr,
                     orElse: () => UserRole.citizen,
                   );
             _log.info('Offline fallback to cached role: ${cachedRole.name}');
@@ -209,7 +213,7 @@ class AuthNotifier extends ChangeNotifier {
     } finally {
       // 3. Clear Supabase session locally
       await _supabase.auth.signOut();
-      
+
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('cached_user_role');
@@ -227,5 +231,3 @@ class AuthNotifier extends ChangeNotifier {
     super.dispose();
   }
 }
-
-

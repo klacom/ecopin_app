@@ -26,7 +26,9 @@ class PasswordStrengthMeter extends StatelessWidget {
     final hasUpperCase = RegExp(r'[A-Z]').hasMatch(password);
     final hasLowerCase = RegExp(r'[a-z]').hasMatch(password);
     final hasNumbers = RegExp(r'\d').hasMatch(password);
-    final hasSpecialChar = RegExp(r'[!@#\$%\^&\*\(\),\.\?":\{\}\|<>]').hasMatch(password);
+    final hasSpecialChar = RegExp(
+      r'[!@#\$%\^&\*\(\),\.\?":\{\}\|<>]',
+    ).hasMatch(password);
 
     List<PasswordRequirement> reqs = [
       PasswordRequirement(
@@ -36,16 +38,33 @@ class PasswordStrengthMeter extends StatelessWidget {
     ];
 
     if (requirements!['password_require_uppercase'] == true) {
-      reqs.add(PasswordRequirement(isMet: hasUpperCase, text: 'At least one uppercase letter'));
+      reqs.add(
+        PasswordRequirement(
+          isMet: hasUpperCase,
+          text: 'At least one uppercase letter',
+        ),
+      );
     }
     if (requirements!['password_require_lowercase'] == true) {
-      reqs.add(PasswordRequirement(isMet: hasLowerCase, text: 'At least one lowercase letter'));
+      reqs.add(
+        PasswordRequirement(
+          isMet: hasLowerCase,
+          text: 'At least one lowercase letter',
+        ),
+      );
     }
     if (requirements!['password_require_numbers'] == true) {
-      reqs.add(PasswordRequirement(isMet: hasNumbers, text: 'At least one number'));
+      reqs.add(
+        PasswordRequirement(isMet: hasNumbers, text: 'At least one number'),
+      );
     }
     if (requirements!['password_require_special_chars'] == true) {
-      reqs.add(PasswordRequirement(isMet: hasSpecialChar, text: 'At least one special character'));
+      reqs.add(
+        PasswordRequirement(
+          isMet: hasSpecialChar,
+          text: 'At least one special character',
+        ),
+      );
     }
 
     return reqs;
@@ -68,17 +87,23 @@ class PasswordStrengthMeter extends StatelessWidget {
                 Icon(
                   req.isMet ? Icons.check_circle : Icons.radio_button_unchecked,
                   size: 16,
-                  color: req.isMet ? Theme.of(context).extension<AppStatusColors>()?.success : Theme.of(context).colorScheme.onSurface,
+                  color: req.isMet
+                      ? Theme.of(context).extension<AppStatusColors>()?.success
+                      : Theme.of(context).colorScheme.onSurface,
                 ),
                 const SizedBox(width: 8),
-                Expanded(child: Text(
-                  req.text,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: req.isMet 
-                        ? (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight)
-                        : Theme.of(context).colorScheme.onSurface,
+                Expanded(
+                  child: Text(
+                    req.text,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: req.isMet
+                          ? (Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.textPrimaryDark
+                                : AppColors.textPrimaryLight)
+                          : Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
-                )),
+                ),
               ],
             ),
           );

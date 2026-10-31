@@ -1,7 +1,8 @@
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/shared/widgets/app_button.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_row.dart';
 import 'package:ecopin_app/shared/widgets/app_state_view.dart';
+import 'package:ecopin_app/shared/widgets/sliding_switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -179,121 +180,200 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return MaterialLocalizations.of(context).formatMediumDate(day);
   }
 
-  Widget _card(Map<String, dynamic> row) {
+  Widget _row(Map<String, dynamic> row) {
+    final theme = Theme.of(context);
     final title = _text(row['title'], 'Notification');
+    final body = _text(row['body'], 'No additional details.');
     final isRead = row['is_read'] == true;
     final working = _working.contains(row['id']);
     final enabled = !working && !_markingAll;
     final destination = notificationDestination(row, widget.role);
     final date = _date(row);
-    final colors = Theme.of(context).colorScheme;
-    final unreadForeground = Theme.of(context).brightness == Brightness.dark
-        ? AppColors.linkDark
-        : AppColors.accent;
+    final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    final unreadForeground = dark ? AppColors.linkDark : AppColors.accent;
+    final time = date == null
+        ? 'Time unavailable'
+        : MaterialLocalizations.of(context).formatTimeOfDay(
+            TimeOfDay.fromDateTime(date),
+            alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+          );
+    // Opening a destination marks the alert read first; an alert without one
+    // is simply marked read, and an already-read one has nothing to do.
+    final VoidCallback? act = !enabled
+        ? null
+        : destination != null
+        ? () => _open(row, destination)
+        : !isRead && row['id'] is String
+        ? () => _markRead(row)
+        : null;
     return Semantics(
       container: true,
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        color: isRead
-            ? colors.surface
-            : Color.alphaBlend(
-                colors.primary.withValues(alpha: .06),
-                colors.surface,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: Material(
+          key: const Key('notification-panel'),
+          color: isRead
+              ? Colors.transparent
+              : Color.alphaBlend(
+                  scheme.primary.withValues(alpha: .06),
+                  scheme.surface,
+                ),
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: act,
+            overlayColor: WidgetStateProperty.resolveWith(
+              (states) => scheme.primary.withValues(
+                alpha: states.contains(WidgetState.focused)
+                    ? .12
+                    : states.contains(WidgetState.pressed)
+                    ? .08
+                    : states.contains(WidgetState.hovered)
+                    ? .04
+                    : 0,
               ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(
-            color: isRead
-                ? (Theme.of(context).dividerTheme.color ??
-                      colors.outlineVariant)
-                : colors.primary.withValues(alpha: .35),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: isRead ? FontWeight.w500 : FontWeight.w600,
-                      ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: theme.dividerTheme.color ?? scheme.outlineVariant,
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    tooltip: 'Actions for $title',
-                    enabled: enabled && row['id'] is String,
-                    onSelected: (action) {
-                      if (action == 'read') {
-                        _markRead(row);
-                      } else {
-                        _remove(row);
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      if (!isRead)
-                        const PopupMenuItem(
-                          value: 'read',
-                          child: Text('Mark as read'),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Positioned.fill(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color:
+                                      (isRead
+                                              ? scheme.onSurfaceVariant
+                                              : unreadForeground)
+                                          .withValues(alpha: .12),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(
+                                  Icons.notifications_outlined,
+                                  size: 24,
+                                  color: isRead
+                                      ? scheme.onSurfaceVariant
+                                      : unreadForeground,
+                                ),
+                              ),
+                            ),
+                            if (!isRead)
+                              Positioned(
+                                right: -3,
+                                top: -3,
+                                child: Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: unreadForeground,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: scheme.surface,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      const PopupMenuItem(
-                        value: 'remove',
-                        child: Text('Remove notification'),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Semantics(
+                          button: act != null,
+                          hint: act == null
+                              ? null
+                              : destination?.label ?? 'Mark as read',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: isRead
+                                      ? FontWeight.w500
+                                      : FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                body,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 4,
+                                children: [
+                                  Text(
+                                    isRead ? 'Read,' : 'Unread,',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: isRead
+                                          ? scheme.onSurfaceVariant
+                                          : unreadForeground,
+                                      fontWeight: isRead
+                                          ? null
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(time, style: theme.textTheme.bodySmall),
+                                ],
+                              ),
+                              if (working) ...[
+                                const SizedBox(height: 12),
+                                const LinearProgressIndicator(
+                                  semanticsLabel: 'Updating notification',
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        tooltip: 'Actions for $title',
+                        enabled: enabled && row['id'] is String,
+                        onSelected: (action) {
+                          if (action == 'read') {
+                            _markRead(row);
+                          } else {
+                            _remove(row);
+                          }
+                        },
+                        itemBuilder: (_) => [
+                          if (!isRead)
+                            const PopupMenuItem(
+                              value: 'read',
+                              child: Text('Mark as read'),
+                            ),
+                          const PopupMenuItem(
+                            value: 'remove',
+                            child: Text('Remove notification'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  Text(
-                    isRead ? 'Read' : 'Unread',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: isRead
-                          ? colors.onSurfaceVariant
-                          : unreadForeground,
-                    ),
-                  ),
-                  Text(
-                    date == null
-                        ? 'Time unavailable'
-                        : MaterialLocalizations.of(context).formatTimeOfDay(
-                            TimeOfDay.fromDateTime(date),
-                            alwaysUse24HourFormat:
-                                MediaQuery.alwaysUse24HourFormatOf(context),
-                          ),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _text(row['body'], 'No additional details.'),
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              if (working) ...[
-                const SizedBox(height: 16),
-                const LinearProgressIndicator(
-                  semanticsLabel: 'Updating notification',
                 ),
-              ],
-              if (destination != null) ...[
-                const SizedBox(height: 12),
-                AppButton(
-                  text: destination.label,
-                  variant: ButtonVariant.link,
-                  onPressed: enabled ? () => _open(row, destination) : null,
-                ),
-              ],
-            ],
+              ),
+            ),
           ),
         ),
       ),
@@ -343,47 +423,26 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (rows != null)
-                        Text(
-                          '$unread unread · ${rows.length} total',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('All'),
-                            selected: !_unreadOnly,
-                            onSelected: (_) =>
-                                setState(() => _unreadOnly = false),
-                          ),
-                          ChoiceChip(
-                            label: const Text('Unread'),
-                            selected: _unreadOnly,
-                            onSelected: (_) =>
-                                setState(() => _unreadOnly = true),
+                      SlidingSwitch(
+                        selectedIndex: _unreadOnly ? 1 : 0,
+                        onChanged: (index) =>
+                            setState(() => _unreadOnly = index == 1),
+                        options: [
+                          const SlidingSwitchOption(label: 'All'),
+                          SlidingSwitchOption(
+                            label: 'Unread',
+                            semanticsLabel: rows == null
+                                ? 'Unread'
+                                : 'Unread, $unread',
+                            badge: rows == null
+                                ? null
+                                : SwitchCountBadge('$unread'),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      AppButton(
-                        text: 'Mark all as read',
-                        variant: ButtonVariant.secondary,
-                        isLoading: _markingAll,
-                        onPressed:
-                            unread > 0 &&
-                                !busy &&
-                                !state.hasError &&
-                                !state.isLoading
-                            ? _markAll
-                            : null,
                       ),
                       if (_feedback != null) ...[
                         const SizedBox(height: 12),
@@ -401,10 +460,14 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           ),
                         ),
                       ],
-                      if (_refreshing || (state.isLoading && rows != null)) ...[
+                      if (_markingAll ||
+                          _refreshing ||
+                          (state.isLoading && rows != null)) ...[
                         const SizedBox(height: 12),
-                        const LinearProgressIndicator(
-                          semanticsLabel: 'Reloading notifications',
+                        LinearProgressIndicator(
+                          semanticsLabel: _markingAll
+                              ? 'Marking notifications as read'
+                              : 'Reloading notifications',
                         ),
                       ],
                       if (state.hasError && rows != null) ...[
@@ -449,25 +512,35 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               else
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(
-                    16,
+                    4,
                     0,
-                    16,
+                    4,
                     24 + MediaQuery.paddingOf(context).bottom,
                   ),
                   sliver: SliverList.list(
                     children: [
-                      for (final group in groups.entries) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8, bottom: 16),
-                          child: Semantics(
-                            header: true,
-                            child: Text(
-                              group.key,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
+                      for (final (index, group) in groups.entries.indexed) ...[
+                        ReportGroupHeader(
+                          label: group.key,
+                          first: index == 0,
+                          trailing: index == 0 && unread > 0
+                              ? TextButton(
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                  ),
+                                  onPressed:
+                                      !busy &&
+                                          !state.hasError &&
+                                          !state.isLoading
+                                      ? _markAll
+                                      : null,
+                                  child: const Text('Mark all as read'),
+                                )
+                              : null,
                         ),
-                        ...group.value.map(_card),
+                        ...group.value.map(_row),
                       ],
                     ],
                   ),

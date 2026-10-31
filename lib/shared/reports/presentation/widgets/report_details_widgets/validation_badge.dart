@@ -49,10 +49,15 @@ class ValidationBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceMD, vertical: AppColors.spaceSM),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppColors.spaceMD,
+        vertical: AppColors.spaceSM,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusChip)),
+        borderRadius: const BorderRadius.all(
+          Radius.circular(AppColors.radiusChip),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

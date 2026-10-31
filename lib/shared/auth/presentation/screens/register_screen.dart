@@ -33,7 +33,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _requirementsLoading = true;
   bool _requirementsUnavailable = false;
 
-  void _showError(String message) { if (mounted) setState(() => _error = message); }
+  void _showError(String message) {
+    if (mounted) setState(() => _error = message);
+  }
 
   @override
   void dispose() {
@@ -42,6 +44,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _confirmPasswordController.dispose();
     super.dispose();
   }
+
   Map<String, dynamic>? _requirements;
 
   @override
@@ -73,10 +76,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final pwd = _passwordController.text;
     final minLength = _requirements!['password_min_length'] ?? 8;
     if (pwd.length < minLength) return false;
-    if (_requirements!['password_require_uppercase'] == true && !RegExp(r'[A-Z]').hasMatch(pwd)) return false;
-    if (_requirements!['password_require_lowercase'] == true && !RegExp(r'[a-z]').hasMatch(pwd)) return false;
-    if (_requirements!['password_require_numbers'] == true && !RegExp(r'\d').hasMatch(pwd)) return false;
-    if (_requirements!['password_require_special_chars'] == true && !RegExp(r'[!@#\$%\^&\*\(\),\.\?":\{\}\|<>]').hasMatch(pwd)) return false;
+    if (_requirements!['password_require_uppercase'] == true &&
+        !RegExp(r'[A-Z]').hasMatch(pwd))
+      return false;
+    if (_requirements!['password_require_lowercase'] == true &&
+        !RegExp(r'[a-z]').hasMatch(pwd))
+      return false;
+    if (_requirements!['password_require_numbers'] == true &&
+        !RegExp(r'\d').hasMatch(pwd))
+      return false;
+    if (_requirements!['password_require_special_chars'] == true &&
+        !RegExp(r'[!@#\$%\^&\*\(\),\.\?":\{\}\|<>]').hasMatch(pwd))
+      return false;
     return true;
   }
 
@@ -84,9 +95,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (_isLoading) return;
     setState(() {
       _error = null;
-      _emailError = _emailController.text.trim().isEmpty ? 'Enter your email.' : null;
-      _passwordError = _passwordController.text.isEmpty ? 'Enter a password.' : validatePassword(_passwordController.text);
-      _confirmError = validateConfirmPassword(_passwordController.text, _confirmPasswordController.text);
+      _emailError = _emailController.text.trim().isEmpty
+          ? 'Enter your email.'
+          : null;
+      _passwordError = _passwordController.text.isEmpty
+          ? 'Enter a password.'
+          : validatePassword(_passwordController.text);
+      _confirmError = validateConfirmPassword(
+        _passwordController.text,
+        _confirmPasswordController.text,
+      );
     });
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -123,14 +141,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       final apiClient = ref.read(apiClientProvider);
-      await apiClient.register(
-        email,
-        password,
-        confirmPassword,
-      );
+      await apiClient.register(email, password, confirmPassword);
 
       if (mounted) {
-        SnackbarHelper.showMessage('Registration successful! Please verify your email first.');
+        SnackbarHelper.showMessage(
+          'Registration successful! Please verify your email first.',
+        );
         context.go('/email-verification?email=${Uri.encodeComponent(email)}');
       }
     } on DioException catch (e, stackTrace) {
@@ -160,29 +176,89 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(leading: IconButton(tooltip: 'Back to EcoPin',
-      icon: const Icon(Icons.arrow_back), onPressed: _isLoading ? null : () => context.go('/landing'))),
-    body: AuthPageBody(title: 'Create your account', description: 'Report environmental concerns in Pasig and follow their progress.', children: [
-      AppTextField(controller: _emailController, labelText: 'Email', inputType: 'email',
-        isLoading: _isLoading, errorText: _emailError, textInputAction: TextInputAction.next),
-      const SizedBox(height: AppColors.spaceMD),
-      AppTextField(controller: _passwordController, labelText: 'Password', inputType: 'password',
-        isLoading: _isLoading, errorText: _passwordError, autofillHints: const [AutofillHints.newPassword], textInputAction: TextInputAction.next),
-      if (_requirementsLoading) const Padding(padding: EdgeInsets.only(top: 12), child: Text('Checking password requirements…')),
-      if (_requirementsUnavailable) const Padding(padding: EdgeInsets.only(top: 12), child: Text('Password requirements could not load. Your password will also be checked when you submit.')),
-      if (_requirements != null) PasswordStrengthMeter(password: _passwordController.text, requirements: _requirements),
-      const SizedBox(height: AppColors.spaceMD),
-      AppTextField(controller: _confirmPasswordController, labelText: 'Confirm password', inputType: 'password',
-        isLoading: _isLoading, errorText: _confirmError, autofillHints: const [AutofillHints.newPassword], textInputAction: TextInputAction.done, onSubmitted: (_) => signUp()),
-      const SizedBox(height: AppColors.spaceLG),
-      if (_error != null) ...[
-        Semantics(liveRegion: true, child: Text(_error!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.error))),
+    appBar: AppBar(
+      leading: IconButton(
+        tooltip: 'Back to EcoPin',
+        icon: const Icon(Icons.arrow_back),
+        onPressed: _isLoading ? null : () => context.go('/landing'),
+      ),
+    ),
+    body: AuthPageBody(
+      title: 'Create your account',
+      description:
+          'Report environmental concerns in Pasig and follow their progress.',
+      children: [
+        AppTextField(
+          controller: _emailController,
+          labelText: 'Email',
+          inputType: 'email',
+          isLoading: _isLoading,
+          errorText: _emailError,
+          textInputAction: TextInputAction.next,
+        ),
         const SizedBox(height: AppColors.spaceMD),
+        AppTextField(
+          controller: _passwordController,
+          labelText: 'Password',
+          inputType: 'password',
+          isLoading: _isLoading,
+          errorText: _passwordError,
+          autofillHints: const [AutofillHints.newPassword],
+          textInputAction: TextInputAction.next,
+        ),
+        if (_requirementsLoading)
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Text('Checking password requirements…'),
+          ),
+        if (_requirementsUnavailable)
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Text(
+              'Password requirements could not load. Your password will also be checked when you submit.',
+            ),
+          ),
+        if (_requirements != null)
+          PasswordStrengthMeter(
+            password: _passwordController.text,
+            requirements: _requirements,
+          ),
+        const SizedBox(height: AppColors.spaceMD),
+        AppTextField(
+          controller: _confirmPasswordController,
+          labelText: 'Confirm password',
+          inputType: 'password',
+          isLoading: _isLoading,
+          errorText: _confirmError,
+          autofillHints: const [AutofillHints.newPassword],
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => signUp(),
+        ),
+        const SizedBox(height: AppColors.spaceLG),
+        if (_error != null) ...[
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              _error!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppColors.spaceMD),
+        ],
+        AppButton(
+          text: 'Create account',
+          isLoading: _isLoading,
+          onPressed: _isLoading ? null : signUp,
+        ),
+        const SizedBox(height: AppColors.spaceMD),
+        AppButton(
+          text: 'Already registered? Sign in',
+          variant: ButtonVariant.link,
+          onPressed: _isLoading ? null : () => context.go('/login'),
+        ),
       ],
-      AppButton(text: 'Create account', isLoading: _isLoading, onPressed: _isLoading ? null : signUp),
-      const SizedBox(height: AppColors.spaceMD),
-      AppButton(text: 'Already registered? Sign in', variant: ButtonVariant.link,
-        onPressed: _isLoading ? null : () => context.go('/login')),
-    ]),
+    ),
   );
 }

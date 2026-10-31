@@ -52,7 +52,11 @@ class _EmailVerificationScreenState
       },
       onError: (err) {
         _log.severe('Deep link error', err);
-        if (mounted) setState(() => _resendError = 'The verification link could not open. Request another email or return to sign in.');
+        if (mounted)
+          setState(
+            () => _resendError =
+                'The verification link could not open. Request another email or return to sign in.',
+          );
       },
     );
   }
@@ -75,7 +79,10 @@ class _EmailVerificationScreenState
 
   Future<void> _resendVerification() async {
     if (_isResending || _cooldownSeconds > 0) return;
-    setState(() { _resendError = null; _resendResult = null; });
+    setState(() {
+      _resendError = null;
+      _resendResult = null;
+    });
     if (widget.email.isEmpty) {
       SnackbarHelper.showError('No email provided to resend.');
       return;
@@ -88,7 +95,10 @@ class _EmailVerificationScreenState
       await apiClient.resendVerification(widget.email);
 
       if (mounted) {
-        setState(() => _resendResult = 'A new verification email was requested. Check your inbox and spam folder.');
+        setState(
+          () => _resendResult =
+              'A new verification email was requested. Check your inbox and spam folder.',
+        );
       }
     } on DioException catch (e) {
       String errorMessage = 'Failed to resend email';
@@ -97,19 +107,31 @@ class _EmailVerificationScreenState
       }
       _log.severe(e);
       if (mounted) setState(() => _resendError = errorMessage);
-      final retryAfter = int.tryParse(e.response?.headers.value('retry-after') ?? '');
-      if (e.response?.statusCode == 429 && retryAfter != null && retryAfter > 0 && mounted) {
+      final retryAfter = int.tryParse(
+        e.response?.headers.value('retry-after') ?? '',
+      );
+      if (e.response?.statusCode == 429 &&
+          retryAfter != null &&
+          retryAfter > 0 &&
+          mounted) {
         _cooldownTimer?.cancel();
         setState(() => _cooldownSeconds = retryAfter);
         _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          if (!mounted) { timer.cancel(); return; }
+          if (!mounted) {
+            timer.cancel();
+            return;
+          }
           setState(() => _cooldownSeconds--);
           if (_cooldownSeconds <= 0) timer.cancel();
         });
       }
     } catch (e, stackTrace) {
       _log.severe(e, stackTrace);
-      if (mounted) setState(() => _resendError = 'The email could not be requested. Please try again.');
+      if (mounted)
+        setState(
+          () => _resendError =
+              'The email could not be requested. Please try again.',
+        );
     } finally {
       if (mounted) {
         setState(() => _isResending = false);
@@ -119,28 +141,78 @@ class _EmailVerificationScreenState
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(leading: IconButton(tooltip: 'Back to sign in', icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/login'))),
-    body: AuthPageBody(title: 'Check your inbox', description: 'Open the verification link in your email to activate your account.', children: [
-      Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border.all(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(16)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Verification email'), const SizedBox(height: 8),
-          SelectableText(widget.email.isEmpty ? 'Email address not provided' : widget.email, style: Theme.of(context).textTheme.bodyLarge),
-        ])),
-      const SizedBox(height: 24),
-      Text('If the link has expired, request another email. You can sign in after your address has been verified.', style: Theme.of(context).textTheme.bodyMedium),
-      const SizedBox(height: 24),
-      if (_resendResult != null) ...[
-        Semantics(liveRegion: true, child: Text(_resendResult!, style: Theme.of(context).textTheme.bodyMedium)),
-        const SizedBox(height: 16),
+    appBar: AppBar(
+      leading: IconButton(
+        tooltip: 'Back to sign in',
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => context.go('/login'),
+      ),
+    ),
+    body: AuthPageBody(
+      title: 'Check your inbox',
+      description:
+          'Open the verification link in your email to activate your account.',
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border.all(color: Theme.of(context).dividerColor),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Verification email'),
+              const SizedBox(height: 8),
+              SelectableText(
+                widget.email.isEmpty
+                    ? 'Email address not provided'
+                    : widget.email,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'If the link has expired, request another email. You can sign in after your address has been verified.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 24),
+        if (_resendResult != null) ...[
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              _resendResult!,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (_resendError != null) ...[
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              _resendError!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        AppButton(
+          text: _cooldownSeconds > 0
+              ? 'Resend in ${_cooldownSeconds}s'
+              : 'Resend verification email',
+          isLoading: _isResending,
+          onPressed:
+              widget.email.isEmpty || _isResending || _cooldownSeconds > 0
+              ? null
+              : _resendVerification,
+        ),
       ],
-      if (_resendError != null) ...[
-        Semantics(liveRegion: true, child: Text(_resendError!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.error))),
-        const SizedBox(height: 16),
-      ],
-      AppButton(text: _cooldownSeconds > 0 ? 'Resend in ${_cooldownSeconds}s' : 'Resend verification email',
-        isLoading: _isResending, onPressed: widget.email.isEmpty || _isResending || _cooldownSeconds > 0 ? null : _resendVerification),
-    ]),
+    ),
   );
 }

@@ -544,7 +544,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
   Future<void> _submitReport() async {
     if (!_consentGiven) {
       setState(() {
-        _submissionError = 'You must agree to share the pinned location and incident details to submit.';
+        _submissionError =
+            'You must agree to share the pinned location and incident details to submit.';
       });
       return;
     }
@@ -1547,7 +1548,8 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               onChanged: (val) {
                 setState(() {
                   _consentGiven = val ?? false;
-                  if (_consentGiven && _submissionError?.contains('agree') == true) {
+                  if (_consentGiven &&
+                      _submissionError?.contains('agree') == true) {
                     _submissionError = null;
                   }
                 });
@@ -1555,9 +1557,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
               controlAffinity: ListTileControlAffinity.leading,
               title: Text(
                 'Do you agree to share the pinned location and incident details publicly for waste monitoring?',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
               ),
               subtitle: Text(
                 'Required for report submission',
@@ -1584,7 +1586,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           _buildStepBottomButtons(
             nextText: 'Submit Report',
             isLoading: _isSubmitting,
-            onNext: _isSubmitting || !_priorityComplete || !_consentGiven ? null : _submitReport,
+            onNext: _isSubmitting || !_priorityComplete || !_consentGiven
+                ? null
+                : _submitReport,
           ),
         ],
       ),

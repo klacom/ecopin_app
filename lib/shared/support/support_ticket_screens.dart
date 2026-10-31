@@ -12,12 +12,27 @@ class TicketReportOption {
 
 Future<List<TicketReportOption>> loadOwnReports() async {
   final reports = await ReportDataSource(ApiClient()).getMyReports();
-  return reports.map((r) => TicketReportOption(id: r.id, title: r.title)).toList();
+  return reports
+      .map((r) => TicketReportOption(id: r.id, title: r.title))
+      .toList();
 }
 
 String formatTicketDate(DateTime value) {
   final local = value.toLocal();
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
   final minute = local.minute.toString().padLeft(2, '0');
   return '${months[local.month - 1]} ${local.day}, ${local.year} $hour:$minute ${local.hour < 12 ? 'AM' : 'PM'}';
@@ -76,7 +91,11 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
       if (!mounted) return;
       await Navigator.of(context).pushReplacement<SupportTicket, SupportTicket>(
         MaterialPageRoute(
-          builder: (_) => TicketDetailScreen(api: widget.api, ticket: ticket, justSent: true),
+          builder: (_) => TicketDetailScreen(
+            api: widget.api,
+            ticket: ticket,
+            justSent: true,
+          ),
         ),
         result: ticket,
       );
@@ -107,23 +126,35 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
                 for (final entry in ticketCategories.entries)
                   DropdownMenuItem(value: entry.key, child: Text(entry.value)),
               ],
-              onChanged: sending ? null : (value) => setState(() => category = value!),
+              onChanged: sending
+                  ? null
+                  : (value) => setState(() => category = value!),
             ),
             const SizedBox(height: 16),
             if (reports.isNotEmpty) ...[
               DropdownButtonFormField<String?>(
                 initialValue: reportId,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Related report (optional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Related report (optional)',
+                ),
                 items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('No specific report')),
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('No specific report'),
+                  ),
                   for (final report in reports)
                     DropdownMenuItem<String?>(
                       value: report.id,
-                      child: Text(report.title, overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        report.title,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                 ],
-                onChanged: sending ? null : (value) => setState(() => reportId = value),
+                onChanged: sending
+                    ? null
+                    : (value) => setState(() => reportId = value),
               ),
               const SizedBox(height: 16),
             ],
@@ -137,21 +168,27 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
                 labelText: 'Describe your question or concern',
                 alignLabelWithHint: true,
               ),
-              validator: (value) => (value ?? '').trim().length < ticketDescriptionMin
+              validator: (value) =>
+                  (value ?? '').trim().length < ticketDescriptionMin
                   ? 'Add at least $ticketDescriptionMin characters so SWMO can help.'
                   : null,
             ),
             if (error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                child: Text(
+                  error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
             FilledButton(
               onPressed: sending ? null : _send,
               child: Text(sending ? 'Sending…' : 'Send ticket'),
             ),
             const SizedBox(height: 12),
-            const Text('For immediate danger, use Official contacts instead of a ticket.'),
+            const Text(
+              'For immediate danger, use Official contacts instead of a ticket.',
+            ),
           ],
         ),
       ),
@@ -205,9 +242,14 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           if (widget.justSent)
             const Padding(
               padding: EdgeInsets.only(bottom: 16),
-              child: Text('Ticket sent. Keep this reference to follow up. SWMO replies appear here.'),
+              child: Text(
+                'Ticket sent. Keep this reference to follow up. SWMO replies appear here.',
+              ),
             ),
-          Text(ticket.categoryLabel, style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            ticket.categoryLabel,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -233,9 +275,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
-          if (refreshing) const Padding(padding: EdgeInsets.only(top: 16), child: LinearProgressIndicator()),
+          if (refreshing)
+            const Padding(
+              padding: EdgeInsets.only(top: 16),
+              child: LinearProgressIndicator(),
+            ),
         ],
       ),
     ),

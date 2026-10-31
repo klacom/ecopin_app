@@ -51,7 +51,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       );
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'We could not send the reset link. Please try again.');
+        setState(
+          () => _error = 'We could not send the reset link. Please try again.',
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);

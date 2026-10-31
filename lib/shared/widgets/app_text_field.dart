@@ -52,52 +52,54 @@ class _AppTextFieldState extends State<AppTextField> {
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: widget.height ?? 0),
       child: SizedBox(
-      width: widget.width,
-      child: TextField(
-        controller: widget.controller,
-        focusNode: widget.focusNode,
-        enabled: !widget.isLoading,
-        keyboardType: widget.inputType == 'email'
-            ? TextInputType.emailAddress
-            : widget.inputType == 'number'
-            ? TextInputType.number
-            : TextInputType.text,
-        textInputAction: widget.textInputAction,
-        onSubmitted: widget.onSubmitted,
-        autofillHints: widget.autofillHints ?? (widget.inputType == 'email'
-            ? const [AutofillHints.email]
-            : widget.inputType == 'password'
-            ? const [AutofillHints.password]
-                : null),
-        autocorrect:
-            widget.inputType != 'password' && widget.inputType != 'email',
-        enableSuggestions: widget.inputType != 'password',
-        obscureText: widget.inputType == 'password' ? _obscureText : false,
-        maxLines: widget.maxLines,
-        maxLength: widget.maxLength,
-        decoration: InputDecoration(
-          labelText: widget.labelText,
-          errorText: widget.errorText,
-          errorMaxLines: 3,
-          hintText: (widget.hintText != null && widget.hintText!.isNotEmpty)
-              ? widget.hintText
-              : widget.placeholderText,
-          // Inherits border styling from app_theme.dart
-          suffixIcon: widget.inputType == 'password'
-              ? IconButton(
-                  tooltip: _obscureText ? 'Show password' : 'Hide password',
-                  icon: Icon(
-                    _obscureText ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureText = !_obscureText;
-                    });
-                  },
-                )
-              : null,
+        width: widget.width,
+        child: TextField(
+          controller: widget.controller,
+          focusNode: widget.focusNode,
+          enabled: !widget.isLoading,
+          keyboardType: widget.inputType == 'email'
+              ? TextInputType.emailAddress
+              : widget.inputType == 'number'
+              ? TextInputType.number
+              : TextInputType.text,
+          textInputAction: widget.textInputAction,
+          onSubmitted: widget.onSubmitted,
+          autofillHints:
+              widget.autofillHints ??
+              (widget.inputType == 'email'
+                  ? const [AutofillHints.email]
+                  : widget.inputType == 'password'
+                  ? const [AutofillHints.password]
+                  : null),
+          autocorrect:
+              widget.inputType != 'password' && widget.inputType != 'email',
+          enableSuggestions: widget.inputType != 'password',
+          obscureText: widget.inputType == 'password' ? _obscureText : false,
+          maxLines: widget.maxLines,
+          maxLength: widget.maxLength,
+          decoration: InputDecoration(
+            labelText: widget.labelText,
+            errorText: widget.errorText,
+            errorMaxLines: 3,
+            hintText: (widget.hintText != null && widget.hintText!.isNotEmpty)
+                ? widget.hintText
+                : widget.placeholderText,
+            // Inherits border styling from app_theme.dart
+            suffixIcon: widget.inputType == 'password'
+                ? IconButton(
+                    tooltip: _obscureText ? 'Show password' : 'Hide password',
+                    icon: Icon(
+                      _obscureText ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureText = !_obscureText;
+                      });
+                    },
+                  )
+                : null,
+          ),
         ),
-      ),
       ),
     );
   }

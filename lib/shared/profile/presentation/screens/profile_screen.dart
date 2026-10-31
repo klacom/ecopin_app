@@ -1,6 +1,9 @@
+import '../widgets/change_password_dialog.dart';
 import '../widgets/delete_account_dialog.dart';
+import '../widgets/logout_dialog.dart';
+import '../widgets/profile_widgets.dart';
+import 'package:intl/intl.dart';
 import 'package:dio/dio.dart' as dio;
-import 'package:ecopin_app/core/utils/validators.dart';
 import 'package:ecopin_app/shared/widgets/snackbar_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
@@ -18,7 +21,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:logging/logging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/providers/theme_mode_provider.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/citizen_trust_status.dart';
 import 'package:ecopin_app/shared/reports/providers/citizen_trust_provider.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/blocked_urgent_reports.dart';
@@ -38,6 +40,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isSaving = false;
   bool _isUploading = false;
   bool _isUpdatingConsent = false;
+  bool _nameInitialised = false;
+  String _savedName = '';
 
   String _getInitials(String? fullName) {
     if (fullName == null || fullName.isEmpty) return '?';
@@ -118,7 +122,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _saveProfile() async {
     final nameMissing = _fullNameController.text.trim().isEmpty;
-    setState(() => _nameError = nameMissing ? 'Please enter your full name' : null);
+    setState(
+      () => _nameError = nameMissing ? 'Please enter your full name' : null,
+    );
     if (!nameMissing && !_isSaving) {
       setState(() {
         _isSaving = true;
@@ -151,107 +157,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _logout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(AppColors.spaceLG),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10.0,
-                offset: Offset(0.0, 10.0),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(AppColors.spaceMD),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.logout_rounded,
-                  color: AppColors.error,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: AppColors.spaceLG),
-              const Text(
-                'Log Out',
-                style: TextStyle(fontSize: 22.0, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: AppColors.spaceSM),
-              const Text(
-                'Are you sure you want to log out of your account?',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15.0, color: Colors.grey),
-              ),
-              const SizedBox(height: AppColors.spaceXL),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        side: BorderSide(color: Theme.of(context).dividerColor),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(
-                          color: Theme.of(context).textTheme.bodyLarge?.color,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppColors.spaceMD),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.error,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Log Out',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (confirmed == true) {
-      await ref.read(authNotifierProvider.notifier).signOut();
-      if (mounted) {
-        context.go(PublicAppRoutes.login);
-      }
-    }
+    if (!await confirmLogout(context) || !mounted) return;
+    await ref.read(authNotifierProvider.notifier).signOut();
+    if (mounted) context.go(PublicAppRoutes.login);
   }
 
   Future<void> _deleteAccount() async {
@@ -301,141 +209,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _changePassword() async {
-    final oldPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    bool isObscureOld = true;
-    bool isObscureNew = true;
-    bool isObscureConfirm = true;
-    bool isLoading = false;
-
     if (!mounted) return;
-
-    await showDialog(
+    await showDialog<void>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setStateDialog) => AlertDialog(
-          title: const Text('Change Password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: oldPasswordController,
-                obscureText: isObscureOld,
-                decoration: InputDecoration(
-                  labelText: 'Current Password',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      isObscureOld ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    onPressed: () =>
-                        setStateDialog(() => isObscureOld = !isObscureOld),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppColors.spaceMD),
-              TextField(
-                controller: newPasswordController,
-                obscureText: isObscureNew,
-                decoration: InputDecoration(
-                  labelText: 'New Password',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      isObscureNew ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    onPressed: () =>
-                        setStateDialog(() => isObscureNew = !isObscureNew),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppColors.spaceMD),
-              TextField(
-                controller: confirmPasswordController,
-                obscureText: isObscureConfirm,
-                decoration: InputDecoration(
-                  labelText: 'Confirm New Password',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      isObscureConfirm
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () => setStateDialog(
-                      () => isObscureConfirm = !isObscureConfirm,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: () async {
-                      // Validation — uses the same rules as registration
-                      // (see core/utils/validators.dart).
-                      final newPw = newPasswordController.text;
-                      final confirmPw = confirmPasswordController.text;
-
-                      final passwordError = validatePassword(newPw);
-                      if (passwordError != null) {
-                        SnackbarHelper.showError(passwordError);
-                        return;
-                      }
-                      final confirmError = validateConfirmPassword(
-                        newPw,
-                        confirmPw,
-                      );
-                      if (confirmError != null) {
-                        SnackbarHelper.showError(confirmError);
-                        return;
-                      }
-
-                      setStateDialog(() => isLoading = true);
-                      try {
-                        final apiClient = ref.read(apiClientProvider);
-                        await apiClient.changePassword(
-                          oldPassword: oldPasswordController.text,
-                          newPassword: newPasswordController.text,
-                        );
-                        if (context.mounted) {
-                          SnackbarHelper.showValidMessage(
-                            'Password changed successfully!',
-                          );
-                          Navigator.pop(context);
-                        }
-                      } on dio.DioException catch (e) {
-                        if (context.mounted) {
-                          SnackbarHelper.showError(
-                            e.response?.data['message'] ??
-                                'Failed to change password!',
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          SnackbarHelper.showError(
-                            'Failed to change password!',
-                          );
-                        }
-                      } finally {
-                        if (context.mounted) {
-                          setStateDialog(() => isLoading = false);
-                        }
-                      }
-                    },
-                    child: const Text('Save'),
-                  ),
-          ],
-        ),
-      ),
+      builder: (_) => const ChangePasswordDialog(),
     );
   }
 
@@ -490,7 +267,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile'), actions: const [OfficialContactsButton()]),
+      appBar: AppBar(
+        title: const Text('Profile'),
+        actions: const [OfficialContactsButton()],
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(profileProvider);
@@ -499,293 +279,312 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           await ref.read(profileProvider.future);
         },
         child: profileAsync.when(
-          data: (profile) {
-            final fullName = profile?['full_name'] as String?;
-            final avatarUrl = profile?['avatar_url'] as String?;
-            final createdAt = profile?['created_at'] as String?;
-            final userEmail = Supabase.instance.client.auth.currentUser?.email;
-            final bool dataConsent = profile?['data_consent'] ?? false;
-
-            if (_fullNameController.text.isEmpty) {
-              _fullNameController.text = fullName ?? '';
-            }
-            if (_emailController.text.isEmpty) {
-              _emailController.text = userEmail ?? '';
-            }
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Form(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: _isUploading ? null : _pickImage,
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            key: ValueKey(avatarUrl),
-                            radius: 50,
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundImage:
-                                avatarUrl != null && avatarUrl.isNotEmpty
-                                ? NetworkImage(avatarUrl)
-                                : null,
-                            child: avatarUrl == null || avatarUrl.isEmpty
-                                ? Text(
-                                    _getInitials(fullName),
-                                    style: const TextStyle(
-                                      fontSize: 36,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade800,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: _isUploading
-                                    ? SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.camera_alt,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    if (avatarUrl != null && avatarUrl.isNotEmpty) ...[
-                      AppButton(
-                        text: 'Remove photo',
-                        icon: Icons.delete_outline,
-                        variant: ButtonVariant.link,
-                        isLoading: _isUploading,
-                        onPressed: _removeAvatar,
-                      ),
-                      const SizedBox(height: AppColors.spaceMD),
-                    ],
-                    AppTextField(
-                      controller: _fullNameController,
-                      labelText: 'Full Name',
-                      errorText: _nameError,
-                      textInputAction: TextInputAction.done,
-                    ),
-                    const SizedBox(height: 16),
-                    AppTextField(
-                      controller: _emailController,
-                      labelText: 'Email',
-                      inputType: 'email',
-                      isLoading: true, // read-only: the sign-in email cannot be edited here
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(AppColors.spaceMD),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(
-                          AppColors.radiusCard,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Member Since',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.6),
-                                ),
-                          ),
-                          const SizedBox(height: AppColors.spaceXS),
-                          Text(
-                            createdAt != null
-                                ? DateTime.parse(
-                                    createdAt,
-                                  ).toLocal().toString().split(' ')[0]
-                                : 'N/A',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppColors.spaceMD),
-
-                    // Dark Mode Switch
-                    Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radiusCard,
-                          ),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radiusCard,
-                          ),
-                          child: Consumer(
-                            builder: (context, ref, child) {
-                              final themeMode = ref.watch(themeModeProvider);
-                              final isDarkMode =
-                                  themeMode == ThemeMode.dark ||
-                                  (themeMode == ThemeMode.system &&
-                                      MediaQuery.platformBrightnessOf(
-                                            context,
-                                          ) ==
-                                          Brightness.dark);
-
-                              return SwitchListTile(
-                                secondary: const Icon(Icons.dark_mode_outlined),
-                                title: const Text(
-                                  "Dark Mode",
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                subtitle: Text(
-                                  isDarkMode
-                                      ? "Using dark theme."
-                                      : "Using light theme.",
-                                ),
-                                value: isDarkMode,
-                                onChanged: (value) {
-                                  ref
-                                      .read(themeModeProvider.notifier)
-                                      .setThemeMode(
-                                        value
-                                            ? ThemeMode.dark
-                                            : ThemeMode.light,
-                                      );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: AppColors.spaceMD),
-
-                    // Field Crew Dedicated Performance & CSAT Screen Entry
-                    if (profile?['role'] == 'field_crew') ...[
-                      AppButton(
-                        text: 'My Performance & CSAT',
-                        icon: Icons.insights_outlined,
-                        variant: ButtonVariant.secondary,
-                        onPressed: () => context.push(FieldCrewAppRoutes.performance),
-                      ),
-                      const SizedBox(height: AppColors.spaceMD),
-                    ],
-
-                    // Change Password Button
-                    AppButton(
-                      text: 'Change Password',
-                      icon: Icons.lock_reset,
-                      variant: ButtonVariant.secondary,
-                      onPressed: _changePassword,
-                    ),
-                    const SizedBox(height: AppColors.spaceMD),
-
-                    if (profile?['role'] == 'citizen') ...[
-                      const CitizenTrustStatus(),
-                      const BlockedUrgentReports(),
-                      const SizedBox(height: AppColors.spaceMD),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radiusCard,
-                          ),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(
-                            AppColors.radiusCard,
-                          ),
-                          child: SwitchListTile(
-                            secondary: const Icon(Icons.privacy_tip_outlined),
-                            title: const Text(
-                              "Share Personal Information",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              dataConsent
-                                  ? "Officers may access your profile information when handling your reports."
-                                  : "Your identity will remain hidden when possible.",
-                            ),
-                            value: dataConsent,
-                            onChanged: _isUpdatingConsent
-                                ? null
-                                : (value) => _updateDataConsent(value),
-                          ),
-                        ),
-                      ),
-
-                      if (_isUpdatingConsent)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: LinearProgressIndicator(),
-                        ),
-                    ],
-                    const SizedBox(height: 16),
-                    AppButton(
-                      text: 'Save Changes',
-                      isLoading: _isSaving,
-                      onPressed: _saveProfile,
-                    ),
-                    const SizedBox(height: 16),
-                    AppButton(
-                      text: 'Log Out',
-                      variant: ButtonVariant.secondary,
-                      onPressed: _logout,
-                    ),
-                    if (profile?['role'] == 'citizen') ...[
-                      const SizedBox(height: 16),
-                      AppButton(
-                        text: 'Help & support',
-                        icon: Icons.support_agent_outlined,
-                        variant: ButtonVariant.secondary,
-                        onPressed: () => Navigator.of(context).push<void>(
-                          MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      AppButton(
-                        text: 'Delete Account',
-                        icon: Icons.delete_forever_outlined,
-                        variant: ButtonVariant.danger,
-                        onPressed: _isSaving ? null : _deleteAccount,
-                      ),
-                    ],
-                    const SizedBox(height: 128),
-                  ],
-                ),
-              ),
-            );
-          },
+          data: (profile) => _buildBody(context, profile),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, stack) =>
               NoInternetScreen(onRetry: () => ref.invalidate(profileProvider)),
         ),
+      ),
+    );
+  }
+
+  /// Fills the fields once, then only follows the saved profile while the
+  /// person has not typed over it, so clearing the name to retype it sticks.
+  void _syncControllers(String? fullName, String? email) {
+    if (!_nameInitialised) {
+      _nameInitialised = true;
+      _setName(fullName ?? '');
+      _savedName = fullName ?? '';
+    } else if ((fullName ?? '') != _savedName) {
+      if (_fullNameController.text == _savedName) _setName(fullName ?? '');
+      _savedName = fullName ?? '';
+    }
+    if (_emailController.text.isEmpty) _emailController.text = email ?? '';
+  }
+
+  void _setName(String value) {
+    _fullNameController.removeListener(_onNameChanged);
+    _fullNameController.text = value;
+    _fullNameController.addListener(_onNameChanged);
+  }
+
+  void _onNameChanged() {
+    if (mounted) setState(() => _nameError = null);
+  }
+
+  Widget _buildBody(BuildContext context, Map<String, dynamic>? profile) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final role = profile?['role'];
+    final isCitizen = role == 'citizen';
+    final fullName = profile?['full_name'] as String?;
+    final avatarUrl = profile?['avatar_url'] as String?;
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
+    final createdAt = DateTime.tryParse(
+      profile?['created_at'] as String? ?? '',
+    )?.toLocal();
+    final dataConsent = profile?['data_consent'] == true;
+    _syncControllers(
+      fullName,
+      Supabase.instance.client.auth.currentUser?.email,
+    );
+    final dirty = _fullNameController.text.trim() != (fullName ?? '').trim();
+    final shownName = (fullName ?? '').trim();
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        24 + MediaQuery.paddingOf(context).bottom,
+      ),
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Semantics(
+              button: true,
+              label: 'Change profile photo',
+              excludeSemantics: true,
+              onTap: _isUploading ? null : _pickImage,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _isUploading ? null : _pickImage,
+                child: SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned.fill(
+                        child: CircleAvatar(
+                          key: ValueKey(avatarUrl),
+                          backgroundColor: theme.primaryColor,
+                          foregroundImage: hasAvatar
+                              ? NetworkImage(avatarUrl)
+                              : null,
+                          child: hasAvatar
+                              ? null
+                              : Text(
+                                  _getInitials(fullName),
+                                  style: const TextStyle(
+                                    fontSize: 32,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: scheme.surface,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: scheme.outlineVariant),
+                          ),
+                          child: _isUploading
+                              ? const Padding(
+                                  padding: EdgeInsets.all(9),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.camera_alt_outlined,
+                                  size: 18,
+                                  color: scheme.onSurface,
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (shownName.isNotEmpty)
+            Text(
+              shownName,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          if (_emailController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                _emailController.text,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          if (createdAt != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                'Member since ${DateFormat.yMMMd().format(createdAt)}',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          if (hasAvatar)
+            Align(
+              child: AppButton(
+                text: 'Remove photo',
+                icon: Icons.delete_outline,
+                variant: ButtonVariant.link,
+                width: 200,
+                isLoading: _isUploading,
+                onPressed: _removeAvatar,
+              ),
+            ),
+          ProfileSection(
+            label: 'Your details',
+            trailing: dirty
+                ? TextButton(
+                    onPressed: _isSaving ? null : _saveProfile,
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              semanticsLabel: 'Saving your details',
+                            ),
+                          )
+                        : const Text('Save changes'),
+                  )
+                : null,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    AppTextField(
+                      controller: _fullNameController,
+                      labelText: 'Full name',
+                      errorText: _nameError,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => dirty ? _saveProfile() : null,
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      controller: _emailController,
+                      labelText: 'Email, cannot be changed here',
+                      inputType: 'email',
+                      isLoading: true, // read-only: the sign-in email
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (isCitizen) ...[
+            const SizedBox(height: 16),
+            const CitizenTrustStatus(),
+            const BlockedUrgentReports(),
+          ],
+          ProfileSection(
+            label: 'Preferences',
+            children: [
+              Consumer(
+                builder: (context, ref, child) {
+                  final themeMode = ref.watch(themeModeProvider);
+                  final isDarkMode =
+                      themeMode == ThemeMode.dark ||
+                      (themeMode == ThemeMode.system &&
+                          MediaQuery.platformBrightnessOf(context) ==
+                              Brightness.dark);
+                  return ProfileSwitchRow(
+                    icon: Icons.dark_mode_outlined,
+                    title: 'Dark mode',
+                    subtitle: isDarkMode
+                        ? 'Using dark theme.'
+                        : 'Using light theme.',
+                    value: isDarkMode,
+                    onChanged: (value) => ref
+                        .read(themeModeProvider.notifier)
+                        .setThemeMode(value ? ThemeMode.dark : ThemeMode.light),
+                  );
+                },
+              ),
+              if (isCitizen)
+                ProfileSwitchRow(
+                  icon: Icons.privacy_tip_outlined,
+                  title: 'Share personal information',
+                  subtitle: dataConsent
+                      ? 'Officers may access your profile information when handling your reports.'
+                      : 'Your identity will remain hidden when possible.',
+                  value: dataConsent,
+                  onChanged: _isUpdatingConsent ? null : _updateDataConsent,
+                ),
+            ],
+          ),
+          if (_isUpdatingConsent)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: LinearProgressIndicator(
+                semanticsLabel: 'Saving your sharing preference',
+              ),
+            ),
+          ProfileSection(
+            label: 'Account',
+            children: [
+              if (role == 'field_crew')
+                ProfileRow(
+                  icon: Icons.insights_outlined,
+                  title: 'My performance and CSAT',
+                  onTap: () => context.push(FieldCrewAppRoutes.performance),
+                ),
+              ProfileRow(
+                icon: Icons.lock_reset,
+                title: 'Change password',
+                onTap: _changePassword,
+              ),
+              if (isCitizen)
+                ProfileRow(
+                  icon: Icons.support_agent_outlined,
+                  title: 'Help and support',
+                  onTap: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => const HelpSupportScreen(),
+                    ),
+                  ),
+                ),
+              ProfileRow(
+                icon: Icons.logout,
+                title: 'Log out',
+                chevron: false,
+                onTap: _logout,
+              ),
+            ],
+          ),
+          if (isCitizen) ...[
+            const SizedBox(height: 24),
+            ProfileSection(
+              children: [
+                ProfileRow(
+                  icon: Icons.delete_forever_outlined,
+                  title: 'Delete account',
+                  subtitle:
+                      'Removes your personal data. Reports stay anonymized.',
+                  destructive: true,
+                  chevron: false,
+                  onTap: _isSaving ? null : _deleteAccount,
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -795,6 +594,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.initState();
     _fullNameController = TextEditingController();
     _emailController = TextEditingController();
+    _fullNameController.addListener(_onNameChanged);
   }
 
   @override

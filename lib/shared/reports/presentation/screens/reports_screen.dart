@@ -1,16 +1,16 @@
+import 'package:ecopin_app/shared/reports/presentation/response_deadline.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_row.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_status_presentation.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'dart:math' as math;
 import 'package:ecopin_app/core/constants/app_constants.dart';
 import 'package:ecopin_app/core/theme/app_theme.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
-import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/status_badge.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/validation_badge.dart';
 import 'package:ecopin_app/shared/reports/providers/report_provider.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/screens/no_internet_screen.dart';
 import 'package:ecopin_app/shared/widgets/app_state_view.dart';
-import 'package:ecopin_app/shared/widgets/private_media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -226,19 +226,29 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             _query.split(RegExp(r'\s+')).every(text.contains));
                   }).toList();
                   final visible = math.min(_displayLimit, filtered.length);
+                  final now =
+                      ref.watch(responseDeadlineClockProvider).value ??
+                      DateTime.now();
+                  final entries = groupReportsByRecency<ReportModel>(
+                    filtered.take(visible).toList(),
+                    (report) => report.createdAt,
+                    now,
+                  );
                   return RefreshIndicator(
                     onRefresh: _refresh,
                     child: ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(
-                        16,
                         4,
-                        16,
+                        4,
+                        4,
                         16 + MediaQuery.paddingOf(context).bottom,
                       ),
                       itemCount: filtered.isEmpty
                           ? 1
-                          : visible + 1 + (visible < filtered.length ? 1 : 0),
+                          : entries.length +
+                                1 +
+                                (visible < filtered.length ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (filtered.isEmpty) {
                           return AppStateView(
@@ -262,7 +272,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         }
                         if (index == 0) {
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                             child: Semantics(
                               liveRegion: true,
                               child: Text(
@@ -272,14 +282,24 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             ),
                           );
                         }
-                        if (index > visible) {
+                        if (index > entries.length) {
                           return TextButton(
                             onPressed: () =>
                                 setState(() => _displayLimit += 20),
                             child: const Text('Show more reports'),
                           );
                         }
-                        return _ReportListItem(report: filtered[index - 1]);
+                        final entry = entries[index - 1];
+                        if (entry is String) {
+                          return ReportGroupHeader(
+                            label: entry,
+                            first: index == 1,
+                          );
+                        }
+                        return _ReportListItem(
+                          report: entry as ReportModel,
+                          now: now,
+                        );
                       },
                     ),
                   );
@@ -302,108 +322,77 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 }
 
 class _ReportListItem extends StatelessWidget {
-  const _ReportListItem({required this.report});
+  const _ReportListItem({required this.report, required this.now});
   final ReportModel report;
+  final DateTime now;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final photo = report.beforePhotoUrl ?? report.afterPhotoUrl;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusCard),
-        side: BorderSide(
-          color: theme.dividerTheme.color ?? theme.colorScheme.outlineVariant,
-        ),
-      ),
-      child: InkWell(
-        onTap: () => context.push('${ProtectedAppRoutes.reports}/${report.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (photo != null) ...[
-                    Semantics(
-                      image: true,
-                      label: 'Cleanup evidence photo',
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: PrivateMediaImage(
-                          photo,
-                          width: 64,
-                          height: 64,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stack) =>
-                              const SizedBox(
-                                width: 64,
-                                height: 64,
-                                child: Icon(
-                                  Icons.image_not_supported_outlined,
-                                  semanticLabel: 'Photo unavailable',
-                                ),
-                              ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(report.title, style: theme.textTheme.titleSmall),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${report.issueType?.replaceAll('_', ' ') ?? 'Environmental concern'} · ${DateFormat('MMM d, yyyy').format(report.createdAt.toLocal())}',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right, size: 20),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text('Response:', style: theme.textTheme.bodySmall),
-                  StatusBadge(status: report.status),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text('Review:', style: theme.textTheme.bodySmall),
-                  ValidationBadge(status: report.validationStatus),
-                ],
-              ),
-              ResponseDeadlineIndicator(report: report),
-              if (report.validationStatus.toLowerCase() == 'rejected' &&
-                  report.rejectionReason != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Review note: ${report.rejectionReason}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.extension<AppStatusColors>()?.error,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+    final colors = theme.extension<AppStatusColors>();
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final rejected = report.validationStatus.toLowerCase() == 'rejected';
+    final statusColor = reportStatusColor(context, report.status);
+    final deadline = responseDeadline(report, now);
+    final responseColor = switch (deadline?.state) {
+      DeadlineState.overdue => colors?.error ?? theme.colorScheme.error,
+      DeadlineState.atRisk => colors?.warning ?? theme.colorScheme.onSurface,
+      _ => statusColor,
+    };
+    final review = validationPresentation(context, report.validationStatus);
+    final reviewColor = switch (report.validationStatus.toLowerCase()) {
+      'rejected' || 'manual_review' => review.color,
+      _ => muted,
+    };
+    final date = DateFormat.MMMd().format(report.createdAt.toLocal());
+    final status = reportStatusLabel(report.status);
+    final note = report.rejectionReason?.trim() ?? '';
+    final concern = (report.issueType ?? 'Environmental concern').replaceAll(
+      '_',
+      ' ',
+    );
+    // A rejected report has no response to track, so its review leads.
+    final lines = rejected
+        ? [
+            ReportRowLine(
+              'Review: ${review.label}',
+              color: review.color,
+              emphasis: true,
+            ),
+            if (note.isNotEmpty)
+              ReportRowLine('Review note: $note', maxLines: 1),
+          ]
+        : [
+            ReportRowLine(
+              deadline == null
+                  ? '$status, reported $date'
+                  : '$status, ${deadline.timeLabel}',
+              color: responseColor,
+              emphasis: deadline != null,
+            ),
+            ReportRowLine('Review: ${review.label}', color: reviewColor),
+          ];
+    return ReportRow(
+      title: report.title,
+      icon: reportConcernIcon(report.issueType),
+      tone: rejected ? review.color : statusColor,
+      pip: rejected ? review.color : responseColor,
+      photoUrl: report.beforePhotoUrl ?? report.afterPhotoUrl,
+      lines: lines,
+      semanticLabel: [
+        report.title,
+        if (rejected)
+          'Review: ${review.label}'
+        else ...[
+          'Response: $status',
+          if (deadline != null) '${deadline.label}, ${deadline.timeLabel}',
+          'Review: ${review.label}',
+        ],
+        '$concern concern',
+        'Reported $date',
+        if (rejected && note.isNotEmpty) 'Review note: $note',
+      ].join('. '),
+      onTap: () => context.push('${ProtectedAppRoutes.reports}/${report.id}'),
     );
   }
 }

@@ -200,22 +200,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           final err = data['error'].toString();
           if (err.toLowerCase().contains('invalid login credentials') ||
               err.toLowerCase().contains('invalid_grant')) {
-            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+            errorMessage =
+                'Invalid email or password. Please check your credentials and try again.';
           } else {
             errorMessage = err;
           }
         }
       } else if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        errorMessage = 'Connection timed out. Please check your network and try again.';
+        errorMessage =
+            'Connection timed out. Please check your network and try again.';
       } else if (e.type == DioExceptionType.connectionError) {
-        errorMessage = 'Unable to connect to server. Please check your internet connection.';
+        errorMessage =
+            'Unable to connect to server. Please check your internet connection.';
       }
       _log.severe(e);
       _showError(errorMessage);
     } catch (e, stackTrace) {
       _log.severe(e, stackTrace);
-      _showError('We could not sign you in. Please check your connection and try again.');
+      _showError(
+        'We could not sign you in. Please check your connection and try again.',
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -300,9 +305,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         Text(
                           'Officer Access Temporarily Paused',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                color: Theme.of(context).brightness == Brightness.dark
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
                                     ? AppColors.textPrimaryDark
                                     : AppColors.textPrimaryLight,
                               ),
@@ -310,8 +318,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: 4),
                         Text(
                           _officerNotice!,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).brightness == Brightness.dark
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
                                     ? AppColors.textSecondaryDark
                                     : AppColors.textSecondaryLight,
                                 height: 1.4,
@@ -347,7 +358,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         AppButton(
           text: 'Forgot password?',
           variant: ButtonVariant.link,
-          onPressed: _isLoading ? null : () => context.push(PublicAppRoutes.forgotPassword),
+          onPressed: _isLoading
+              ? null
+              : () => context.push(PublicAppRoutes.forgotPassword),
         ),
         AppButton(
           text: 'Create an account',

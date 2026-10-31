@@ -11,11 +11,10 @@ Uri googleMapsDirectionsUri(LatLng destination) =>
     });
 
 /// Starts Waze navigation to [destination]; the Waze site opens if the app is not installed.
-Uri wazeNavigationUri(LatLng destination) =>
-    Uri.https('waze.com', '/ul', {
-      'll': '${destination.latitude},${destination.longitude}',
-      'navigate': 'yes',
-    });
+Uri wazeNavigationUri(LatLng destination) => Uri.https('waze.com', '/ul', {
+  'll': '${destination.latitude},${destination.longitude}',
+  'navigate': 'yes',
+});
 
 typedef NavigationLauncher = Future<bool> Function(Uri uri);
 
@@ -64,8 +63,7 @@ class OpenInNavigationButtons extends StatelessWidget {
         label: const Text('Open in Google Maps'),
       ),
       OutlinedButton.icon(
-        onPressed: () =>
-            _open(context, wazeNavigationUri(destination), 'Waze'),
+        onPressed: () => _open(context, wazeNavigationUri(destination), 'Waze'),
         icon: const Icon(Icons.navigation_outlined),
         label: const Text('Open in Waze'),
       ),

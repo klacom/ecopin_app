@@ -1,9 +1,13 @@
+import 'package:ecopin_app/core/theme/app_theme.dart';
+import 'package:ecopin_app/shared/reports/presentation/response_deadline.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_row.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_status_presentation.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/reports/providers/public_report_map_provider.dart';
-import 'package:ecopin_app/shared/reports/presentation/widgets/reports_screen_widgets/status_badge.dart';
 
 class PublicReportList extends ConsumerStatefulWidget {
   const PublicReportList({super.key, required this.onOpen});
@@ -58,36 +62,36 @@ class _PublicReportListState extends ConsumerState<PublicReportList> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final now =
+        ref.watch(responseDeadlineClockProvider).value ?? DateTime.now();
+    final entries = groupReportsByRecency<ReportModel>(
+      _reports,
+      (report) => report.createdAt,
+      now,
+    );
     return RefreshIndicator(
       onRefresh: () => _load(refresh: true),
       child: ListView.builder(
         key: const PageStorageKey('citizen-public-report-list'),
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
-          16,
+          4,
           8,
-          16,
+          4,
           24 + MediaQuery.paddingOf(context).bottom,
         ),
-        itemCount: _reports.length + 2,
+        itemCount: entries.length + 2,
         itemBuilder: (context, index) {
           if (index == 0) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Public reports', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 4),
-                  Text(
-                    'All areas · Newest first',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+              child: Text(
+                'All areas, newest first',
+                style: theme.textTheme.bodySmall,
               ),
             );
           }
-          if (index == _reports.length + 1) {
+          if (index == entries.length + 1) {
             return Column(
               children: [
                 if (_loading)
@@ -123,79 +127,61 @@ class _PublicReportListState extends ConsumerState<PublicReportList> {
               ],
             );
           }
-          final report = _reports[index - 1];
-          final date = MaterialLocalizations.of(
-            context,
-          ).formatMediumDate(report.createdAt.toLocal());
-          return Card(
-            key: ValueKey(report.id),
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: BorderSide(
-                color:
-                    theme.dividerTheme.color ??
-                    theme.colorScheme.outlineVariant,
-              ),
-            ),
-            margin: const EdgeInsets.only(bottom: 12),
-            child: InkWell(
-              onTap: () => widget.onOpen(report),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            report.title,
-                            style: theme.textTheme.titleSmall,
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        StatusBadge(status: report.status),
-                        Text(
-                          (report.issueType ?? 'Environmental concern')
-                              .replaceAll('_', ' '),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                    ResponseDeadlineIndicator(report: report),
-                    if (report.description?.trim().isNotEmpty == true) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        report.description!,
-                        maxLines: 2,
-                        style: theme.textTheme.bodyMedium,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    Text('Reported $date', style: theme.textTheme.bodySmall),
-                    if (report.locationPrecision == 'approximate')
-                      Text(
-                        'Approximate public location',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          );
+          final entry = entries[index - 1];
+          if (entry is String) {
+            return ReportGroupHeader(label: entry, first: index == 1);
+          }
+          final report = entry as ReportModel;
+          return _publicRow(context, report, now);
         },
       ),
+    );
+  }
+
+  Widget _publicRow(BuildContext context, ReportModel report, DateTime now) {
+    final theme = Theme.of(context);
+    final statusColor = reportStatusColor(context, report.status);
+    final deadline = responseDeadline(report, now);
+    final statusColors = theme.extension<AppStatusColors>();
+    final lineColor = switch (deadline?.state) {
+      DeadlineState.overdue => statusColors?.error ?? theme.colorScheme.error,
+      DeadlineState.atRisk =>
+        statusColors?.warning ?? theme.colorScheme.onSurface,
+      _ => statusColor,
+    };
+    final date = DateFormat.MMMd().format(report.createdAt.toLocal());
+    final status = reportStatusLabel(report.status);
+    final description = report.description?.trim() ?? '';
+    final concern = (report.issueType ?? 'Environmental concern').replaceAll(
+      '_',
+      ' ',
+    );
+    return ReportRow(
+      key: ValueKey(report.id),
+      title: report.title,
+      icon: reportConcernIcon(report.issueType),
+      tone: statusColor,
+      pip: lineColor,
+      lines: [
+        ReportRowLine(
+          deadline == null
+              ? '$status, reported $date'
+              : '$status, ${deadline.timeLabel}',
+          color: lineColor,
+          emphasis: deadline != null,
+        ),
+        if (description.isNotEmpty) ReportRowLine(description, maxLines: 1),
+      ],
+      semanticLabel: [
+        report.title,
+        status,
+        if (deadline != null) '${deadline.label}, ${deadline.timeLabel}',
+        '$concern concern',
+        'Reported $date',
+        if (report.locationPrecision == 'approximate')
+          'Approximate public location',
+      ].join('. '),
+      onTap: () => widget.onOpen(report),
     );
   }
 }

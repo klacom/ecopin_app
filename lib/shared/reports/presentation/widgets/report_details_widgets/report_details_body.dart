@@ -588,13 +588,13 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
               ),
             ),
           VerifiedCleanupProof(
-              key: ValueKey(widget.report.id),
-              reportId: widget.report.id,
-            ),
+            key: ValueKey(widget.report.id),
+            reportId: widget.report.id,
+          ),
           const SizedBox(height: 32),
           // Satisfaction rating button if waiting for feedback or resolved (citizen only)
           if ((widget.report.status.toLowerCase() == 'waiting_for_feedback' ||
-                  widget.report.status.toLowerCase() == 'resolved')) ...[
+              widget.report.status.toLowerCase() == 'resolved')) ...[
             const Text(
               'The issue has been resolved! Please rate the service.',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -647,8 +647,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
             ),
             const SizedBox(height: 16),
           ],
-          if (widget.onWithdraw != null &&
-              widget.report.canBeWithdrawn) ...[
+          if (widget.onWithdraw != null && widget.report.canBeWithdrawn) ...[
             const SizedBox(height: 16),
             Card(
               elevation: 0,

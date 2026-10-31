@@ -29,6 +29,17 @@ String? validatePassword(String password) {
   return null;
 }
 
+/// Each password requirement with whether [password] currently meets it, in
+/// display order, so a form can show live progress from the same rules.
+List<({String label, bool met})> passwordRequirements(String password) => [
+  (
+    label: 'At least $_minPasswordLength characters',
+    met: password.length >= _minPasswordLength,
+  ),
+  (label: 'One uppercase letter', met: password.contains(RegExp(r'[A-Z]'))),
+  (label: 'One number', met: password.contains(RegExp(r'[0-9]'))),
+];
+
 /// Returns `null` when [confirm] matches [password].
 /// Returns an error message when they differ.
 String? validateConfirmPassword(String password, String confirm) {

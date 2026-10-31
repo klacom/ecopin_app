@@ -28,7 +28,7 @@ class NotificationBadgeAction extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final unread = ref.watch(unreadNotificationsCountProvider);
     final unreadCount = unread.value ?? 0;
-    
+
     // Determine destination role:
     // 1. Explicit role passed in widget constructor
     // 2. Auth state role

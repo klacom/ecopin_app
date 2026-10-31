@@ -79,8 +79,11 @@ class _BlockedUrgentReportsState extends ConsumerState<BlockedUrgentReports> {
     final drafts = ref.watch(blockedUrgentReportsProvider);
     final trust = ref.watch(citizenTrustProvider);
     if (drafts.hasError) {
-      return const Text(
-        'Saved reports are unavailable. Refresh Profile and try again.',
+      return const Padding(
+        padding: EdgeInsets.only(top: 16),
+        child: Text(
+          'Saved reports are unavailable. Refresh Profile and try again.',
+        ),
       );
     }
     final saved = drafts.asData?.value ?? <OfflineReport>[];
@@ -93,6 +96,7 @@ class _BlockedUrgentReportsState extends ConsumerState<BlockedUrgentReports> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const SizedBox(height: 16),
         Text(
           'Saved reports needing attention',
           style: Theme.of(context).textTheme.titleMedium,

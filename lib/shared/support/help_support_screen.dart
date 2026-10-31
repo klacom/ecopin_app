@@ -52,7 +52,12 @@ class HelpSupportScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Help & support'),
           actions: const [OfficialContactsButton()],
-          bottom: const TabBar(tabs: [Tab(text: 'Help'), Tab(text: 'My tickets')]),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Help'),
+              Tab(text: 'My tickets'),
+            ],
+          ),
         ),
         body: TabBarView(
           children: [
@@ -78,10 +83,12 @@ class _FaqTabState extends State<_FaqTab> {
   Widget build(BuildContext context) {
     final terms = query.trim().toLowerCase();
     final matches = _faqs
-        .where((faq) =>
-            terms.isEmpty ||
-            faq.question.toLowerCase().contains(terms) ||
-            faq.answer.toLowerCase().contains(terms))
+        .where(
+          (faq) =>
+              terms.isEmpty ||
+              faq.question.toLowerCase().contains(terms) ||
+              faq.answer.toLowerCase().contains(terms),
+        )
         .toList();
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -171,7 +178,9 @@ class _MyTicketsTabState extends State<MyTicketsTab> {
       });
     } on SupportTicketException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally {
       if (mounted) setState(() => loadingMore = false);
@@ -181,7 +190,8 @@ class _MyTicketsTabState extends State<MyTicketsTab> {
   Future<void> _create() async {
     final created = await Navigator.of(context).push<SupportTicket>(
       MaterialPageRoute(
-        builder: (_) => NewTicketScreen(api: widget.api, loadReports: widget.loadReports),
+        builder: (_) =>
+            NewTicketScreen(api: widget.api, loadReports: widget.loadReports),
       ),
     );
     if (created != null) await _load();
@@ -189,7 +199,9 @@ class _MyTicketsTabState extends State<MyTicketsTab> {
 
   Future<void> _open(SupportTicket ticket) async {
     await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => TicketDetailScreen(api: widget.api, ticket: ticket)),
+      MaterialPageRoute(
+        builder: (_) => TicketDetailScreen(api: widget.api, ticket: ticket),
+      ),
     );
     if (mounted) await _load();
   }

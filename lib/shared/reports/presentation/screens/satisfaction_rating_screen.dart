@@ -251,7 +251,6 @@ class _SatisfactionRatingScreenState
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    
                     Semantics(
                       header: true,
                       child: Text(

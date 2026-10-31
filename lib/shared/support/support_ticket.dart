@@ -69,7 +69,10 @@ class SupportTicketPage {
     final cursor = json['next_cursor'];
     return SupportTicketPage(
       tickets: (json['tickets'] as List)
-          .map((item) => SupportTicket.fromJson(Map<String, dynamic>.from(item as Map)))
+          .map(
+            (item) =>
+                SupportTicket.fromJson(Map<String, dynamic>.from(item as Map)),
+          )
           .toList(),
       nextCursor: cursor is Map
           ? {

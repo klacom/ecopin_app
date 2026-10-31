@@ -19,7 +19,7 @@ class SyncStatusIndicator extends ConsumerWidget {
     return pendingCount.when(
       data: (count) {
         if (count == 0) return const SizedBox.shrink();
-        
+
         return Tooltip(
           message: '$count pending sync items',
           child: Stack(

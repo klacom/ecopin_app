@@ -24,12 +24,64 @@ import 'package:ecopin_app/shared/maps/presentation/widgets/report_marker.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/search_overlay.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_preview.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_controls.dart';
-import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_credits.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/report_map_info.dart';
 import 'package:ecopin_app/shared/maps/presentation/widgets/map_privacy_consent_dialog.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:ecopin_app/shared/widgets/sliding_switch.dart';
+
+// Bootstrap glyphs bundled with icons_plus, the same family as the citizen
+// navigation bar (see citizen_navigation_bar.dart for why they are declared here).
+const _mapViewIcon = IconData(
+  0xee30,
+  fontFamily: 'Bootstrap',
+  fontPackage: 'icons_plus',
+);
+const _listViewIcon = IconData(
+  0xee22,
+  fontFamily: 'Bootstrap',
+  fontPackage: 'icons_plus',
+);
+
+/// Map/List switch; the Map option carries the area's report count so no
+/// separate status chip is needed.
+class MapListToggle extends StatelessWidget {
+  const MapListToggle({
+    super.key,
+    required this.listView,
+    required this.onChanged,
+    this.mapBadge,
+    this.mapLabel = 'Map',
+  });
+
+  final bool listView;
+  final ValueChanged<bool> onChanged;
+
+  /// Count or progress shown beside "Map"; omitted in List view.
+  final Widget? mapBadge;
+
+  /// Accessible name of the Map option, including the area's report count.
+  final String mapLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return SlidingSwitch(
+      selectedIndex: listView ? 1 : 0,
+      onChanged: (index) => onChanged(index == 1),
+      options: [
+        SlidingSwitchOption(
+          label: 'Map',
+          icon: _mapViewIcon,
+          badge: listView ? null : mapBadge,
+          semanticsLabel: mapLabel,
+          liveRegion: true,
+        ),
+        const SlidingSwitchOption(label: 'List', icon: _listViewIcon),
+      ],
+    );
+  }
+}
 
 class MapScreen extends ConsumerStatefulWidget {
   final TileProvider? tileProvider;
@@ -376,13 +428,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       ],
                     ),
                     Positioned(
-                      left: 8,
-                      bottom: 8,
-                      child: SafeArea(
-                        child: ReportMapCredits(openSource: _openSource),
-                      ),
-                    ),
-                    Positioned(
                       top: 0,
                       left: 0,
                       right: 0,
@@ -449,44 +494,41 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   Widget _buildMapToolbar(AsyncValue<ReportMapPage> value) {
     final scheme = Theme.of(context).colorScheme;
-    Widget viewLabel(bool list, IconData icon, String label) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: _listView == list ? AppColors.primary : Colors.transparent,
-        borderRadius: BorderRadius.circular(AppColors.radiusButton),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [Icon(icon, size: 18), const SizedBox(width: 8), Text(label)],
-      ),
-    );
-    final controls = SegmentedButton<bool>(
-      showSelectedIcon: false,
-      style: ButtonStyle(
-        minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
-        side: const WidgetStatePropertyAll(BorderSide.none),
-        padding: const WidgetStatePropertyAll(EdgeInsets.all(4)),
-        backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerLow),
-        foregroundColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected)
-              ? Colors.white
-              : scheme.onSurface,
-        ),
-        shape: const WidgetStatePropertyAll(StadiumBorder()),
-      ),
-      segments: [
-        ButtonSegment(
-          value: false,
-          label: viewLabel(false, Icons.map_outlined, 'Map'),
-        ),
-        ButtonSegment(
-          value: true,
-          label: viewLabel(true, Icons.view_list_outlined, 'List'),
-        ),
-      ],
-      selected: {_listView},
-      onSelectionChanged: (selection) => setState(() {
-        _listView = selection.single;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final accent = dark ? AppColors.linkDark : AppColors.primary;
+    final page = value.value;
+    // The count only describes the area once its request has finished.
+    final Widget? badge = value.isLoading
+        ? SizedBox(
+            key: const Key('map-count'),
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: accent,
+              value: MediaQuery.disableAnimationsOf(context) ? .75 : null,
+            ),
+          )
+        : page == null
+        ? null
+        : SwitchCountBadge(
+            page.hasMore ? '200+' : '${page.reports.length}',
+            key: const Key('map-count'),
+          );
+    final count = page?.reports.length ?? 0;
+    final mapLabel = value.isLoading
+        ? 'Map, loading reports in this area'
+        : page == null
+        ? 'Map'
+        : page.hasMore
+        ? 'Map, newest 200 reports in this area'
+        : 'Map, $count public report${count == 1 ? '' : 's'} in this area';
+    final controls = MapListToggle(
+      listView: _listView,
+      mapBadge: badge,
+      mapLabel: mapLabel,
+      onChanged: (list) => setState(() {
+        _listView = list;
         _listOpened = _listOpened || _listView;
         if (_listView) {
           _viewportDebounce?.cancel();
@@ -497,12 +539,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         }
       }),
     );
-    final status = ReportMapStatus(
-      value: value,
-      hasPreviousReports: _lastPage != null,
-      onRetry: _refreshArea,
-      compact: true,
-    );
+    // Loading and the plain count live in the Map option; only states that
+    // need explanation or a retry get a persistent line under the switch.
+    final needsNote =
+        !_listView &&
+        !value.isLoading &&
+        (value.hasError || page?.hasMore == true);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Material(
@@ -512,37 +554,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
           side: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? AppColors.dividerDark
-                : AppColors.dividerLight,
+            color: dark ? AppColors.dividerDark : AppColors.dividerLight,
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (_listView) {
-                return Align(alignment: Alignment.centerLeft, child: controls);
-              }
-              if (constraints.maxWidth >= 300 &&
-                  MediaQuery.textScalerOf(context).scale(14) <= 18.2) {
-                return Row(
-                  children: [
-                    controls,
-                    const SizedBox(width: 12),
-                    Expanded(child: status),
-                  ],
-                );
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(alignment: Alignment.centerLeft, child: controls),
-                  const SizedBox(height: 8),
-                  status,
-                ],
-              );
-            },
+          padding: const EdgeInsets.all(4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              controls,
+              if (needsNote)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: ReportMapStatus(
+                    value: value,
+                    hasPreviousReports: _lastPage != null,
+                    onRetry: _refreshArea,
+                    compact: true,
+                  ),
+                ),
+            ],
           ),
         ),
       ),

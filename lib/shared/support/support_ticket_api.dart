@@ -8,7 +8,10 @@ class SupportTicketApi {
 
   Future<SupportTicketPage> list({Map<String, String>? cursor}) async {
     final data = await _send(
-      () => _dio.get('/api/support/tickets', queryParameters: {'limit': 20, ...?cursor}),
+      () => _dio.get(
+        '/api/support/tickets',
+        queryParameters: {'limit': 20, ...?cursor},
+      ),
       'Your tickets could not load. Check your connection and try again.',
     );
     return SupportTicketPage.fromJson(data);
@@ -28,11 +31,14 @@ class SupportTicketApi {
     String? reportId,
   }) async {
     final data = await _send(
-      () => _dio.post('/api/support/tickets', data: {
-        'category': category,
-        'description': description,
-        'report_id': ?reportId,
-      }),
+      () => _dio.post(
+        '/api/support/tickets',
+        data: {
+          'category': category,
+          'description': description,
+          'report_id': ?reportId,
+        },
+      ),
       'Your ticket was not sent. Your text is still here; try again.',
     );
     return SupportTicket.fromJson(data);

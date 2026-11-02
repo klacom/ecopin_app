@@ -5,18 +5,18 @@ enum FcSyncMode { automatic, manualCommit, offlineOnly }
 
 extension FcSyncModeLabel on FcSyncMode {
   String get title => switch (this) {
-    FcSyncMode.automatic => 'Automatic Sync',
-    FcSyncMode.manualCommit => 'Manual Commit',
-    FcSyncMode.offlineOnly => 'Offline Only',
+    FcSyncMode.automatic => 'Send on its own',
+    FcSyncMode.manualCommit => 'I will send it myself',
+    FcSyncMode.offlineOnly => 'Pause sending',
   };
 
   String get description => switch (this) {
     FcSyncMode.automatic =>
-      'Pending work uploads automatically when a suitable network is available.',
+      'Recommended. Your work sends when the signal is good.',
     FcSyncMode.manualCommit =>
-      'Changes are saved locally and only uploaded when you tap "Commit Changes".',
+      'Your work waits on this phone until you tap Send now.',
     FcSyncMode.offlineOnly =>
-      'Queued uploads and sync downloads are paused. Change mode before committing work.',
+      'Nothing is sent. Your work stays on this phone.',
   };
 }
 

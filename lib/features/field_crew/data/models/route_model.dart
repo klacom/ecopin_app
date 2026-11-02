@@ -20,8 +20,13 @@ class RouteModel {
 
   factory RouteModel.fromJson(Map<String, dynamic> json) {
     LatLng? depot;
-    if (json['start_depot'] != null && json['start_depot'] is String && json['start_depot'].startsWith('POINT')) {
-      final parts = json['start_depot'].replaceAll('POINT(', '').replaceAll(')', '').split(' ');
+    if (json['start_depot'] != null &&
+        json['start_depot'] is String &&
+        json['start_depot'].startsWith('POINT')) {
+      final parts = json['start_depot']
+          .replaceAll('POINT(', '')
+          .replaceAll(')', '')
+          .split(' ');
       if (parts.length == 2) {
         depot = LatLng(double.parse(parts[1]), double.parse(parts[0]));
       }
@@ -32,7 +37,9 @@ class RouteModel {
     return RouteModel(
       id: json['id']?.toString() ?? '',
       crewName: json['field_crews']?['name']?.toString() ?? 'My Crew',
-      waypoints: waypointsList.map((e) => WaypointModel.fromJson(e as Map<String, dynamic>)).toList(),
+      waypoints: waypointsList
+          .map((e) => WaypointModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
       totalDistanceMeters: json['total_distance_meters'] as num?,
       totalDurationMin: json['total_duration_min'] as num?,
       startDepot: depot,

@@ -178,7 +178,11 @@ class ApiClient {
   }) async {
     return _dio.get(
       ApiConstants.drivingDirections,
-      queryParameters: {'from': '$fromLng,$fromLat', 'to': '$toLng,$toLat'},
+      // Phone GPS carries 14+ decimals; six (about 0.1 m) is all routing needs.
+      queryParameters: {
+        'from': '${fromLng.toStringAsFixed(6)},${fromLat.toStringAsFixed(6)}',
+        'to': '${toLng.toStringAsFixed(6)},${toLat.toStringAsFixed(6)}',
+      },
     );
   }
 

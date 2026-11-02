@@ -50,9 +50,14 @@ class WaypointModel {
       reportId: json['report_id']?.toString(),
       sequenceOrder: json['sequence_order'] as int? ?? 0,
       distanceFromPreviousMeters: json['distance_from_previous_meters'] as num?,
-      estimatedTimeFromPreviousMin: json['estimated_time_from_previous_min'] as num?,
-      latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
-      longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
+      estimatedTimeFromPreviousMin:
+          json['estimated_time_from_previous_min'] as num?,
+      latitude: json['latitude'] != null
+          ? double.tryParse(json['latitude'].toString())
+          : null,
+      longitude: json['longitude'] != null
+          ? double.tryParse(json['longitude'].toString())
+          : null,
       polyline: parsedPolyline,
     );
   }

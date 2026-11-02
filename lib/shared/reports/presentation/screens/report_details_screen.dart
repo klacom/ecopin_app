@@ -1,5 +1,4 @@
 import 'package:ecopin_app/core/services/api_service.dart';
-import 'package:ecopin_app/shared/reports/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_details_body.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_share_helper.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_details_widgets/report_share_button.dart';
@@ -27,8 +26,9 @@ class ReportDetailsScreen extends ConsumerStatefulWidget {
 class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
   List<dynamic> _evidence = [];
   bool _isLoadingEvidence = false;
-  CleanupTaskModel? _cleanupTask;
-  bool _isLoadingCleanupTask = false;
+  bool _evidenceFailed = false;
+  int _proofRevision = 0;
+  int _evidenceRequest = 0;
   final Logger _log = Logger('Report Detail Screen');
   final pull_refresh.RefreshController _refreshController =
       pull_refresh.RefreshController(initialRefresh: false);
@@ -45,56 +45,50 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
     _fetchEvidence();
   }
 
+  @override
+  void didUpdateWidget(covariant ReportDetailsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.reportId != widget.reportId) {
+      _evidence = [];
+      _proofRevision++;
+      _fetchEvidence();
+    }
+  }
+
   Future<void> _onRefresh() async {
     ref.invalidate(reportDetailsProvider(widget.reportId));
     await _fetchEvidence();
-    _refreshController.refreshCompleted();
+    if (mounted) {
+      setState(() => _proofRevision++);
+      _refreshController.refreshCompleted();
+    }
   }
 
   Future<void> _fetchEvidence() async {
+    final request = ++_evidenceRequest;
+    final reportId = widget.reportId;
     if (mounted) {
-      setState(() => _isLoadingEvidence = true);
+      setState(() {
+        _isLoadingEvidence = true;
+        _evidenceFailed = false;
+      });
     }
     try {
       final apiClient = ref.read(apiClientProvider);
-      final response = await apiClient.getReportEvidence(widget.reportId);
-      _log.fine('Evidence response: ${response.data}');
-      if (mounted) {
+      final response = await apiClient.getReportEvidence(reportId);
+      if (mounted &&
+          request == _evidenceRequest &&
+          reportId == widget.reportId) {
         setState(() => _evidence = response.data);
       }
     } catch (e, stackTrace) {
+      if (mounted && request == _evidenceRequest) {
+        setState(() => _evidenceFailed = true);
+      }
       _log.severe('Failed to fetch evidence: $e', stackTrace);
     } finally {
-      if (mounted) {
+      if (mounted && request == _evidenceRequest) {
         setState(() => _isLoadingEvidence = false);
-      }
-    }
-  }
-
-  Future<void> _fetchCleanupTask(String clusterId) async {
-    if (mounted) {
-      setState(() => _isLoadingCleanupTask = true);
-    }
-    try {
-      final apiClient = ref.read(apiClientProvider);
-      final response = await apiClient.getCleanupTasksByCluster(clusterId);
-
-      if (response.data != null && response.data is List) {
-        final List<CleanupTaskModel> tasks = (response.data as List)
-            .map((taskJson) => CleanupTaskModel.fromJson(taskJson))
-            .toList();
-
-        if (mounted && tasks.isNotEmpty) {
-          setState(() {
-            _cleanupTask = tasks.first;
-          });
-        }
-      }
-    } catch (e, stackTrace) {
-      _log.severe('Failed to fetch cleanup tasks: $e', stackTrace);
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingCleanupTask = false);
       }
     }
   }
@@ -173,7 +167,14 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Report Details'),
+        toolbarHeight: MediaQuery.textScalerOf(context).scale(20) > 26
+            ? 112
+            : 64,
+        title: const Text(
+          'Report details',
+          maxLines: 2,
+          textAlign: TextAlign.center,
+        ),
         actions: [
           const OfficialContactsButton(),
           reportAsync.maybeWhen(
@@ -181,24 +182,18 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
               final isRejected =
                   report.status.toLowerCase() == 'rejected' ||
                   report.validationStatus.toLowerCase() == 'rejected';
-              final photoUrl =
-                  report.beforePhotoUrl ??
-                  (_evidence.isNotEmpty
-                      ? _evidence.first['url'] ?? _evidence.first['file_url']
-                      : null);
+              final submitted = _evidence.whereType<Map>().firstOrNull;
+              final photoUrl = submitted?['url'] ?? submitted?['file_url'];
 
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (!isRejected)
+                  if (!isRejected && photoUrl is String && photoUrl.isNotEmpty)
                     ReportShareButton(
                       onShare: () => ReportShareHelper.shareReportPhoto(
                         report: report,
                         photoUrl: photoUrl,
-                        isVideo:
-                            report.beforePhotoUrl == null &&
-                            _evidence.isNotEmpty &&
-                            _evidence.first['resource_type'] == 'video',
+                        isVideo: submitted?['resource_type'] == 'video',
                       ),
                     ),
                 ],
@@ -224,11 +219,10 @@ class _ReportDetailsScreenState extends ConsumerState<ReportDetailsScreen> {
               report: report,
               evidence: _evidence,
               isLoadingEvidence: _isLoadingEvidence,
-              cleanupTask: _cleanupTask,
-              isLoadingCleanupTask: _isLoadingCleanupTask,
-              onFetchCleanupTask: report.clusterId != null
-                  ? () => _fetchCleanupTask(report.clusterId!)
-                  : null,
+              evidenceFailed: _evidenceFailed,
+              onRetryEvidence: _fetchEvidence,
+              isOwner: isOwner,
+              proofRevision: _proofRevision,
               onWithdraw: canWithdraw
                   ? () => _handleWithdrawReport(report)
                   : null,

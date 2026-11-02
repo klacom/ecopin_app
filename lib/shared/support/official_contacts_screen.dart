@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
+import 'package:ecopin_app/shared/widgets/app_button.dart';
 import 'official_contact_settings.dart';
 
 class OfficialContactsButton extends StatelessWidget {
@@ -90,124 +93,237 @@ class _OfficialContactsScreenState extends State<OfficialContactsScreen> {
     }
   }
 
-  Widget _card(BuildContext context, List<Widget> children) => Card(
+  Widget _card(
+    BuildContext context,
+    List<Widget> children, {
+    bool quiet = false,
+  }) => Card(
+    margin: EdgeInsets.zero,
+    color: quiet ? _quietColor(context) : null,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppColors.radiusCard),
+      side: quiet
+          ? BorderSide.none
+          : BorderSide(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.dividerDark
+                  : AppColors.dividerLight,
+            ),
+    ),
     child: Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppColors.spaceMD),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: children
-            .map(
-              (child) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: child,
-              ),
-            )
-            .toList(),
-      ),
-    ),
-  );
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Official contacts')),
-    body: SafeArea(
-      top: false,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
         children: [
-          if (loading) const Text('Loading published office contacts…'),
-          if (failed) ...[
-            const Text(
-              'Current contacts could not load. Showing bundled office contacts; confirm with the city directory.',
-            ),
-            TextButton(onPressed: _load, child: const Text('Retry contacts')),
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            children[i],
           ],
-          Text(
-            'Contact SWMO directly',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              'For barangay leaders and official event organizers coordinating critical cleanup, community events or liga activities.',
-            ),
-          ),
-          _card(context, [
-            Text(
-              'Cleanup & event coordination',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            Text(contacts.office),
-            SelectableText(
-              '${contacts.phone}${contacts.extension.isEmpty ? '' : ' local ${contacts.extension}'}',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            Text(
-              'Call the office trunkline${contacts.extension.isEmpty ? '' : ', then ask for SWMO, local ${contacts.extension}'}. The button dials the trunkline only.',
-            ),
-            FilledButton.icon(
-              onPressed: () =>
-                  _open(context, OfficialContactSettings.dial(contacts.phone)!),
-              icon: const Icon(Icons.call_outlined),
-              label: const Text('Call SWMO trunkline'),
-            ),
-            if (contacts.email.isNotEmpty) SelectableText(contacts.email),
-            if (contacts.email.isNotEmpty)
-              OutlinedButton.icon(
-                onPressed: () => _open(
-                  context,
-                  'mailto:${contacts.email}?subject=Barangay%20cleanup%20coordination',
-                ),
-                icon: const Icon(Icons.mail_outline),
-                label: const Text('Email SWMO'),
-              ),
-            const Text(
-              'No EcoPin report or trust score is needed to call. SWMO confirms crew availability, response and schedule. Opening a call or email does not submit a report or dispatch a crew.',
-            ),
-          ]),
-          _card(context, [
-            Text(
-              'Have these details ready',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const Text('• Your name, official role and barangay or office'),
-            const Text('• Exact location and nearby landmark'),
-            const Text('• Event schedule, cleanup needed and hazards'),
-            const Text('• Callback number and report ID, if available'),
-          ]),
-          _card(context, [
-            Text(
-              'Immediate danger or emergency?',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const Text(
-              'For immediate threats to people or public safety, contact the Pasig City Emergency Hotline rather than waiting for an EcoPin review.',
-            ),
-            SelectableText(
-              contacts.emergency,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            OutlinedButton(
-              onPressed: () => _open(
-                context,
-                OfficialContactSettings.dial(contacts.emergency)!,
-              ),
-              child: const Text('Call Pasig emergency hotline'),
-            ),
-          ]),
-          Text(
-            'Public office contacts · ${contacts.verified.isEmpty ? 'Verification date not provided.' : 'Last verified ${contacts.verified}.'} Device dialer/email availability varies.',
-          ),
-          TextButton(
-            onPressed: () => _open(context, contacts.directory),
-            child: const Text('Official city directory'),
-          ),
-          TextButton(
-            onPressed: () => _open(context, contacts.emergencySource),
-            child: const Text('Official emergency hotline listing'),
-          ),
         ],
       ),
     ),
   );
+
+  Color _quietColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? AppColors.quietSurfaceDark
+      : AppColors.quietSurfaceLight;
+
+  Widget _heading(BuildContext context, String text) => Semantics(
+    header: true,
+    child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final secondary = theme.brightness == Brightness.dark
+        ? AppColors.textSecondaryDark
+        : AppColors.textSecondaryLight;
+    final small = theme.textTheme.bodySmall!.copyWith(color: secondary);
+    final emergencyColor =
+        theme.extension<AppStatusColors>()?.error ?? theme.colorScheme.error;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Official contacts')),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+          children: [
+            if (loading)
+              Semantics(
+                liveRegion: true,
+                child: const Text('Loading published office contacts…'),
+              ),
+            if (failed) ...[
+              const Text(
+                'Current contacts could not load. Showing bundled office contacts; confirm with the city directory.',
+              ),
+              TextButton(onPressed: _load, child: const Text('Retry contacts')),
+            ],
+            const SizedBox(height: 8),
+            Semantics(
+              header: true,
+              child: Text(
+                'Reach the right office',
+                style: theme.textTheme.headlineSmall,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'For barangay leaders and organizers coordinating cleanups, community events and liga activities with SWMO.',
+                style: small,
+              ),
+            ),
+            _card(context, [
+              Row(
+                children: [
+                  ExcludeSemantics(
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _quietColor(context),
+                        borderRadius: BorderRadius.circular(
+                          AppColors.radiusInput,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.business_outlined,
+                        color: theme.brightness == Brightness.dark
+                            ? AppColors.linkDark
+                            : AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _heading(context, 'SWMO'),
+                        Text('Pasig City', style: small),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Text(contacts.office),
+              SelectableText(contacts.phone, style: theme.textTheme.titleLarge),
+              SelectableText(
+                contacts.extension.isEmpty
+                    ? 'Ask for SWMO once connected.'
+                    : 'Ask for SWMO, local ${contacts.extension}.',
+                style: small,
+              ),
+              AppButton(
+                onPressed: () => _open(
+                  context,
+                  OfficialContactSettings.dial(contacts.phone)!,
+                ),
+                icon: Icons.call_outlined,
+                text: 'Call SWMO trunkline',
+              ),
+              Text('Dials the trunkline only.', style: small),
+              if (contacts.email.isNotEmpty) const Divider(),
+              if (contacts.email.isNotEmpty) SelectableText(contacts.email),
+              if (contacts.email.isNotEmpty)
+                AppButton(
+                  variant: ButtonVariant.secondary,
+                  onPressed: () => _open(
+                    context,
+                    'mailto:${contacts.email}?subject=Barangay%20cleanup%20coordination',
+                  ),
+                  icon: Icons.mail_outline,
+                  text: 'Email SWMO',
+                ),
+            ]),
+            const SizedBox(height: 24),
+            Text(
+              'No EcoPin report or trust score is needed to call. Calling or emailing does not submit a report or dispatch a crew. SWMO confirms crew availability, response and schedule.',
+              style: small,
+            ),
+            const SizedBox(height: 24),
+            _card(context, [
+              Row(
+                children: [
+                  ExcludeSemantics(
+                    child: Icon(Icons.shield_outlined, color: emergencyColor),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: _heading(context, 'Immediate danger?')),
+                ],
+              ),
+              Text(
+                'For threats to people or public safety, call Pasig emergency services. Do not wait for an EcoPin review.',
+                style: small,
+              ),
+              SelectableText(
+                contacts.emergency,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    foregroundColor: emergencyColor,
+                    side: BorderSide(color: emergencyColor),
+                  ),
+                  onPressed: () => _open(
+                    context,
+                    OfficialContactSettings.dial(contacts.emergency)!,
+                  ),
+                  child: const Text(
+                    'Call Pasig emergency hotline',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ], quiet: true),
+            const SizedBox(height: 24),
+            const Divider(),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 16),
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              shape: const Border(),
+              collapsedShape: const Border(),
+              title: Text(
+                'Have these details ready',
+                style: theme.textTheme.titleSmall,
+              ),
+              children: [
+                for (final detail in [
+                  'Your name, official role and barangay or office',
+                  'Exact location and nearby landmark',
+                  'Event schedule, cleanup needed and hazards',
+                  'Callback number and report ID, if available',
+                ])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text('• $detail', style: small),
+                  ),
+              ],
+            ),
+            const Divider(),
+            const SizedBox(height: 16),
+            Text(
+              'Public office contacts · ${contacts.verified.isEmpty ? 'Verification date not provided.' : 'Last verified ${contacts.verified}.'} Device dialer/email availability varies.',
+              style: small,
+            ),
+            TextButton(
+              onPressed: () => _open(context, contacts.directory),
+              child: const Text('Official city directory'),
+            ),
+            TextButton(
+              onPressed: () => _open(context, contacts.emergencySource),
+              child: const Text('Official emergency hotline listing'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

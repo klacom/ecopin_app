@@ -20,15 +20,23 @@ class FcProgressBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
     final trackColor = isDark ? AppColors.surfaceDark : Colors.grey.shade200;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: AppTypography.caption.copyWith(color: textColor)),
-            Text('$current/$total', style: AppTypography.caption.copyWith(color: AppColors.primaryDark)),
+            Text(
+              label,
+              style: AppTypography.caption.copyWith(color: textColor),
+            ),
+            Text(
+              '$current/$total',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.primaryDark,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: AppColors.spaceSM),

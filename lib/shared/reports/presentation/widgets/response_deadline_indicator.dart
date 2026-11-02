@@ -17,9 +17,11 @@ class ResponseDeadlineIndicator extends ConsumerWidget {
     super.key,
     required this.report,
     this.details = false,
+    this.compact = false,
   });
   final ReportModel report;
   final bool details;
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,6 +36,25 @@ class ResponseDeadlineIndicator extends ConsumerWidget {
       DeadlineState.atRisk => colors?.warning ?? theme.colorScheme.onSurface,
       DeadlineState.overdue => colors?.error ?? theme.colorScheme.error,
     };
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${deadline.label} · ${deadline.timeLabel}',
+              style: theme.textTheme.bodySmall?.copyWith(color: color),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'A response target, not a guaranteed cleanup time.',
+              style: theme.textTheme.labelSmall,
+            ),
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Container(

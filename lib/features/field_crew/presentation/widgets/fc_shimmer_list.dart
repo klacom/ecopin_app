@@ -12,9 +12,13 @@ class FcShimmerList extends StatelessWidget {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: AppColors.spaceLG, vertical: AppColors.spaceMD),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppColors.spaceLG,
+        vertical: AppColors.spaceMD,
+      ),
       itemCount: itemCount,
-      separatorBuilder: (context, index) => const SizedBox(height: AppColors.spaceMD),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AppColors.spaceMD),
       itemBuilder: (context, index) {
         return Shimmer.fromColors(
           baseColor: AppColors.surfaceDark,

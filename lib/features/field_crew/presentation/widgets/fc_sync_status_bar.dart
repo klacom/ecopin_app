@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,18 +28,23 @@ class FcSyncStatusBar extends ConsumerWidget {
               queue.value!.photoCount +
               queue.value!.pendingDeleteCount
         : null;
+    final offline = network.value == FcNetworkType.none;
     final label = state.phase == FcSyncPhase.syncing
-        ? 'Syncing queued work'
+        ? 'Sending your work'
         : state.phase == FcSyncPhase.error ||
               state.phase == FcSyncPhase.partialFailure
-        ? 'Sync needs attention'
+        ? 'Some work did not send'
         : queue.hasError
-        ? 'Queue could not be checked'
+        ? 'Could not check your saved work'
         : queue.isLoading
-        ? 'Checking local queue'
+        ? 'Checking your saved work'
         : count == 0
-        ? 'No queued crew work'
-        : '$count ${count == 1 ? 'item' : 'items'} waiting to sync';
+        ? offline
+              ? 'No signal. Nothing is waiting to send'
+              : 'All your work is sent'
+        : offline
+        ? 'No signal. $count ${count == 1 ? 'item is' : 'items are'} saved on this phone'
+        : '$count ${count == 1 ? 'item' : 'items'} waiting to send';
     final connection = network.hasError
         ? 'Connection unavailable'
         : network.isLoading
@@ -62,31 +68,88 @@ class FcSyncStatusBar extends ConsumerWidget {
         '${state.resultMessage == null ? '' : '. ${state.resultMessage}'}'
         '${blocked ? '. ${fcSyncPolicy(settings, network.hasError ? null : network.value)}' : ''}'
         '${queue.hasError && count != null ? '. Last loaded count: $count' : ''}';
+    final theme = Theme.of(context);
+    final status = theme.extension<AppStatusColors>();
+    final waiting = (count ?? 0) > 0;
+    // Color supports the written state; it never carries it alone.
+    final tone = attention
+        ? status?.error ?? theme.colorScheme.error
+        : offline || (blocked && waiting)
+        ? status?.warning ?? theme.colorScheme.onSurface
+        : count == 0 && state.phase != FcSyncPhase.syncing
+        ? status?.success ?? theme.colorScheme.onSurface
+        : theme.brightness == Brightness.dark
+        ? AppColors.linkDark
+        : AppColors.accent;
+    final icon = attention
+        ? Icons.sync_problem
+        : state.phase == FcSyncPhase.syncing || waiting
+        ? offline
+              ? Icons.cloud_off_outlined
+              : Icons.sync
+        : offline
+        ? Icons.cloud_off_outlined
+        : count == 0
+        ? Icons.cloud_done_outlined
+        : Icons.cloud_outlined;
+    void open() => context.push(FieldCrewAppRoutes.syncCenter);
     return Semantics(
-      label: 'Open Sync Center. $description',
+      label: 'Open sending details. $description',
       button: true,
-      onTap: () => context.push(FieldCrewAppRoutes.syncCenter),
+      onTap: open,
       child: Tooltip(
-        message: 'Open Sync Center\n$description',
+        message: 'Open sending details\n$description',
         child: ExcludeSemantics(
-          child: IconButton(
-            onPressed: () => context.push(FieldCrewAppRoutes.syncCenter),
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            color: attention
-                ? Theme.of(context).colorScheme.error
-                : Theme.of(context).brightness == Brightness.dark
-                ? AppColors.linkDark
-                : AppColors.accent,
-            icon: _SyncPulse(
-              active: (count ?? 0) > 0 || state.phase == FcSyncPhase.syncing,
-              child: Icon(
-                attention
-                    ? Icons.sync_problem
-                    : state.phase == FcSyncPhase.syncing || (count ?? 0) > 0
-                    ? Icons.sync
-                    : count == 0
-                    ? Icons.cloud_done_outlined
-                    : Icons.cloud_outlined,
+          child: Material(
+            color: theme.colorScheme.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppColors.radiusCard),
+              side: BorderSide(
+                color: attention
+                    ? tone
+                    : theme.dividerTheme.color ?? theme.dividerColor,
+              ),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppColors.radiusCard),
+              onTap: open,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 56),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      _SyncPulse(
+                        active: waiting || state.phase == FcSyncPhase.syncing,
+                        child: Icon(icon, color: tone, size: 28),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              label,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              connection,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

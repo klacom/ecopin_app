@@ -2,12 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:intl/intl.dart';
 
+/// Civic blue for selection and numbers: the filled-button blue on light
+/// surfaces, the readable link blue on charcoal.
+Color fcAccent(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+    ? AppColors.linkDark
+    : AppColors.accent;
+
 String fcLocalTime(DateTime value) =>
     '${DateFormat.yMMMd().add_jm().format(value.toLocal())} (local time)';
 
 class FcOfflineCard extends StatelessWidget {
-  const FcOfflineCard({super.key, required this.child});
+  const FcOfflineCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(20),
+  });
   final Widget child;
+  final EdgeInsetsGeometry padding;
   @override
   Widget build(BuildContext context) => Card(
     margin: EdgeInsets.zero,
@@ -19,7 +31,7 @@ class FcOfflineCard extends StatelessWidget {
             Theme.of(context).dividerColor,
       ),
     ),
-    child: Padding(padding: const EdgeInsets.all(20), child: child),
+    child: Padding(padding: padding, child: child),
   );
 }
 

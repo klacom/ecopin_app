@@ -13,28 +13,16 @@ String crewTaskLabel(String value) {
 String crewTaskPath(String id) =>
     '/field-crew/tasks/${Uri.encodeComponent(id)}';
 
-List<CleanupTask> orderedCrewTasks(
-  List<CleanupTask> tasks, {
-  RouteModel? route,
-  Set<String> held = const {},
-  Set<String> locallyCompleted = const {},
-}) {
+/// The crew's established order of work: in progress first, then route stop
+/// order, then high/urgent priority, then oldest first. Sorts [tasks] in place.
+void sortCrewTasks(List<CleanupTask> tasks, {RouteModel? route}) {
   final order = <String, int>{};
   for (final stop in route?.waypoints ?? []) {
     if (stop.cleanupTaskId != null) {
       order[stop.cleanupTaskId!] = stop.sequenceOrder;
     }
   }
-  final active = tasks
-      .where(
-        (task) =>
-            !{'completed', 'cancelled'}.contains(crewTaskKey(task.status)) &&
-            !held.contains(task.id) &&
-            !locallyCompleted.contains(task.id),
-      )
-      .toList();
-  active.sort((a, b) {
-    // Retain the dashboard's established task ordering.
+  tasks.sort((a, b) {
     if (a.status == 'in_progress' && b.status != 'in_progress') return -1;
     if (b.status == 'in_progress' && a.status != 'in_progress') return 1;
     final routeOrder = (order[a.id] ?? 9999).compareTo(order[b.id] ?? 9999);
@@ -44,7 +32,46 @@ List<CleanupTask> orderedCrewTasks(
     if (aHigh != bHigh) return aHigh ? -1 : 1;
     return a.createdAt.compareTo(b.createdAt);
   });
+}
+
+List<CleanupTask> orderedCrewTasks(
+  List<CleanupTask> tasks, {
+  RouteModel? route,
+  Set<String> held = const {},
+  Set<String> locallyCompleted = const {},
+}) {
+  final active = tasks
+      .where(
+        (task) =>
+            !{'completed', 'cancelled'}.contains(crewTaskKey(task.status)) &&
+            !held.contains(task.id) &&
+            !locallyCompleted.contains(task.id),
+      )
+      .toList();
+  sortCrewTasks(active, route: route);
   return active;
+}
+
+final _coordinatePair = RegExp(r'^-?\d+(\.\d+)?, -?\d+(\.\d+)?$');
+
+/// Where a job is, in words a crew member can act on. A street address wins;
+/// bare coordinates are labelled as a map pin rather than shown as the address.
+({String primary, String? detail}) crewTaskPlace(CleanupTask task) {
+  final address = task.streetAddress?.trim();
+  if (address != null && address.isNotEmpty) {
+    return (primary: address, detail: null);
+  }
+  final location = crewTaskLocation(task);
+  if (_coordinatePair.hasMatch(location)) {
+    return (primary: 'Address not provided', detail: 'Map pin $location');
+  }
+  return (primary: location, detail: null);
+}
+
+/// One-line place for compact lists.
+String crewTaskPlaceLine(CleanupTask task) {
+  final place = crewTaskPlace(task);
+  return place.detail ?? place.primary;
 }
 
 String crewTaskLocation(CleanupTask task) {

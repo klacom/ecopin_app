@@ -44,11 +44,16 @@ class NotificationBadgeAction extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 16.0),
       child: IconButton(
-        tooltip: unread.hasError
-            ? 'Notifications, unread count unavailable'
-            : unread.isLoading
-            ? 'Notifications, loading unread count'
-            : 'Notifications, $unreadCount unread',
+        tooltip: () {
+          final name = resolvedRole == UserRole.fieldCrew
+              ? 'Alerts'
+              : 'Notifications';
+          return unread.hasError
+              ? '$name, unread count unavailable'
+              : unread.isLoading
+              ? '$name, loading unread count'
+              : '$name, $unreadCount unread';
+        }(),
         constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         onPressed: () {
           context.push(_notificationsRouteForRole(resolvedRole));

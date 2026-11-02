@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/field_crew/data/models/route_model.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
@@ -33,17 +34,26 @@ class FcDashboardRouteCard extends StatelessWidget {
         )
         .toList();
     final next = matching?.firstOrNull;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.map_outlined),
-      title: const Text('Route overview'),
-      subtitle: Text(
-        route == null
-            ? 'No route loaded. Check task instructions.'
-            : '${stops!.length} stops${next == null ? '' : ' · Stop ${next.sequenceOrder} for current task'}',
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusCard),
+        side: BorderSide(color: theme.dividerTheme.color ?? theme.dividerColor),
       ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => context.go(FieldCrewAppRoutes.map),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        minVerticalPadding: 12,
+        leading: const Icon(Icons.map_outlined, size: 28),
+        title: const Text('Route overview'),
+        subtitle: Text(
+          route == null
+              ? 'No route loaded. Check your job instructions.'
+              : '${stops!.length} stops${next == null ? '' : ' · Stop ${next.sequenceOrder} for your job now'}',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.go(FieldCrewAppRoutes.map),
+      ),
     );
   }
 }

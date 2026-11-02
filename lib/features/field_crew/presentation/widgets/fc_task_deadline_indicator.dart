@@ -1,3 +1,4 @@
+import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/response_deadline.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
@@ -5,8 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class FcTaskDeadlineIndicator extends ConsumerWidget {
-  const FcTaskDeadlineIndicator({super.key, required this.reports});
+  const FcTaskDeadlineIndicator({
+    super.key,
+    required this.reports,
+    this.inline = false,
+  });
   final List<ReportModel> reports;
+
+  /// One written line for a job card instead of the full indicator.
+  final bool inline;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,6 +26,37 @@ class FcTaskDeadlineIndicator extends ConsumerWidget {
             .toList()
           ..sort((a, b) => a.deadlineAt!.compareTo(b.deadlineAt!));
     if (active.isEmpty) return const SizedBox.shrink();
+    if (inline) {
+      final first = responseDeadline(active.first, now)!;
+      final theme = Theme.of(context);
+      final colors = theme.extension<AppStatusColors>();
+      final color = switch (first.state) {
+        DeadlineState.scheduled => theme.colorScheme.onSurfaceVariant,
+        DeadlineState.atRisk => colors?.warning ?? theme.colorScheme.onSurface,
+        DeadlineState.overdue => colors?.error ?? theme.colorScheme.error,
+      };
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ExcludeSemantics(
+              child: Icon(Icons.alarm_outlined, size: 18, color: color),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                '${first.label} · ${first.timeLabel}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     final atRisk = active
         .where(
           (report) =>

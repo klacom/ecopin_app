@@ -107,17 +107,28 @@ class FcOpResult {
 
   static FcOpStatus _parseStatus(String raw) {
     switch (raw) {
-      case 'success':   return FcOpStatus.success;
-      case 'applied': return FcOpStatus.applied;
-      case 'acknowledged_already_resolved': return FcOpStatus.acknowledgedAlreadyResolved;
-      case 'verification_required': return FcOpStatus.verificationRequired;
-      case 'contested': return FcOpStatus.contested;
-      case 'rejected': return FcOpStatus.rejected;
-      case 'merged':    return FcOpStatus.merged;
-      case 'conflict':  return FcOpStatus.conflict;
-      case 'duplicate': return FcOpStatus.duplicate;
-      case 'invalid':   return FcOpStatus.invalid;
-      default:          return FcOpStatus.failed;
+      case 'success':
+        return FcOpStatus.success;
+      case 'applied':
+        return FcOpStatus.applied;
+      case 'acknowledged_already_resolved':
+        return FcOpStatus.acknowledgedAlreadyResolved;
+      case 'verification_required':
+        return FcOpStatus.verificationRequired;
+      case 'contested':
+        return FcOpStatus.contested;
+      case 'rejected':
+        return FcOpStatus.rejected;
+      case 'merged':
+        return FcOpStatus.merged;
+      case 'conflict':
+        return FcOpStatus.conflict;
+      case 'duplicate':
+        return FcOpStatus.duplicate;
+      case 'invalid':
+        return FcOpStatus.invalid;
+      default:
+        return FcOpStatus.failed;
     }
   }
 
@@ -131,7 +142,8 @@ class FcOpResult {
       status == FcOpStatus.duplicate;
 
   bool get isTerminalFailure =>
-      status == FcOpStatus.conflict || status == FcOpStatus.invalid ||
+      status == FcOpStatus.conflict ||
+      status == FcOpStatus.invalid ||
       status == FcOpStatus.rejected;
 
   bool get isRetryable => status == FcOpStatus.failed;
@@ -142,8 +154,17 @@ class FcOpResult {
 }
 
 enum FcOpStatus {
-  success, applied, acknowledgedAlreadyResolved, verificationRequired,
-  contested, rejected, merged, conflict, duplicate, failed, invalid
+  success,
+  applied,
+  acknowledgedAlreadyResolved,
+  verificationRequired,
+  contested,
+  rejected,
+  merged,
+  conflict,
+  duplicate,
+  failed,
+  invalid,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,8 +206,7 @@ class FcSyncRunResult {
     required this.results,
   });
 
-  bool get allSucceeded =>
-      retryable == 0 && permanent == 0 && conflicted == 0;
+  bool get allSucceeded => retryable == 0 && permanent == 0 && conflicted == 0;
 
   /// Returns human-readable conflict events for the UI banner.
   /// Only includes merged and conflict outcomes (not retryable failures,
@@ -197,41 +217,54 @@ class FcSyncRunResult {
       if (r.status == FcOpStatus.merged) {
         final detail = r.conflictDetail;
         if (detail != null && detail.rejectedFields.isNotEmpty) {
-          events.add(FcConflictEvent(
+          events.add(
+            FcConflictEvent(
+              operationId: r.operationId,
+              status: r.status,
+              message:
+                  'Some changes were merged. '
+                  '${detail.rejectedFields.length} field(s) updated by another '
+                  'crew member were kept.',
+            ),
+          );
+        } else {
+          events.add(
+            FcConflictEvent(
+              operationId: r.operationId,
+              status: r.status,
+              message:
+                  'Your change was merged with another crew member\'s update.',
+            ),
+          );
+        }
+      } else if (r.status == FcOpStatus.conflict) {
+        events.add(
+          FcConflictEvent(
             operationId: r.operationId,
             status: r.status,
             message:
-                'Some changes were merged. '
-                '${detail.rejectedFields.length} field(s) updated by another '
-                'crew member were kept.',
-          ));
-        } else {
-          events.add(FcConflictEvent(
+                'One change was not applied — another crew member\'s update '
+                'was accepted first.',
+          ),
+        );
+      } else if (r.status == FcOpStatus.verificationRequired) {
+        events.add(
+          FcConflictEvent(
             operationId: r.operationId,
             status: r.status,
-            message: 'Your change was merged with another crew member\'s update.',
-          ));
-        }
-      } else if (r.status == FcOpStatus.conflict) {
-        events.add(FcConflictEvent(
-          operationId: r.operationId,
-          status: r.status,
-          message:
-              'One change was not applied — another crew member\'s update '
-              'was accepted first.',
-        ));
-      } else if (r.status == FcOpStatus.verificationRequired) {
-        events.add(FcConflictEvent(
-          operationId: r.operationId,
-          status: r.status,
-          message: 'Already-clean observation sent for verification. This report remains open until reviewed.',
-        ));
+            message:
+                'Already-clean observation sent for verification. This report remains open until reviewed.',
+          ),
+        );
       } else if (r.status == FcOpStatus.contested) {
-        events.add(FcConflictEvent(
-          operationId: r.operationId,
-          status: r.status,
-          message: 'Physical completion was recorded and needs officer review. Do not revisit this stop.',
-        ));
+        events.add(
+          FcConflictEvent(
+            operationId: r.operationId,
+            status: r.status,
+            message:
+                'Physical completion was recorded and needs officer review. Do not revisit this stop.',
+          ),
+        );
       }
     }
     return events;

@@ -34,9 +34,7 @@ class FcCannotWorkButton extends ConsumerWidget {
         ),
         label: Text(
           'Unable to Work This Site',
-          style: AppTypography.button.copyWith(
-            color: AppColors.error,
-          ),
+          style: AppTypography.button.copyWith(color: AppColors.error),
         ),
         style: OutlinedButton.styleFrom(
           side: BorderSide(
@@ -63,12 +61,12 @@ class FcCannotWorkButton extends ConsumerWidget {
     String? existingEvidenceRef = before != null
         ? 'local-photo:${before.localPhotoId}'
         : after != null
-            ? 'local-photo:${after.localPhotoId}'
-            : (task.beforePhotoUrl?.startsWith('https://') == true)
-                ? task.beforePhotoUrl
-                : (task.afterPhotoUrl?.startsWith('https://') == true)
-                    ? task.afterPhotoUrl
-                    : null;
+        ? 'local-photo:${after.localPhotoId}'
+        : (task.beforePhotoUrl?.startsWith('https://') == true)
+        ? task.beforePhotoUrl
+        : (task.afterPhotoUrl?.startsWith('https://') == true)
+        ? task.afterPhotoUrl
+        : null;
 
     if (!context.mounted) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -84,7 +82,8 @@ class FcCannotWorkButton extends ConsumerWidget {
         themes: InheritedTheme.capture(from: context, to: navigator.context),
         builder: (dialogContext) => StatefulBuilder(
           builder: (dialogCtx, setDialogState) {
-            final hasPhoto = localPickedEvidence != null || existingEvidenceRef != null;
+            final hasPhoto =
+                localPickedEvidence != null || existingEvidenceRef != null;
 
             Future<void> pickPhoto(ImageSource source) async {
               try {
@@ -127,34 +126,48 @@ class FcCannotWorkButton extends ConsumerWidget {
                       'Report a hazard or access issue to pause work at this location and notify dispatch.',
                       style: TextStyle(
                         fontSize: 13,
-                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
                       ),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       isExpanded: true,
                       initialValue: reason,
-                      dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                      dropdownColor: isDark
+                          ? const Color(0xFF2C2C2C)
+                          : Colors.white,
                       style: TextStyle(
-                        color: isDark ? AppColors.textPrimaryDark : Colors.black87,
+                        color: isDark
+                            ? AppColors.textPrimaryDark
+                            : Colors.black87,
                       ),
                       decoration: InputDecoration(
                         labelText: 'Reason',
                         labelStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          color: isDark
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade600,
                         ),
                         filled: true,
-                        fillColor: isDark ? AppColors.surfaceDark : Colors.grey.shade100,
+                        fillColor: isDark
+                            ? AppColors.surfaceDark
+                            : Colors.grey.shade100,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(
-                            color: isDark ? Colors.white12 : Colors.grey.shade300,
+                            color: isDark
+                                ? Colors.white12
+                                : Colors.grey.shade300,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(
-                            color: isDark ? Colors.white12 : Colors.grey.shade300,
+                            color: isDark
+                                ? Colors.white12
+                                : Colors.grey.shade300,
                           ),
                         ),
                       ),
@@ -185,29 +198,41 @@ class FcCannotWorkButton extends ConsumerWidget {
                       controller: notes,
                       maxLines: 3,
                       style: TextStyle(
-                        color: isDark ? AppColors.textPrimaryDark : Colors.black87,
+                        color: isDark
+                            ? AppColors.textPrimaryDark
+                            : Colors.black87,
                       ),
                       decoration: InputDecoration(
                         labelText: 'What happened?',
                         labelStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          color: isDark
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade600,
                         ),
                         hintText: 'Describe the issue or obstruction...',
                         hintStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
+                          color: isDark
+                              ? Colors.grey.shade500
+                              : Colors.grey.shade400,
                         ),
                         filled: true,
-                        fillColor: isDark ? AppColors.surfaceDark : Colors.grey.shade100,
+                        fillColor: isDark
+                            ? AppColors.surfaceDark
+                            : Colors.grey.shade100,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(
-                            color: isDark ? Colors.white12 : Colors.grey.shade300,
+                            color: isDark
+                                ? Colors.white12
+                                : Colors.grey.shade300,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(
-                            color: isDark ? Colors.white12 : Colors.grey.shade300,
+                            color: isDark
+                                ? Colors.white12
+                                : Colors.grey.shade300,
                           ),
                         ),
                       ),
@@ -218,7 +243,9 @@ class FcCannotWorkButton extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? AppColors.textPrimaryDark : Colors.black87,
+                        color: isDark
+                            ? AppColors.textPrimaryDark
+                            : Colors.black87,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -240,7 +267,11 @@ class FcCannotWorkButton extends ConsumerWidget {
                               icon: const CircleAvatar(
                                 radius: 14,
                                 backgroundColor: Colors.black54,
-                                child: Icon(Icons.close, size: 16, color: Colors.white),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
                               ),
                               onPressed: () {
                                 setDialogState(() {
@@ -260,11 +291,15 @@ class FcCannotWorkButton extends ConsumerWidget {
                               icon: const Icon(Icons.camera_alt, size: 18),
                               label: const Text('Take Photo'),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 side: BorderSide(
                                   color: hasPhoto
                                       ? AppColors.primaryDark
-                                      : (isDark ? Colors.white24 : Colors.grey.shade400),
+                                      : (isDark
+                                            ? Colors.white24
+                                            : Colors.grey.shade400),
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -279,9 +314,13 @@ class FcCannotWorkButton extends ConsumerWidget {
                               icon: const Icon(Icons.photo_library, size: 18),
                               label: const Text('Gallery'),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 side: BorderSide(
-                                  color: isDark ? Colors.white24 : Colors.grey.shade400,
+                                  color: isDark
+                                      ? Colors.white24
+                                      : Colors.grey.shade400,
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -297,7 +336,9 @@ class FcCannotWorkButton extends ConsumerWidget {
                           '✓ Existing task photo will be attached as evidence.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? Colors.green.shade300 : Colors.green.shade700,
+                            color: isDark
+                                ? Colors.green.shade300
+                                : Colors.green.shade700,
                           ),
                         ),
                       ],
@@ -311,17 +352,23 @@ class FcCannotWorkButton extends ConsumerWidget {
                   child: Text(
                     'Cancel',
                     style: TextStyle(
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      color: isDark
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600,
                     ),
                   ),
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final currentHasPhoto = localPickedEvidence != null || existingEvidenceRef != null;
+                    final currentHasPhoto =
+                        localPickedEvidence != null ||
+                        existingEvidenceRef != null;
                     if (!currentHasPhoto) {
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
                         const SnackBar(
-                          content: Text('Please capture an evidence photo of the issue.'),
+                          content: Text(
+                            'Please capture an evidence photo of the issue.',
+                          ),
                         ),
                       );
                       return;
@@ -350,9 +397,9 @@ class FcCannotWorkButton extends ConsumerWidget {
 
       final currentUserId = Supabase.instance.client.auth.currentUser?.id;
       if (currentUserId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User session not found')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('User session not found')));
         return;
       }
 
@@ -361,7 +408,11 @@ class FcCannotWorkButton extends ConsumerWidget {
         // Upload / register local photo via repository
         final taskRepo = ref.read(cleanupTaskRepositoryProvider);
         await taskRepo.uploadTaskPhoto(task.id, localPickedEvidence!, 'before');
-        final savedPhoto = await photoRepo.getActivePhoto(task.id, 'task', 'before');
+        final savedPhoto = await photoRepo.getActivePhoto(
+          task.id,
+          'task',
+          'before',
+        );
         if (savedPhoto != null) {
           evidence.add('local-photo:${savedPhoto.localPhotoId}');
         } else {
@@ -371,29 +422,35 @@ class FcCannotWorkButton extends ConsumerWidget {
         evidence.add(existingEvidenceRef);
       }
 
-      await ref.read(fcLocalRepositoryProvider).enqueueTaskFailure(
-        task: task,
-        actorId: currentUserId,
-        reasonCode: reason,
-        notes: notes.text.trim().isEmpty ? 'Site unable to be worked' : notes.text.trim(),
-        observedAt: DateTime.now(),
-        evidenceRefs: evidence,
-      );
+      await ref
+          .read(fcLocalRepositoryProvider)
+          .enqueueTaskFailure(
+            task: task,
+            actorId: currentUserId,
+            reasonCode: reason,
+            notes: notes.text.trim().isEmpty
+                ? 'Site unable to be worked'
+                : notes.text.trim(),
+            observedAt: DateTime.now(),
+            evidenceRefs: evidence,
+          );
 
       onFailureQueued(reason);
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('This location is stopped. Feedback is saved for sync.'),
+            content: Text(
+              'This location is stopped. Feedback is saved for sync.',
+            ),
           ),
         );
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
     } finally {
       notes.dispose();

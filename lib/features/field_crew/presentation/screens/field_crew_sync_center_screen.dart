@@ -5,12 +5,17 @@ import 'package:ecopin_app/features/field_crew/sync/fc_sync_settings.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
 import 'package:ecopin_app/shared/widgets/app_button.dart';
+import '../controllers/fc_sync_center_presentation.dart';
 import '../controllers/fc_sync_ui_providers.dart';
 import '../widgets/fc_offline_ui.dart';
 import '../widgets/fc_sync_status_card.dart';
 import '../widgets/fc_sync_preferences_card.dart';
+import '../widgets/fc_sync_failure_card.dart';
+import '../widgets/fc_sync_section.dart';
 import '../widgets/fc_conflict_summary.dart';
 
+/// “Send your work”: one status card that says what to do now, then the items
+/// that need attention, then three closed rows for the details.
 class FieldCrewSyncCenterScreen extends ConsumerStatefulWidget {
   const FieldCrewSyncCenterScreen({super.key});
   @override
@@ -21,7 +26,26 @@ class FieldCrewSyncCenterScreen extends ConsumerStatefulWidget {
 class _FieldCrewSyncCenterScreenState
     extends ConsumerState<FieldCrewSyncCenterScreen> {
   bool _committing = false, _resetting = false, _failed = false;
+  bool _showAllFailures = false;
+  bool _waitingOpen = false, _lastOpen = false, _settingsOpen = false;
+  final _settingsKey = GlobalKey();
   String? _message;
+
+  /// Opens “How your work is sent” and brings it into view.
+  void _openSettings() {
+    setState(() => _settingsOpen = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _settingsKey.currentContext;
+      if (target != null && target.mounted) {
+        Scrollable.ensureVisible(
+          target,
+          duration: MediaQuery.disableAnimationsOf(target)
+              ? Duration.zero
+              : const Duration(milliseconds: 250),
+        );
+      }
+    });
+  }
 
   Future<void> _refresh() async {
     ref.invalidate(fcSyncNetworkProvider);
@@ -29,8 +53,26 @@ class _FieldCrewSyncCenterScreenState
       ref.invalidate(fcPendingSummaryProvider);
       await ref.read(fcPendingSummaryProvider.future);
     } catch (_) {
-      /* The provider displays its error and retry action. */
+      /* The status card shows the failure and offers Check again. */
     }
+  }
+
+  String _mobileDialogText(FcPendingSummary? summary) {
+    if (summary == null) {
+      return 'This sends your work using mobile data. Your plan may charge you.';
+    }
+    final parts = [
+      if (summary.mutationCount > 0)
+        '${summary.mutationCount} ${summary.mutationCount == 1 ? 'update' : 'updates'}',
+      if (summary.photoCount > 0)
+        '${summary.photoCount} ${summary.photoCount == 1 ? 'photo' : 'photos'}',
+      if (summary.pendingDeleteCount > 0)
+        '${summary.pendingDeleteCount} photo ${summary.pendingDeleteCount == 1 ? 'removal' : 'removals'}',
+    ];
+    final size = summary.estimatedBytes > 0
+        ? ' (photos are about ${summary.formattedSize})'
+        : '';
+    return 'This sends ${parts.isEmpty ? 'your work' : parts.join(', ')}$size using mobile data. Your plan may charge you.';
   }
 
   Future<void> _commit() async {
@@ -51,7 +93,7 @@ class _FieldCrewSyncCenterScreenState
       if (!decision.allowed) {
         setState(() {
           _message =
-              decision.reason ?? 'Sync is not allowed on this connection.';
+              'Sending is not allowed on this connection right now. Check how your work is sent.';
           _failed = true;
         });
         return;
@@ -61,26 +103,9 @@ class _FieldCrewSyncCenterScreenState
           context: context,
           builder: (context) => AlertDialog(
             scrollable: true,
-            title: const Text('Use mobile data?'),
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'This commit will upload queued changes and photos using mobile data. Data charges may apply.',
-                ),
-                if (ref.read(fcPendingSummaryProvider).value
-                    case final summary?) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    '${summary.mutationCount} changes, ${summary.photoCount} photo uploads, and ${summary.pendingDeleteCount} photo removals.',
-                  ),
-                  if (summary.estimatedBytes > 0)
-                    Text(
-                      'Estimated photo upload size: ${summary.formattedSize}.',
-                    ),
-                ],
-              ],
+            title: const Text('Send using mobile data?'),
+            content: Text(
+              _mobileDialogText(ref.read(fcPendingSummaryProvider).value),
             ),
             actions: [
               TextButton(
@@ -101,7 +126,7 @@ class _FieldCrewSyncCenterScreenState
       if (result == null) {
         setState(() {
           _message =
-              'The sync did not start. Check the current connection, preferences, and sync status.';
+              'Sending did not start. Check your connection and how your work is sent.';
           _failed = true;
         });
       }
@@ -110,7 +135,7 @@ class _FieldCrewSyncCenterScreenState
       if (mounted) {
         setState(() {
           _message =
-              'Sync could not start. Queued work remains on this device. Please try again.';
+              'Sending could not start. Your work is still saved on this phone. Try again.';
           _failed = true;
         });
       }
@@ -133,8 +158,7 @@ class _FieldCrewSyncCenterScreenState
       await ref.read(fcLocalPhotoRepositoryProvider).resetFailedPhotoRetries();
       if (!mounted) return;
       setState(() {
-        _message =
-            'Photo retries reset. The photos remain queued until a sync runs on an allowed connection.';
+        _message = 'Photos can try again. They have not been sent yet.';
         _failed = false;
       });
       await _refresh();
@@ -142,7 +166,7 @@ class _FieldCrewSyncCenterScreenState
       if (mounted) {
         setState(() {
           _message =
-              'Photo retries could not reset. No upload has been confirmed. Please try again.';
+              'Could not allow another try for the photos. Nothing was sent. Try again.';
           _failed = true;
         });
       }
@@ -159,7 +183,7 @@ class _FieldCrewSyncCenterScreenState
       if (mounted) {
         setState(() {
           _message =
-              'Connection failure retries reset. Choose Commit changes to try again. Rejected updates remain unchanged.';
+              'Updates can try again. They have not been sent yet. Tap Send now.';
           _failed = false;
         });
       }
@@ -167,7 +191,7 @@ class _FieldCrewSyncCenterScreenState
       if (mounted) {
         setState(() {
           _message =
-              'Retries could not reset. Your queued changes remain on this device.';
+              'Could not allow another try. Your work is still saved on this phone.';
           _failed = true;
         });
       }
@@ -178,6 +202,7 @@ class _FieldCrewSyncCenterScreenState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final state = ref.watch(fcSyncStateProvider);
     final settings = ref.watch(fcSyncSettingsProvider);
     final network = ref.watch(fcSyncNetworkProvider);
@@ -192,141 +217,190 @@ class _FieldCrewSyncCenterScreenState
         ref.invalidate(fcPendingSummaryProvider);
       }
     });
-    final connection = network.isLoading
-        ? 'Checking connection…'
-        : network.hasError
-        ? 'Connection could not be checked'
-        : switch (network.value) {
-            FcNetworkType.wifi => 'Wi-Fi',
-            FcNetworkType.mobile => 'Mobile data',
-            _ => 'No Wi-Fi or mobile connection detected',
-          };
-    final allowed =
-        !network.isLoading &&
-        !network.hasError &&
-        switch (network.value) {
-          FcNetworkType.wifi => settings.syncOverWifi,
-          FcNetworkType.mobile => settings.syncOverMobileData,
-          _ => false,
-        };
+    final queued = failures.value ?? const <FcQueuedFailure>[];
+    final status = fcSendStatus(
+      state: state,
+      settings: settings,
+      summary: summary,
+      queueFailed: pending.hasError,
+      network: network.hasError ? null : network.value,
+      networkLoading: network.isLoading,
+      networkFailed: network.hasError,
+      failureCount: queued.length,
+      busy: busy,
+    );
+    final waiting = fcWaitingCount(summary);
+    final shown = _showAllFailures ? queued : queued.take(3).toList();
+    final canResetUpdates = queued.any((f) => f.canResetTransport);
+    final canResetPhotos = (summary?.failedPhotoCount ?? 0) > 0;
     return Scaffold(
-      appBar: AppBar(title: const Text('Sync Center')),
+      appBar: AppBar(title: const Text('Send your work')),
       body: SafeArea(
         top: false,
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: 20,
+              spacing: 12,
               children: [
-                Text(
-                  'Manage the work saved on this device and review what the server has received.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                if (pending.isLoading)
-                  const LinearProgressIndicator(
-                    semanticsLabel: 'Loading queued work',
-                  ),
-                if (pending.hasError)
-                  FcOfflineNotice(
-                    error: true,
-                    message: pending.hasValue
-                        ? 'Queue counts could not refresh. The last loaded counts remain below.'
-                        : 'Queue counts could not load. Try again before committing work.',
-                    action: TextButton(
-                      onPressed: busy ? null : _refresh,
-                      child: const Text('Retry queue counts'),
-                    ),
-                  ),
-                if (network.hasError)
-                  FcOfflineNotice(
-                    error: true,
-                    message: 'The connection could not be checked.',
-                    action: TextButton(
-                      onPressed: () => ref.invalidate(fcSyncNetworkProvider),
-                      child: const Text('Check connection again'),
-                    ),
-                  ),
                 FcSyncStatusCard(
-                  state: state,
-                  summary: summary,
-                  connection: connection,
-                  policy: fcSyncPolicy(
-                    settings,
-                    network.hasError ? null : network.value,
-                  ),
+                  status: status,
+                  onAction: switch (status.action) {
+                    FcSendAction.send => _commit,
+                    FcSendAction.checkAgain => () {
+                      ref.invalidate(fcSyncNetworkProvider);
+                      _refresh();
+                    },
+                    FcSendAction.changeSettings => _openSettings,
+                    FcSendAction.none => null,
+                  },
                 ),
-                if (state.phase == FcSyncPhase.error)
-                  FcOfflineNotice(
-                    error: true,
-                    message:
-                        state.errorMessage ??
-                        'The latest sync could not finish. Your queued work remains on this device.',
-                  ),
-                if (state.phase == FcSyncPhase.partialFailure)
-                  const FcOfflineNotice(
-                    message:
-                        'Review the item failure reasons and response updates below. Any unsent work remains on this device.',
-                  ),
-                if (failures.hasError)
-                  FcOfflineNotice(
-                    message: 'Failure details could not load.',
-                    action: TextButton(
-                      onPressed: () => ref.invalidate(fcQueuedFailuresProvider),
-                      child: const Text('Reload failure details'),
-                    ),
-                  ),
-                for (final failure
-                    in failures.value ?? const <FcQueuedFailure>[])
-                  FcOfflineNotice(
-                    error: true,
-                    message:
-                        '${failure.label}\nReport/task: ${failure.entityId}\n${failure.reason}\n${failure.attemptLabel}${failure.retriesPaused ? '\nAutomatic retries paused. Review the reason before resetting retries.' : ''}',
-                  ),
-                if ((failures.value ?? const <FcQueuedFailure>[]).any(
-                  (f) => f.canResetTransport,
-                ))
-                  AppButton(
-                    text: 'Reset connection failure retries',
-                    variant: ButtonVariant.secondary,
-                    onPressed: busy ? null : _resetChangeRetries,
-                  ),
                 if (_message != null)
                   FcOfflineNotice(message: _message!, error: _failed),
-                if ((summary?.failedPhotoCount ?? 0) > 0)
-                  AppButton(
-                    text: 'Reset failed photo retries',
-                    variant: ButtonVariant.secondary,
-                    isLoading: _resetting,
-                    onPressed: busy ? null : _resetPhotoRetries,
+                if (failures.hasError)
+                  FcOfflineNotice(
+                    message:
+                        'The list of items that did not send could not load.',
+                    action: TextButton(
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                      ),
+                      onPressed: () => ref.invalidate(fcQueuedFailuresProvider),
+                      child: const Text('Try again'),
+                    ),
                   ),
-                AppButton(
-                  text: 'Commit changes',
-                  isLoading: _committing || state.phase == FcSyncPhase.syncing,
-                  onPressed:
-                      busy ||
-                          pending.isLoading ||
-                          pending.hasError ||
-                          summary == null ||
-                          summary.isEmpty ||
-                          settings.syncBlocked ||
-                          !allowed
-                      ? null
-                      : _commit,
-                ),
-                if (state.lastMutationResult != null ||
-                    state.lastPhotoResult != null)
-                  FcLastSyncResultCard(state: state),
+                if (queued.isNotEmpty || canResetPhotos) ...[
+                  Text('Needs attention', style: theme.textTheme.titleMedium),
+                  for (final failure in shown)
+                    FcSyncFailureCard(failure: failure),
+                  if (queued.isEmpty && canResetPhotos)
+                    Text(
+                      '${summary!.failedPhotoCount} ${summary.failedPhotoCount == 1 ? 'photo is' : 'photos are'} on hold after a failed try.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  if (queued.length > shown.length)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                      ),
+                      onPressed: () => setState(() => _showAllFailures = true),
+                      child: Text('Show ${queued.length - shown.length} more'),
+                    ),
+                  if (canResetUpdates)
+                    AppButton(
+                      text: 'Allow another try for updates',
+                      variant: ButtonVariant.secondary,
+                      onPressed: busy ? null : _resetChangeRetries,
+                    ),
+                  if (canResetPhotos)
+                    AppButton(
+                      text: 'Allow another try for photos',
+                      variant: ButtonVariant.secondary,
+                      isLoading: _resetting,
+                      onPressed: busy ? null : _resetPhotoRetries,
+                    ),
+                  if (canResetUpdates || canResetPhotos)
+                    Text(
+                      'This lets the phone try again. It does not mean anything was sent.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                ],
                 const FcConflictSummary(),
-                FcSyncPreferencesCard(locked: busy),
+                FcOfflineCard(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FcSyncSection(
+                        icon: Icons.list_alt_outlined,
+                        title: 'What is waiting',
+                        summary: summary == null
+                            ? 'Not checked yet'
+                            : waiting == 0
+                            ? 'Nothing'
+                            : fcItemCount(waiting),
+                        open: _waitingOpen,
+                        onToggle: () =>
+                            setState(() => _waitingOpen = !_waitingOpen),
+                        child: _WaitingDetails(summary: summary),
+                      ),
+                      const Divider(height: 1),
+                      FcSyncSection(
+                        icon: Icons.history,
+                        title: 'Last send',
+                        summary: state.lastSyncAt == null
+                            ? 'None yet'
+                            : fcShortTime(state.lastSyncAt!),
+                        open: _lastOpen,
+                        onToggle: () => setState(() => _lastOpen = !_lastOpen),
+                        child: FcLastSendDetails(state: state),
+                      ),
+                      const Divider(height: 1),
+                      KeyedSubtree(
+                        key: _settingsKey,
+                        child: FcSyncSection(
+                          icon: Icons.settings_outlined,
+                          title: 'How your work is sent',
+                          summary: fcSendingSummary(settings),
+                          open: _settingsOpen,
+                          onToggle: () =>
+                              setState(() => _settingsOpen = !_settingsOpen),
+                          child: FcSyncPreferences(locked: busy),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The counts behind “N items waiting”, with the zero rows left out.
+class _WaitingDetails extends StatelessWidget {
+  const _WaitingDetails({required this.summary});
+  final FcPendingSummary? summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final summary = this.summary;
+    if (summary == null) {
+      return Text('The counts are not available yet.', style: text.bodyMedium);
+    }
+    if (summary.isEmpty) {
+      return Text('Nothing is waiting on this phone.', style: text.bodyMedium);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (summary.mutationCount > 0)
+          FcOfflineFact(
+            'Updates to jobs and reports',
+            '${summary.mutationCount}',
+          ),
+        if (summary.photoCount > 0)
+          FcOfflineFact('Photos to send', '${summary.photoCount}'),
+        if (summary.pendingDeleteCount > 0)
+          FcOfflineFact('Photos to remove', '${summary.pendingDeleteCount}'),
+        if (summary.failedPhotoCount > 0)
+          Text(
+            '${summary.failedPhotoCount} of the photos ${summary.failedPhotoCount == 1 ? 'is' : 'are'} on hold after a failed try. See Needs attention.',
+            style: text.bodySmall,
+          ),
+        if (summary.estimatedBytes > 0)
+          FcOfflineFact('Photos are about', summary.formattedSize),
+      ],
     );
   }
 }

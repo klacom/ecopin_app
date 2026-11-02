@@ -37,12 +37,15 @@ class AppColors {
   /// Bright amber for fills under dark text only (sync chips, warning snackbars).
   static const Color warningFill = Color(0xFFF9A825);
   static const Color error = Color(0xFFD32F2F);
+
   /// Light-theme information blue; white text on it passes 4.5:1.
   static const Color info = Color(0xFF0369A1);
 
   // ── Surface / Elevated ────────────────────────────────────
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color surfaceDark = Color(0xFF1C1C1C);
+  static const Color quietSurfaceLight = Color(0xFFF5F7FA);
+  static const Color quietSurfaceDark = Color(0xFF242424);
 
   // ── Divider / Border ──────────────────────────────────────
   static const Color dividerLight = Color(0xFFE5E9EE);

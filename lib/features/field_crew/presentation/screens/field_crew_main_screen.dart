@@ -98,7 +98,7 @@ class _FieldCrewMainScreenState extends ConsumerState<FieldCrewMainScreen> {
                 const NavigationDestination(
                   icon: Icon(Icons.task_outlined),
                   selectedIcon: Icon(Icons.task),
-                  label: 'Tasks',
+                  label: 'Jobs',
                 ),
                 const NavigationDestination(
                   icon: Icon(Icons.description_outlined),

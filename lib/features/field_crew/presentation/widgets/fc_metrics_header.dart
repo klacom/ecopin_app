@@ -2,216 +2,137 @@ import 'package:ecopin_app/core/utils/csat_rating_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/profile/providers/profile_provider.dart';
 import 'package:ecopin_app/features/field_crew/providers/my_performance_provider.dart';
 
-class FcMetricsHeader extends ConsumerWidget {
-  const FcMetricsHeader({super.key});
+/// Short greeting plus the crew's team name when the server supplies it.
+class FcGreetingHeader extends ConsumerWidget {
+  const FcGreetingHeader({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final name = ref.watch(profileProvider).value?['full_name'];
     final firstName = name is String && name.trim().isNotEmpty
         ? name.trim().split(RegExp(r'\s+')).first
         : null;
-
-    final perfAsync = ref.watch(myCrewPerformanceProvider);
-    final perf = perfAsync.value?['performance'] as Map<String, dynamic>?;
-    final crewTeam = perfAsync.value?['crew_team'] as Map<String, dynamic>?;
-
-    final totalCompleted = perf?['total_completed'] ?? 0;
-    final rating = perf?['avg_satisfaction_rating'];
-
-    final teamName = crewTeam?['name'] as String?;
-
-    String getSatisfactionEmoji(dynamic r) {
-      final entry = CsatRatingScale.fromAverage(r);
-      return entry == null ? '' : '${entry.emoji} ';
-    }
-
+    final teamName =
+        ref.watch(myCrewPerformanceProvider).value?['crew_team']?['name']
+            as String?;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Expanded(
-              child: Semantics(
-                header: true,
-                child: Text(
-                  firstName == null
-                      ? 'Your assigned work'
-                      : 'Hello, $firstName',
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            if (teamName != null) ...[
-              const SizedBox(width: 8),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    teamName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 12),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => context.push(FieldCrewAppRoutes.performance),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 48),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceVariant.withOpacity(0.35),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Theme.of(context).dividerColor.withOpacity(0.2),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: _MetricItem(
-                            icon: Icons.check_circle_outline,
-                            iconColor: Colors.green,
-                            label: 'Personal Done',
-                            value: '$totalCompleted',
-                          ),
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 28,
-                        color: Theme.of(context).dividerColor.withOpacity(0.2),
-                      ),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: _MetricItem(
-                            icon: Icons.sentiment_satisfied_alt_rounded,
-                            iconColor: Colors.amber,
-                            label: 'Citizen CSAT',
-                            value: rating != null
-                                ? '${getSatisfactionEmoji(rating)}$rating'
-                                : '—',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Divider(
-                    height: 1,
-                    color: Theme.of(context).dividerColor.withOpacity(0.15),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          'View full performance',
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.chevron_right,
-                        size: 14,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withOpacity(0.6),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+        Semantics(
+          header: true,
+          child: Text(
+            firstName == null ? 'Your assigned work' : 'Hello, $firstName',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
+        if (teamName != null && teamName.trim().isNotEmpty)
+          Text(
+            teamName,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
       ],
     );
   }
 }
 
-class _MetricItem extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
+/// Two summary numbers that open the Performance screen. Unavailable data
+/// reads as "—", never as a zero the crew did not earn.
+class FcMetricsHeader extends ConsumerWidget {
+  const FcMetricsHeader({super.key});
 
-  const _MetricItem({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-  });
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final perf =
+        ref.watch(myCrewPerformanceProvider).value?['performance']
+            as Map<String, dynamic>?;
+    final completed = perf?['total_completed'];
+    final rating = perf?['avg_satisfaction_rating'];
+    final emoji = CsatRatingScale.fromAverage(rating)?.emoji;
+    return Material(
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusCard),
+        side: BorderSide(color: theme.dividerTheme.color ?? theme.dividerColor),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppColors.radiusCard),
+        onTap: () => context.push(FieldCrewAppRoutes.performance),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        'Your results',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                  ),
+                  const ExcludeSemantics(child: Icon(Icons.chevron_right)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 24,
+                runSpacing: 12,
+                children: [
+                  _Stat(
+                    label: 'Finished jobs you were on',
+                    value: completed == null ? '—' : '$completed',
+                  ),
+                  _Stat(
+                    label: 'Citizen rating',
+                    value: rating == null
+                        ? '—'
+                        : '${emoji == null ? '' : '$emoji '}$rating',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value});
+  final String label, value;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: iconColor),
-            const SizedBox(width: 4),
-            Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ],
+        Text(
+          value,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
-        const SizedBox(height: 2),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(
-              context,
-            ).textTheme.bodySmall?.color?.withOpacity(0.7),
-            fontSize: 10,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ],

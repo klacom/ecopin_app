@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
 import '../../sync/fc_sync_settings.dart';
@@ -38,7 +38,8 @@ class FcPendingSyncBadge extends ConsumerWidget {
   }
 }
 
-/// Small status chip. Text is 12sp; warning (amber) uses dark text because white fails contrast on it.
+/// Small status chip with a written state and an icon, 12sp or larger. Colors
+/// come from the theme's status colors, so both themes keep their contrast.
 class FcSyncChip extends StatelessWidget {
   const FcSyncChip({super.key, required this.phase, required this.automatic});
   final FcSyncPhase phase;
@@ -46,35 +47,48 @@ class FcSyncChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color, textColor) = switch (phase) {
-      FcSyncPhase.syncing => ('Syncing…', AppColors.primaryDark, Colors.white),
-      FcSyncPhase.error => ('Sync Error', AppColors.error, Colors.white),
-      FcSyncPhase.partialFailure => (
-        'Sync attention',
-        AppColors.error,
-        Colors.white,
+    final theme = Theme.of(context);
+    final status = theme.extension<AppStatusColors>();
+    final (label, icon, color) = switch (phase) {
+      FcSyncPhase.syncing => (
+        'Sending',
+        Icons.sync,
+        status?.info ?? theme.colorScheme.primary,
+      ),
+      FcSyncPhase.error || FcSyncPhase.partialFailure => (
+        'Did not send',
+        Icons.sync_problem,
+        status?.error ?? theme.colorScheme.error,
       ),
       _ => (
-        automatic ? 'Sync queued' : 'Pending Sync',
-        AppColors.warningFill,
-        Colors.black87,
+        automatic ? 'Waiting to send' : 'Saved on this phone',
+        Icons.schedule,
+        status?.warning ?? theme.colorScheme.onSurface,
       ),
     };
     return Padding(
       padding: const EdgeInsets.only(right: 12),
-      child: Chip(
-        label: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .1),
+          border: Border.all(color: color.withValues(alpha: .4)),
+          borderRadius: BorderRadius.circular(999),
         ),
-        backgroundColor: color,
-        side: BorderSide.none,
-        padding: EdgeInsets.zero,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ExcludeSemantics(child: Icon(icon, size: 16, color: color)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,13 +1,15 @@
-import 'package:ecopin_app/shared/reports/presentation/widgets/response_deadline_indicator.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/shared/reports/presentation/response_deadline.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
-import '../controllers/fc_dashboard_presentation.dart';
 import '../controllers/fc_task_detail_presentation.dart';
+import '../controllers/fc_tasks_presentation.dart';
+import 'fc_jobs_view_switch.dart';
+import 'fc_report_card.dart';
 
-class FcReportTable extends ConsumerStatefulWidget {
+/// Linked reports for a job, split into “To handle” and “Handled”. Reports to
+/// handle list the earliest response deadline first; the deadline itself shows
+/// on each card.
+class FcReportTable extends StatefulWidget {
   const FcReportTable({
     super.key,
     required this.reports,
@@ -18,128 +20,61 @@ class FcReportTable extends ConsumerStatefulWidget {
   final String taskId;
   final Future<void> Function()? onReturn;
   @override
-  ConsumerState<FcReportTable> createState() => _FcReportTableState();
+  State<FcReportTable> createState() => _FcReportTableState();
 }
 
-class _FcReportTableState extends ConsumerState<FcReportTable> {
-  String _filter = 'All';
+class _FcReportTableState extends State<FcReportTable> {
+  CrewJobView _view = CrewJobView.todo;
+
   @override
   Widget build(BuildContext context) {
-    final now =
-        ref.watch(responseDeadlineClockProvider).value ?? DateTime.now();
-    bool matches(ReportModel report, String filter) => switch (filter) {
-      'Open' => !reportIsHandled(report),
-      'Handled' => reportIsHandled(report),
-      'At risk' => responseDeadline(report, now)?.state == DeadlineState.atRisk,
-      'Overdue' =>
-        responseDeadline(report, now)?.state == DeadlineState.overdue,
-      _ => true,
-    };
-    final visible = widget.reports
-        .where((report) => matches(report, _filter))
-        .toList();
-    final text = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final open = reportsToHandle(widget.reports);
+    final handled = widget.reports.where(reportIsHandled).toList();
+    final visible = _view == CrewJobView.todo ? open : handled;
     return SliverMainAxisGroup(
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final label in [
-                  'All',
-                  'Open',
-                  'Handled',
-                  'At risk',
-                  'Overdue',
-                ])
-                  FilterChip(
-                    selected: _filter == label,
-                    onSelected: (_) => setState(() => _filter = label),
-                    label: Text(
-                      '$label (${widget.reports.where((report) => matches(report, label)).length})',
-                    ),
-                  ),
-              ],
+            child: FcJobsViewSwitch(
+              view: _view,
+              todoCount: open.length,
+              doneCount: handled.length,
+              leftLabel: 'To handle',
+              rightLabel: 'Handled',
+              noun: 'report',
+              onChanged: (view) => setState(() => _view = view),
             ),
           ),
         ),
         if (visible.isEmpty)
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Text('No reports in this view.'),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                widget.reports.isEmpty
+                    ? 'No reports in this view.'
+                    : _view == CrewJobView.todo
+                    ? 'No reports left to handle.'
+                    : 'No reports handled yet.',
+                style: theme.textTheme.bodyMedium,
+              ),
             ),
           ),
-        SliverList.builder(
+        SliverList.separated(
           itemCount: visible.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final report = visible[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Card(
-                margin: EdgeInsets.zero,
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () async {
-                    await context.push(
-                      '/field-crew/tasks/${Uri.encodeComponent(widget.taskId)}/reports/${Uri.encodeComponent(report.id)}',
-                    );
-                    if (context.mounted) await widget.onReturn?.call();
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                report.title,
-                                style: text.titleMedium,
-                              ),
-                            ),
-                            const Icon(Icons.chevron_right),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 6,
-                          children: [
-                            Text(
-                              crewTaskLabel(report.status),
-                              style: text.labelMedium,
-                            ),
-                            Text(
-                              report.issueType ?? 'General concern',
-                              style: text.bodySmall,
-                            ),
-                            Text(
-                              crewTaskLabel(report.validationStatus),
-                              style: text.bodySmall,
-                            ),
-                          ],
-                        ),
-                        ResponseDeadlineIndicator(report: report),
-                        if (report.description?.trim().isNotEmpty == true) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            report.description!,
-                            style: text.bodyMedium,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            return FcReportCard(
+              report: report,
+              onTap: () async {
+                await context.push(
+                  '/field-crew/tasks/${Uri.encodeComponent(widget.taskId)}/reports/${Uri.encodeComponent(report.id)}',
+                );
+                if (context.mounted) await widget.onReturn?.call();
+              },
             );
           },
         ),

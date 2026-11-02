@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/core/services/cache_service.dart';
 import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
@@ -19,6 +20,20 @@ final allCleanupTasksProvider = FutureProvider<List<CleanupTask>>((ref) {
   return repository.fetchAllTasks();
 });
 
+/// When the full task list last loaded from the server, if it ever did.
+final cleanupTasksSyncedAtProvider = FutureProvider.autoDispose<DateTime?>(
+  (ref) => ref.watch(fcLocalRepositoryProvider).getLastSyncAt('fc_tasks'),
+);
+
+/// Signed-in crew member's ID, or null when there is no session.
+final fcCurrentUserIdProvider = Provider<String?>((ref) {
+  try {
+    return Supabase.instance.client.auth.currentUser?.id;
+  } catch (_) {
+    return null;
+  }
+});
+
 final myCleanupTasksProvider = FutureProvider<List<CleanupTask>>((ref) {
   final repository = ref.watch(cleanupTaskRepositoryProvider);
   return repository.fetchMyTasks();
@@ -33,7 +48,10 @@ class CompletedTasksNotifier extends Notifier<Set<String>> {
   }
 }
 
-final completedTasksProvider = NotifierProvider<CompletedTasksNotifier, Set<String>>(() => CompletedTasksNotifier());
+final completedTasksProvider =
+    NotifierProvider<CompletedTasksNotifier, Set<String>>(
+      () => CompletedTasksNotifier(),
+    );
 
 class HeldTasksNotifier extends Notifier<Set<String>> {
   @override
@@ -42,5 +60,6 @@ class HeldTasksNotifier extends Notifier<Set<String>> {
   void holdTask(String taskId) => state = {...state, taskId};
 }
 
-final heldTasksProvider =
-    NotifierProvider<HeldTasksNotifier, Set<String>>(() => HeldTasksNotifier());
+final heldTasksProvider = NotifierProvider<HeldTasksNotifier, Set<String>>(
+  () => HeldTasksNotifier(),
+);

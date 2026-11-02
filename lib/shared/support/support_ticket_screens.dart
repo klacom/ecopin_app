@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/shared/widgets/app_button.dart';
 import 'package:ecopin_app/shared/reports/data/datasources/report_remote_datasource.dart';
 import 'package:ecopin_app/core/services/api_service.dart';
 import 'package:ecopin_app/shared/support/support_ticket.dart';
 import 'package:ecopin_app/shared/support/support_ticket_api.dart';
+import 'official_contacts_screen.dart';
+import 'support_section.dart';
 
 class TicketReportOption {
   const TicketReportOption({required this.id, required this.title});
@@ -117,10 +121,18 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
       child: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
           children: [
+            Text(
+              'Ask SWMO about a report or your account.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 24),
             DropdownButtonFormField<String>(
               initialValue: category,
+              isExpanded: true,
+              itemHeight: null,
               decoration: const InputDecoration(labelText: 'What do you need?'),
               items: [
                 for (final entry in ticketCategories.entries)
@@ -135,6 +147,7 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
               DropdownButtonFormField<String?>(
                 initialValue: reportId,
                 isExpanded: true,
+                itemHeight: null,
                 decoration: const InputDecoration(
                   labelText: 'Related report (optional)',
                 ),
@@ -146,10 +159,7 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
                   for (final report in reports)
                     DropdownMenuItem<String?>(
                       value: report.id,
-                      child: Text(
-                        report.title,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: Text(report.title),
                     ),
                 ],
                 onChanged: sending
@@ -176,18 +186,34 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
             if (error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ),
               ),
-            FilledButton(
-              onPressed: sending ? null : _send,
-              child: Text(sending ? 'Sending…' : 'Send ticket'),
+            AppButton(
+              text: 'Send ticket',
+              isLoading: sending,
+              onPressed: _send,
             ),
             const SizedBox(height: 12),
             const Text(
               'For immediate danger, use Official contacts instead of a ticket.',
+            ),
+            TextButton(
+              onPressed: sending
+                  ? null
+                  : () => Navigator.of(context, rootNavigator: true).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => const OfficialContactsScreen(),
+                      ),
+                    ),
+              child: const Text('Official contacts'),
             ),
           ],
         ),
@@ -216,6 +242,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   String? error;
 
   Future<void> _refresh() async {
+    if (refreshing) return;
     setState(() {
       refreshing = true;
       error = null;
@@ -231,62 +258,104 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(ticket.reference)),
-    body: RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (widget.justSent)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: Text(
-                'Ticket sent. Keep this reference to follow up. SWMO replies appear here.',
-              ),
-            ),
-          Text(
-            ticket.categoryLabel,
-            style: Theme.of(context).textTheme.titleLarge,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final small = theme.textTheme.bodySmall!.copyWith(
+      color: dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+    );
+    final link = dark ? AppColors.linkDark : AppColors.primary;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(ticket.reference),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh ticket',
+            onPressed: refreshing ? null : _refresh,
+            icon: const Icon(Icons.refresh),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Chip(label: Text(ticket.statusLabel)),
-              Text('Opened ${formatTicketDate(ticket.createdAt)}'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text('Your message', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          SelectableText(ticket.description),
-          const SizedBox(height: 24),
-          Text('SWMO reply', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          if (ticket.hasReply) ...[
-            SelectableText(ticket.response!),
-            if (ticket.respondedAt != null)
-              Text('Replied ${formatTicketDate(ticket.respondedAt!)}'),
-          ] else
-            const Text('No reply yet. Pull down to check for a reply.'),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-          if (refreshing)
-            const Padding(
-              padding: EdgeInsets.only(top: 16),
-              child: LinearProgressIndicator(),
-            ),
         ],
       ),
-    ),
-  );
+      body: SafeArea(
+        top: false,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+            children: [
+              if (widget.justSent)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: const Text(
+                      'Ticket sent. Keep this reference to follow up. SWMO replies appear here.',
+                    ),
+                  ),
+                ),
+              Semantics(
+                header: true,
+                child: Text(
+                  ticket.categoryLabel,
+                  style: theme.textTheme.headlineSmall,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(ticket.statusLabel, style: small.copyWith(color: link)),
+              const SizedBox(height: 8),
+              Text(
+                'Opened ${formatTicketDate(ticket.createdAt)}',
+                style: small,
+              ),
+              const SizedBox(height: 24),
+              SupportSection(
+                title: 'Your message',
+                children: [SelectableText(ticket.description)],
+              ),
+              const SizedBox(height: 24),
+              SupportSection(
+                title: 'SWMO reply',
+                quiet: true,
+                children: [
+                  if (ticket.hasReply) ...[
+                    SelectableText(ticket.response!),
+                    if (ticket.respondedAt != null)
+                      Text(
+                        'Replied ${formatTicketDate(ticket.respondedAt!)}',
+                        style: small,
+                      ),
+                  ] else
+                    Text(
+                      'No reply yet. Pull down or use Refresh ticket to check for a reply.',
+                      style: small,
+                    ),
+                ],
+              ),
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      error!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ),
+              if (refreshing)
+                Semantics(
+                  liveRegion: true,
+                  label: 'Refreshing ticket',
+                  child: const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: LinearProgressIndicator(),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

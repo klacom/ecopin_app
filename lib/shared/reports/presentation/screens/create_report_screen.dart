@@ -27,6 +27,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/local_media_preview.dart';
 import 'package:ecopin_app/core/services/photo_verification_service.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/photo_review_dialog.dart';
+import 'package:ecopin_app/shared/reports/presentation/widgets/create_report_widgets/choice_tile_grid.dart';
+import 'package:ecopin_app/shared/maps/presentation/widgets/map_crosshair.dart';
+import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/report_priority_picker.dart';
 import 'package:ecopin_app/shared/reports/presentation/widgets/citizen_trust_status.dart';
 import 'package:ecopin_app/shared/reports/providers/citizen_trust_provider.dart';
@@ -791,74 +794,165 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
   Widget _buildStepNavHeader(ColorScheme colorScheme) {
     const stepTitles = ['Location', 'Details', 'Media', 'Review'];
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final accent = dark ? AppColors.linkDark : AppColors.primary;
+    final done =
+        theme.extension<AppStatusColors>()?.success ?? AppColors.success;
+    final enlarged = MediaQuery.textScalerOf(context).scale(12) > 16.5;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: List.generate(_totalSteps, (index) {
-            final isCurrent = index == _currentStep;
-            final canJump = _canNavigateToStep(index);
-            final isCompleted =
-                index < _currentStep ||
-                (index == 0 && _locationConfirmed) ||
-                (index == 1 && _titleController.text.trim().isNotEmpty) ||
-                (index == 2 &&
-                    (_capturedImages.isNotEmpty || _capturedVideos.isNotEmpty));
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Semantics(
-                button: true,
-                enabled: canJump && !isCurrent,
-                label:
-                    'Step ${index + 1}: ${stepTitles[index]}${isCurrent ? ', current step' : (canJump ? '' : ', locked')}',
-                child: ActionChip(
-                  avatar: CircleAvatar(
-                    radius: 9,
-                    backgroundColor: isCurrent
-                        ? AppColors.accent
-                        : (isCompleted
-                              ? AppColors.success
-                              : colorScheme.outline.withValues(alpha: 0.3)),
-                    child: Icon(
-                      isCompleted && !isCurrent ? Icons.check : null,
-                      size: 11,
-                      color: Colors.white,
-                    ),
-                  ),
-                  label: Text(
-                    '${index + 1}. ${stepTitles[index]}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                      color: isCurrent
-                          ? AppColors.accent
-                          : (canJump
-                                ? colorScheme.onSurface
-                                : colorScheme.onSurface.withValues(alpha: 0.4)),
-                    ),
-                  ),
-                  backgroundColor: isCurrent
-                      ? AppColors.accent.withValues(alpha: 0.12)
-                      : (canJump
-                            ? colorScheme.surfaceContainerLow
-                            : colorScheme.surfaceContainerLowest),
-                  side: BorderSide(
-                    color: isCurrent
-                        ? AppColors.accent
-                        : (canJump
-                              ? colorScheme.outlineVariant
-                              : colorScheme.outlineVariant.withValues(
-                                  alpha: 0.3,
-                                )),
-                  ),
-                  onPressed: canJump && !isCurrent
-                      ? () => _jumpToStep(index)
-                      : null,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (enlarged)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                'Step ${_currentStep + 1} of $_totalSteps: ${stepTitles[_currentStep]}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-            );
-          }),
+            ),
+          Row(
+            children: List.generate(_totalSteps, (index) {
+              final isCurrent = index == _currentStep;
+              final canJump = _canNavigateToStep(index);
+              final isCompleted =
+                  index < _currentStep ||
+                  (index == 0 && _locationConfirmed) ||
+                  (index == 1 && _titleController.text.trim().isNotEmpty) ||
+                  (index == 2 &&
+                      (_capturedImages.isNotEmpty ||
+                          _capturedVideos.isNotEmpty));
+              final barColor = isCurrent
+                  ? accent
+                  : isCompleted
+                  ? done
+                  : colorScheme.onSurface.withValues(alpha: .12);
+              final labelColor = isCurrent
+                  ? accent
+                  : canJump
+                  ? colorScheme.onSurface
+                  : colorScheme.onSurfaceVariant;
+              final state = isCurrent
+                  ? ', current step'
+                  : isCompleted
+                  ? ', done'
+                  : (canJump ? '' : ', locked');
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: index == _totalSteps - 1 ? 0 : 8,
+                  ),
+                  child: Semantics(
+                    button: true,
+                    enabled: canJump && !isCurrent,
+                    excludeSemantics: true,
+                    label: 'Step ${index + 1}: ${stepTitles[index]}$state',
+                    onTap: canJump && !isCurrent
+                        ? () => _jumpToStep(index)
+                        : null,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: canJump && !isCurrent
+                          ? () => _jumpToStep(index)
+                          : null,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 48),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 8),
+                            AnimatedContainer(
+                              duration: MediaQuery.disableAnimationsOf(context)
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 200),
+                              height: isCurrent ? 6 : 4,
+                              margin: EdgeInsets.only(top: isCurrent ? 0 : 1),
+                              decoration: BoxDecoration(
+                                color: barColor,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              enlarged
+                                  ? '${index + 1}'
+                                  : '${index + 1}. ${stepTitles[index]}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: labelColor,
+                                fontWeight: isCurrent
+                                    ? FontWeight.w500
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static const _concernIcons = <String, IconData>{
+    'waste': Icons.delete_outline,
+    'flooding': Icons.water_drop_outlined,
+    'pollution': Icons.cloud_outlined,
+    'infrastructure': Icons.construction_outlined,
+    'illegal_logging': Icons.park_outlined,
+    'others': Icons.more_horiz,
+  };
+
+  /// A titled, outlined group used for optional choices on the details step.
+  Widget _sectionCard({
+    required String title,
+    String? trailing,
+    required List<Widget> children,
+  }) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: theme.dividerTheme.color ?? theme.colorScheme.outlineVariant,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                if (trailing != null)
+                  Text(trailing, style: theme.textTheme.bodySmall),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...children,
+          ],
         ),
       ),
     );
@@ -890,66 +984,76 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             borderRadius: BorderRadius.circular(16),
             child: SizedBox(
               height: 250,
-              child: FlutterMap(
-                mapController: _locationMap,
-                options: MapOptions(
-                  initialCenter: _reportLocation,
-                  initialZoom: 17.0,
-                  onTap: (position, point) => _chooseLocation(point),
-                ),
+              child: Stack(
                 children: [
-                  TileLayer(
-                    tileProvider: widget.tileProvider,
-                    urlTemplate: Theme.of(context).brightness == Brightness.dark
-                        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
-                        : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
-                    subdomains: const ['a', 'b', 'c'],
-                    userAgentPackageName: 'dev.ecopinas.ecopin_app',
-                  ),
-                  MarkerLayer(
-                    markers: _locationConfirmed
-                        ? [
-                            Marker(
-                              point: _reportLocation,
-                              width: ReportPinFrame.width,
-                              height: ReportPinFrame.height,
-                              alignment: Alignment.topCenter,
-                              child: Semantics(
-                                label: 'Selected report location',
-                                child: ReportPinFrame(
-                                  color: colorScheme.primary,
-                                  badge: const Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: 14,
+                  Positioned.fill(
+                    child: FlutterMap(
+                      mapController: _locationMap,
+                      options: MapOptions(
+                        initialCenter: _reportLocation,
+                        initialZoom: 17.0,
+                        onTap: (position, point) => _chooseLocation(point),
+                      ),
+                      children: [
+                        TileLayer(
+                          tileProvider: widget.tileProvider,
+                          urlTemplate:
+                              Theme.of(context).brightness == Brightness.dark
+                              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}'
+                              : 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${dotenv.env['CARTO_API_KEY'] ?? ''}',
+                          subdomains: const ['a', 'b', 'c'],
+                          userAgentPackageName: 'dev.ecopinas.ecopin_app',
+                        ),
+                        MarkerLayer(
+                          markers: _locationConfirmed
+                              ? [
+                                  Marker(
+                                    point: _reportLocation,
+                                    width: ReportPinFrame.width,
+                                    height: ReportPinFrame.height,
+                                    alignment: Alignment.topCenter,
+                                    child: Semantics(
+                                      label: 'Selected report location',
+                                      child: ReportPinFrame(
+                                        color: colorScheme.primary,
+                                        badge: const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                        child: Icon(
+                                          Icons.my_location,
+                                          color: colorScheme.primary,
+                                          size: 25,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                  child: Icon(
-                                    Icons.my_location,
-                                    color: colorScheme.primary,
-                                    size: 25,
-                                  ),
+                                ]
+                              : [],
+                        ),
+                        RichAttributionWidget(
+                          attributions: [
+                            TextSourceAttribution(
+                              'OpenStreetMap contributors',
+                              onTap: () => launchUrl(
+                                Uri.parse(
+                                  'https://www.openstreetmap.org/copyright',
                                 ),
                               ),
                             ),
-                          ]
-                        : [],
-                  ),
-                  RichAttributionWidget(
-                    attributions: [
-                      TextSourceAttribution(
-                        'OpenStreetMap contributors',
-                        onTap: () => launchUrl(
-                          Uri.parse('https://www.openstreetmap.org/copyright'),
+                            TextSourceAttribution(
+                              'CARTO',
+                              onTap: () => launchUrl(
+                                Uri.parse('https://carto.com/attributions'),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      TextSourceAttribution(
-                        'CARTO',
-                        onTap: () => launchUrl(
-                          Uri.parse('https://carto.com/attributions'),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const Positioned.fill(child: MapCrosshair()),
                 ],
               ),
             ),
@@ -957,6 +1061,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           const SizedBox(height: 16),
           AppButton(
             text: 'Use this map center',
+            icon: Icons.my_location,
             variant: ButtonVariant.secondary,
             onPressed: () => _chooseLocation(_locationMap.camera.center),
           ),
@@ -1000,7 +1105,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           AppTextField(
             controller: _titleController,
             focusNode: _titleFocusNode,
-            labelText: 'Report Title *',
+            labelText: 'Report title *',
             textInputAction: TextInputAction.next,
             hintText: 'Brief summary of the issue',
           ),
@@ -1032,33 +1137,35 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 24),
-          Text(
-            'Concern category (optional)',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          _sectionCard(
+            title: 'Concern category',
+            trailing: 'Optional',
             children: [
-              for (final entry in issueTypeLabels.entries)
-                ChoiceChip(
-                  label: Text(entry.value),
-                  selected: _issueType == entry.key,
-                  onSelected: (selected) =>
-                      setState(() => _issueType = selected ? entry.key : null),
-                ),
+              ChoiceTileGrid(
+                options: [
+                  for (final entry in issueTypeLabels.entries)
+                    ChoiceTileOption(
+                      entry.key,
+                      entry.value,
+                      _concernIcons[entry.key],
+                    ),
+                ],
+                selected: _issueType,
+                onSelected: (key) =>
+                    setState(() => _issueType = _issueType == key ? null : key),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Helps route the report. Our review may adjust it after checking your photos.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Helps route the report. Our review may adjust it after checking your photos.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           ReportPriorityPicker(
             urgentEnabled:
                 !trust.isLoading && trust.asData?.value.urgentAllowed == true,
+            trustNote: const CitizenTrustStatus(compact: true),
             urgent: _urgent,
             reason: _priorityReason,
             explanationController: _priorityExplanationController,
@@ -1071,11 +1178,10 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
             onReasonChanged: (reason) =>
                 setState(() => _priorityReason = reason),
           ),
-          const CitizenTrustStatus(compact: true),
           const SizedBox(height: 24),
           SwitchListTile(
             title: const Text(
-              'On Private Property',
+              'On private property',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: const Text(
@@ -1144,7 +1250,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           ],
           Text(
             'Photos · Up to $reportMaxPhotos',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
           Text(
             '${reportTotalPhotosSize ~/ (1024 * 1024)} MB combined · JPG, PNG, WEBP. Tap a photo to inspect it. Remove a photo and use Camera to retake it.',
@@ -1152,84 +1260,123 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
           const SizedBox(height: 12),
           if (_capturedImages.isNotEmpty) ...[
             SizedBox(
-              height: 120,
+              height: 104,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _capturedImages.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
-                  return Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Semantics(
-                          button: true,
-                          label: 'Preview selected photo ${index + 1}',
-                          excludeSemantics: true,
-                          child: InkWell(
-                            onTap: () => _previewPhoto(index),
-                            child: Image.file(
-                              _capturedImages[index],
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stack) =>
-                                  const SizedBox(
-                                    width: 120,
-                                    height: 120,
-                                    child: Center(
-                                      child: Text(
-                                        'Photo unavailable',
-                                        textAlign: TextAlign.center,
+                  final inReview =
+                      index < _cleanImages.length &&
+                      _photosForReview.containsKey(_cleanImages[index].path);
+                  return SizedBox(
+                    width: 104,
+                    height: 104,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Semantics(
+                              button: true,
+                              label: 'Preview selected photo ${index + 1}',
+                              excludeSemantics: true,
+                              child: InkWell(
+                                onTap: () => _previewPhoto(index),
+                                child: Image.file(
+                                  _capturedImages[index],
+                                  width: 104,
+                                  height: 104,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stack) =>
+                                      const Center(
+                                        child: Text(
+                                          'Photo unavailable',
+                                          textAlign: TextAlign.center,
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: IconButton(
-                          tooltip: 'Remove photo ${index + 1}',
-                          onPressed: () => setState(() {
-                            final removed = _capturedImages.removeAt(index);
-                            if (_cleanImages.length > index) {
-                              _photosForReview.remove(_cleanImages[index].path);
-                              _cleanImages.removeAt(index);
-                            }
-                            if (_selectedImage?.path == removed.path) {
-                              _selectedImage = null;
-                            }
-                          }),
-                          style: IconButton.styleFrom(
-                            backgroundColor: AppColors.error,
-                            foregroundColor: Colors.white,
-                          ),
-                          icon: const Icon(Icons.close, size: 20),
-                        ),
-                      ),
-                      if (index < _cleanImages.length &&
-                          _photosForReview.containsKey(
-                            _cleanImages[index].path,
-                          ))
                         Positioned(
-                          left: 4,
-                          right: 4,
-                          bottom: 4,
-                          child: Tooltip(
-                            message: 'For manual review — not yet verified',
-                            child: const Chip(
-                              avatar: Icon(Icons.person_search, size: 16),
-                              label: Text('Unverified'),
+                          top: 0,
+                          right: 0,
+                          child: IconButton(
+                            tooltip: 'Remove photo ${index + 1}',
+                            onPressed: () => setState(() {
+                              final removed = _capturedImages.removeAt(index);
+                              if (_cleanImages.length > index) {
+                                _photosForReview.remove(
+                                  _cleanImages[index].path,
+                                );
+                                _cleanImages.removeAt(index);
+                              }
+                              if (_selectedImage?.path == removed.path) {
+                                _selectedImage = null;
+                              }
+                            }),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.black.withValues(
+                                alpha: .62,
+                              ),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(32, 32),
+                              padding: EdgeInsets.zero,
+                              tapTargetSize: MaterialTapTargetSize.padded,
                             ),
+                            iconSize: 16,
+                            icon: const Icon(Icons.close),
                           ),
                         ),
-                    ],
+                        if (inReview)
+                          Positioned(
+                            left: 6,
+                            bottom: 6,
+                            child: Tooltip(
+                              message: 'For manual review — not yet verified',
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.person_search,
+                                        size: 14,
+                                        color: colorScheme.onSurface,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Unverified',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   );
                 },
               ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${_capturedImages.length} of $reportMaxPhotos photos',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
           ],
@@ -1256,7 +1403,9 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
 
           Text(
             'Video · Up to $reportMaxVideos',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
           Text(
             _videoPolicy == null
@@ -1312,7 +1461,7 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
                   ),
                   IconButton(
                     tooltip: 'Remove selected video',
-                    icon: const Icon(Icons.close, color: Colors.red),
+                    icon: const Icon(Icons.close),
                     onPressed: () => setState(() {
                       final removed = _capturedVideos.removeAt(0);
                       _videoDurations.remove(removed.path);
@@ -1601,44 +1750,49 @@ class _CreateReportScreenState extends ConsumerState<CreateReportScreen> {
     required VoidCallback? onTap,
   }) {
     final isDisabled = onTap == null || _isSelectingMedia;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final fade = isDisabled ? .45 : 1.0;
     return Semantics(
       button: true,
       enabled: !isDisabled,
       label: label,
       excludeSemantics: true,
-      child: InkWell(
-        onTap: isDisabled ? null : onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 100),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDisabled
-                ? Theme.of(context).colorScheme.surface
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
+      child: Material(
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: theme.dividerTheme.color ?? scheme.outlineVariant,
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 32,
-                color: isDisabled
-                    ? Colors.grey.shade600
-                    : Theme.of(context).colorScheme.onSurface,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: isDisabled ? null : onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 88),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 28,
+                    color: scheme.primary.withValues(alpha: fade),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: scheme.onSurface.withValues(alpha: fade),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

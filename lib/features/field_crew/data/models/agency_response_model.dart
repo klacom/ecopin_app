@@ -21,7 +21,9 @@ class AgencyResponse {
       reportId: json['report_id']?.toString() ?? '',
       actionType: json['action_type']?.toString() ?? '',
       actionDetails: json['action_details']?.toString(),
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
       userId: json['user_id']?.toString() ?? '',
     );
   }

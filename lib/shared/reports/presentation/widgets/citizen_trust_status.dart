@@ -18,45 +18,9 @@ class CitizenTrustStatus extends ConsumerWidget {
     final status = ref.watch(citizenTrustProvider);
     final trust = status.asData?.value;
     if (!compact) return _TrustCard(status: status, trust: trust);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (status.isLoading)
-          const LinearProgressIndicator(
-            semanticsLabel: 'Checking Urgent eligibility',
-          ),
-        if (status.hasError)
-          const Text(
-            'Trust status is unavailable. Non-urgent reporting is still available.',
-          ),
-        if (!status.isLoading && trust != null) ...[
-          Text('Trust score: ${trust.score}/100'),
-          Text(_summary(trust)),
-          if (_lockEnds(trust) != null)
-            Text('Minimum lock ends: ${_lockEnds(trust)}'),
-          if (!trust.urgentAllowed && trust.recoveryReportsRemaining > 0)
-            Text(_remaining(trust)),
-        ],
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: status.isLoading
-                ? null
-                : () => ref.invalidate(citizenTrustProvider),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh trust status'),
-          ),
-        ),
-      ],
-    );
+    return _CompactTrust(status: status, trust: trust);
   }
 }
-
-String _summary(CitizenTrust trust) => trust.urgentAllowed
-    ? 'Urgent is available.'
-    : trust.score < trust.threshold
-    ? 'Urgent is locked. Reach ${trust.threshold} trust points to use it.'
-    : 'Urgent is locked until the remaining recovery requirements are met.';
 
 String? _lockEnds(CitizenTrust trust) =>
     !trust.urgentAllowed &&
@@ -67,6 +31,157 @@ String? _lockEnds(CitizenTrust trust) =>
 
 String _remaining(CitizenTrust trust) =>
     '${trust.recoveryReportsRemaining} consecutive verified-valid reports still needed for recovery.';
+
+/// One quiet line for the report form: why Urgent is (not) available, how far
+/// the score is from the unlock mark, and a refresh action.
+class _CompactTrust extends ConsumerWidget {
+  const _CompactTrust({required this.status, required this.trust});
+  final AsyncValue<CitizenTrust> status;
+  final CitizenTrust? trust;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final t = trust;
+    final loaded = !status.isLoading && t != null;
+    final lockEnds = t == null ? null : _lockEnds(t);
+    final summary = t == null
+        ? ''
+        : t.urgentAllowed
+        ? 'Urgent is available.'
+        : t.score < t.threshold
+        ? 'Urgent is locked. You have ${t.score} of the ${t.threshold} trust points needed.'
+        : 'Urgent is locked until the remaining recovery requirements are met.';
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 12, right: 10),
+          child: Icon(
+            Icons.verified_user_outlined,
+            size: 20,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (status.isLoading)
+                  const LinearProgressIndicator(
+                    semanticsLabel: 'Checking Urgent eligibility',
+                  ),
+                if (status.hasError && !loaded)
+                  Text(
+                    'Trust status is unavailable. Non-urgent reporting is still available.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                if (loaded) ...[
+                  Text(summary, style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 8),
+                  Semantics(
+                    label: 'Trust score ${t.score} of 100',
+                    excludeSemantics: true,
+                    child: _TrustProgress(
+                      score: t.score,
+                      threshold: t.threshold,
+                    ),
+                  ),
+                  if (lockEnds != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        'Minimum lock ends: $lockEnds',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  if (!t.urgentAllowed && t.recoveryReportsRemaining > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        _remaining(t),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Refresh trust status',
+          onPressed: status.isLoading
+              ? null
+              : () => ref.invalidate(citizenTrustProvider),
+          icon: const Icon(Icons.refresh),
+        ),
+      ],
+    );
+  }
+}
+
+/// Score bar from 0 to 100 with a notch at the unlock threshold.
+class _TrustProgress extends StatelessWidget {
+  const _TrustProgress({required this.score, required this.threshold});
+  final int score, threshold;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 12,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 3,
+                height: 6,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.onSurface.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                top: 3,
+                height: 6,
+                width: w * (score / 100).clamp(0.0, 1.0),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: w * (threshold / 100).clamp(0.0, 1.0) - 1,
+                top: 0,
+                width: 2,
+                height: 12,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.onSurface,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
 
 class _TrustCard extends ConsumerWidget {
   const _TrustCard({required this.status, required this.trust});

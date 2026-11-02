@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ecopin_app/features/field_crew/offline/fc_offline_package.dart';
 import 'package:ecopin_app/features/field_crew/offline/fc_offline_package_notifier.dart';
-import 'package:go_router/go_router.dart';
-import 'package:ecopin_app/routes/app_routes.dart';
-import 'package:ecopin_app/shared/widgets/app_button.dart';
-import '../widgets/fc_offline_ui.dart';
+import '../controllers/fc_download_presentation.dart';
 import '../widgets/fc_offline_package_details.dart';
+import '../widgets/fc_offline_ui.dart';
+import '../widgets/fc_status_card.dart';
+import '../widgets/fc_sync_section.dart';
 
+/// “Download your jobs”: one status card that says whether the jobs are on
+/// this phone and offers the one button, then two closed rows for the details.
+/// The route and class names keep their old “prepare offline” spelling.
 class FieldCrewPrepareOfflineScreen extends ConsumerStatefulWidget {
   const FieldCrewPrepareOfflineScreen({super.key});
   @override
@@ -17,68 +19,82 @@ class FieldCrewPrepareOfflineScreen extends ConsumerStatefulWidget {
 
 class _FieldCrewPrepareOfflineScreenState
     extends ConsumerState<FieldCrewPrepareOfflineScreen> {
+  bool _contentsOpen = false;
+
+  /// Null until the crew taps the row: then it follows whether a step needs
+  /// another try, so a problem is never hidden behind a closed row.
+  bool? _stepsOpen;
+
   @override
   Widget build(BuildContext context) {
     final package = ref.watch(fcOfflinePackageNotifierProvider);
+    final status = fcDownloadStatus(package);
+    final gaps = fcStepGaps(package) > 0;
     return Scaffold(
-      appBar: AppBar(title: const Text('Prepare offline')),
+      appBar: AppBar(title: const Text('Download your jobs')),
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 20,
+            spacing: 12,
             children: [
+              FcStatusCard(
+                tone: switch (status.kind) {
+                  FcDownloadKind.ready => FcStatusTone.success,
+                  FcDownloadKind.gaps ||
+                  FcDownloadKind.earlier => FcStatusTone.warning,
+                  FcDownloadKind.failed => FcStatusTone.error,
+                  _ => FcStatusTone.accent,
+                },
+                icon: status.icon,
+                title: status.title,
+                detail: status.detail,
+                showProgress: status.kind == FcDownloadKind.downloading,
+                progress: status.progress,
+                actionLabel: status.actionLabel,
+                primary: status.primary,
+                onAction: () => ref
+                    .read(fcOfflinePackageNotifierProvider.notifier)
+                    .prepare(),
+                footnote: status.showSignalNote ? fcDownloadSignalNote : null,
+              ),
+              if (package.isReady && package.errorMessage != null)
+                const FcOfflineNotice(
+                  error: true,
+                  message:
+                      'Your jobs downloaded, but the phone could not save the download details. Download again before you leave.',
+                ),
               FcOfflineCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Take assigned work into the field',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    FcSyncSection(
+                      icon: Icons.inventory_2_outlined,
+                      title: 'What is on this phone',
+                      summary: fcContentsSummary(package),
+                      open: _contentsOpen,
+                      onToggle: () =>
+                          setState(() => _contentsOpen = !_contentsOpen),
+                      child: FcDownloadContents(state: package),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Prepare your assigned tasks, linked reports, evidence metadata, notes, and available route records while connected.',
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                    'This downloads record information. Full-size evidence photos, reference lists, and map tiles may still need a connection. Review each preparation step before leaving.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Preparation starts a separate download when you choose it, including in Offline Only sync mode. Network preferences for queued uploads do not limit this download.',
-                      style: Theme.of(context).textTheme.bodySmall,
+                    const Divider(height: 1),
+                    FcSyncSection(
+                      icon: Icons.checklist,
+                      title: 'Download steps',
+                      summary: fcStepsSummary(package),
+                      open: _stepsOpen ?? gaps,
+                      onToggle: () =>
+                          setState(() => _stepsOpen = !(_stepsOpen ?? gaps)),
+                      child: FcDownloadSteps(state: package),
                     ),
                   ],
                 ),
-              ),
-              FcOfflinePackageDetails(state: package),
-              if (package.errorMessage != null)
-                FcOfflineNotice(error: true, message: package.errorMessage!),
-              AppButton(
-                text: package.isReady
-                    ? 'Update offline package'
-                    : package.phase == FcOfflinePackagePhase.failed
-                    ? 'Try preparation again'
-                    : 'Prepare assigned work',
-                isLoading: package.isDownloading,
-                onPressed: package.isDownloading
-                    ? null
-                    : () => ref
-                          .read(fcOfflinePackageNotifierProvider.notifier)
-                          .prepare(),
-              ),
-              Text(
-                'Updating preparation refreshes cached records. It does not commit queued changes or confirm that reports are complete.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              TextButton.icon(
-                onPressed: () => context.push(FieldCrewAppRoutes.syncCenter),
-                icon: const Icon(Icons.sync),
-                label: const Text('Queued sync preferences are in Sync Center'),
               ),
             ],
           ),

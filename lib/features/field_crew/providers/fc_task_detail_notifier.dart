@@ -178,7 +178,11 @@ class FcTaskDetailNotifier extends Notifier<FcTaskDetailState> {
     final investigation = ref.read(fcInvestigationProvider(taskId));
     final receipts = investigation.taskReceipts;
     final taskRepo = ref.read(cleanupTaskRepositoryProvider);
-    await taskRepo.markTaskComplete(taskId, notes: notes, investigations: receipts);
+    await taskRepo.markTaskComplete(
+      taskId,
+      notes: notes,
+      investigations: receipts,
+    );
     if (ref.mounted) {
       state = state.copyWith(
         task: _patchTask(current, {'status': 'completed'}),

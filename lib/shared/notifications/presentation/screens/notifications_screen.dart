@@ -25,6 +25,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   String? _feedback;
   bool _failed = false;
 
+  /// Crew screens say alerts in plain words; other roles keep their own.
+  bool get _crew => widget.role == UserRole.fieldCrew;
+  String _w(String other, String crew) => _crew ? crew : other;
+
   void _message(String message, {bool failed = false}) {
     if (!mounted) return;
     setState(() {
@@ -56,7 +60,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       await ref.read(notificationsProvider.future);
     } catch (_) {
       _message(
-        'Could not reload notifications. Please try again.',
+        _w(
+          'Could not reload notifications. Please try again.',
+          'Could not reload your alerts. Check your signal and try again.',
+        ),
         failed: true,
       );
     } finally {
@@ -75,12 +82,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       _invalidate();
       _message(
         count == 0
-            ? 'All notifications are already read.'
-            : '$count ${count == 1 ? 'notification' : 'notifications'} marked as read.',
+            ? _w(
+                'All notifications are already read.',
+                'All your alerts are already read.',
+              )
+            : _w(
+                '$count ${count == 1 ? 'notification' : 'notifications'} marked as read.',
+                '$count ${count == 1 ? 'alert' : 'alerts'} marked as read.',
+              ),
       );
     } catch (_) {
       _message(
-        'Could not mark all notifications as read. Please try again.',
+        _w(
+          'Could not mark all notifications as read. Please try again.',
+          'Could not mark your alerts as read. Try again.',
+        ),
         failed: true,
       );
     } finally {
@@ -101,10 +117,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       await ref.read(notificationRepositoryProvider).markRead(id);
       if (!mounted) return;
       _invalidate();
-      _message('Notification marked as read.');
+      _message(_w('Notification marked as read.', 'Alert marked as read.'));
     } catch (_) {
       _message(
-        'Could not mark this notification as read. Please try again.',
+        _w(
+          'Could not mark this notification as read. Please try again.',
+          'Could not mark this alert as read. Try again.',
+        ),
         failed: true,
       );
     } finally {
@@ -119,9 +138,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         scrollable: true,
-        title: const Text('Remove notification?'),
+        title: Text(_w('Remove notification?', 'Remove this alert?')),
         content: Text(
-          'Remove “${_text(row['title'], 'Notification')}” from your notifications. This removes the notification only.',
+          _w(
+            'Remove “${_text(row['title'], 'Notification')}” from your notifications. This removes the notification only.',
+            'Remove “${_text(row['title'], 'Alert')}” from your alerts. This does not change any job or report.',
+          ),
         ),
         actions: [
           TextButton(
@@ -144,10 +166,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       await ref.read(notificationRepositoryProvider).delete(id);
       if (!mounted) return;
       _invalidate();
-      _message('Notification removed.');
+      _message(_w('Notification removed.', 'Alert removed.'));
     } catch (_) {
       _message(
-        'Could not remove this notification. Please try again.',
+        _w(
+          'Could not remove this notification. Please try again.',
+          'Could not remove this alert. Try again.',
+        ),
         failed: true,
       );
     } finally {
@@ -347,6 +372,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           ),
                         ),
                       ),
+                      if (_crew && destination != null)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 12),
+                          child: ExcludeSemantics(
+                            child: Icon(Icons.chevron_right, size: 24),
+                          ),
+                        ),
                       PopupMenuButton<String>(
                         tooltip: 'Actions for $title',
                         enabled: enabled && row['id'] is String,
@@ -363,9 +395,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                               value: 'read',
                               child: Text('Mark as read'),
                             ),
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'remove',
-                            child: Text('Remove notification'),
+                            child: Text(
+                              _w('Remove notification', 'Remove alert'),
+                            ),
                           ),
                         ],
                       ),
@@ -396,7 +430,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.role == UserRole.citizen ? 'Alerts' : 'Notifications',
+          widget.role == UserRole.citizen || _crew ? 'Alerts' : 'Notifications',
         ),
         leading: Navigator.of(context).canPop()
             ? IconButton(
@@ -407,7 +441,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             : null,
         actions: [
           IconButton(
-            tooltip: 'Reload notifications',
+            tooltip: _w('Reload notifications', 'Reload alerts'),
             onPressed: busy ? null : _refresh,
             icon: const Icon(Icons.refresh),
           ),
@@ -472,8 +506,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       ],
                       if (state.hasError && rows != null) ...[
                         const SizedBox(height: 12),
-                        const Text(
-                          'Updates are unavailable. Showing the last loaded notifications.',
+                        Text(
+                          _w(
+                            'Updates are unavailable. Showing the last loaded notifications.',
+                            'Updates are unavailable. Showing the last loaded alerts.',
+                          ),
                         ),
                       ],
                     ],
@@ -484,11 +521,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 SliverFillRemaining(
                   child: state.hasError
                       ? AppStateView(
-                          title: 'Notifications unavailable',
-                          message:
-                              'We could not load your updates. Reload them to try again.',
+                          title: _w(
+                            'Notifications unavailable',
+                            'Alerts unavailable',
+                          ),
+                          message: _w(
+                            'We could not load your updates. Reload them to try again.',
+                            'Check your signal and try again.',
+                          ),
                           icon: Icons.notifications_off_outlined,
-                          actionLabel: 'Reload notifications',
+                          actionLabel: _w(
+                            'Reload notifications',
+                            'Reload alerts',
+                          ),
                           onAction: _refresh,
                         )
                       : const Center(
@@ -502,10 +547,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   child: AppStateView(
                     title: _unreadOnly
                         ? 'You are all caught up'
-                        : 'No notifications yet',
+                        : _w('No notifications yet', 'No alerts yet'),
                     message: _unreadOnly
-                        ? 'There are no unread updates in your notifications.'
-                        : 'Report and account updates will appear here.',
+                        ? _w(
+                            'There are no unread updates in your notifications.',
+                            'There are no unread alerts.',
+                          )
+                        : _w(
+                            'Report and account updates will appear here.',
+                            'New jobs and report updates appear here.',
+                          ),
                     icon: Icons.notifications_none,
                   ),
                 )

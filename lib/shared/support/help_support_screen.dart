@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:ecopin_app/core/theme/colors.dart';
+import 'package:ecopin_app/shared/widgets/app_button.dart';
+import 'package:ecopin_app/shared/widgets/sliding_switch.dart';
 import 'package:ecopin_app/shared/support/official_contacts_screen.dart';
 import 'package:ecopin_app/shared/support/support_ticket.dart';
 import 'package:ecopin_app/shared/support/support_ticket_api.dart';
 import 'package:ecopin_app/shared/support/support_ticket_screens.dart';
+import 'support_section.dart';
 
 const _faqs = <({String question, String answer})>[
   (
@@ -13,12 +17,12 @@ const _faqs = <({String question, String answer})>[
   (
     question: 'The pin landed on the wrong street. Can I fix it?',
     answer:
-        'While the report is still pending review, open a Location correction ticket from the My tickets tab and link it to your report. You can also withdraw the report and submit it again with the pin on the exact landmark.',
+        'While the report is still pending review, open a Location correction ticket from My tickets and link it to your report.',
   ),
   (
     question: 'What do the report statuses mean?',
     answer:
-        'Unresolved: the report is verified and waiting for dispatch. In progress: an SWMO field crew is assigned and responding. Resolved: the crew submitted cleanup photos. Closed: final sign-off is complete.',
+        'Follow response progress in Reports. The report’s review decision and its response status are shown separately.',
   ),
   (
     question: 'What photos help my report get verified fastest?',
@@ -37,32 +41,86 @@ const _faqs = <({String question, String answer})>[
   ),
 ];
 
-class HelpSupportScreen extends StatelessWidget {
+class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key, this.api, this.loadReports});
 
   final SupportTicketApi? api;
   final Future<List<TicketReportOption>> Function()? loadReports;
 
   @override
+  State<HelpSupportScreen> createState() => _HelpSupportScreenState();
+}
+
+class _HelpSupportScreenState extends State<HelpSupportScreen>
+    with SingleTickerProviderStateMixin {
+  late final client = widget.api ?? SupportTicketApi();
+  late final tabs = TabController(length: 2, vsync: this);
+  int ticketsRevision = 0;
+
+  @override
+  void dispose() {
+    tabs.dispose();
+    super.dispose();
+  }
+
+  Future<void> _create() async {
+    final created = await Navigator.of(context).push<SupportTicket>(
+      MaterialPageRoute(
+        builder: (_) =>
+            NewTicketScreen(api: client, loadReports: widget.loadReports),
+      ),
+    );
+    if (mounted && created != null) {
+      setState(() => ticketsRevision++);
+      tabs.animateTo(1);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final client = api ?? SupportTicketApi();
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Help & support'),
-          actions: const [OfficialContactsButton()],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Help'),
-              Tab(text: 'My tickets'),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: MediaQuery.textScalerOf(context).scale(20) > 26
+            ? 112
+            : 64,
+        title: const Text(
+          'Help & support',
+          maxLines: 2,
+          textAlign: TextAlign.center,
         ),
-        body: TabBarView(
+        actions: const [OfficialContactsButton()],
+      ),
+      body: SafeArea(
+        top: false,
+        child: Column(
           children: [
-            const _FaqTab(),
-            MyTicketsTab(api: client, loadReports: loadReports),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: AnimatedBuilder(
+                animation: tabs,
+                builder: (context, _) => SlidingSwitch(
+                  options: const [
+                    SlidingSwitchOption(label: 'Help'),
+                    SlidingSwitchOption(label: 'My tickets'),
+                  ],
+                  selectedIndex: tabs.index,
+                  onChanged: tabs.animateTo,
+                ),
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: tabs,
+                children: [
+                  _FaqTab(onCreate: _create),
+                  MyTicketsTab(
+                    key: ValueKey(ticketsRevision),
+                    api: client,
+                    onCreate: _create,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -71,16 +129,25 @@ class HelpSupportScreen extends StatelessWidget {
 }
 
 class _FaqTab extends StatefulWidget {
-  const _FaqTab();
+  const _FaqTab({required this.onCreate});
+  final VoidCallback onCreate;
   @override
   State<_FaqTab> createState() => _FaqTabState();
 }
 
-class _FaqTabState extends State<_FaqTab> {
+class _FaqTabState extends State<_FaqTab> with AutomaticKeepAliveClientMixin {
   String query = '';
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    final theme = Theme.of(context);
+    final secondary = theme.brightness == Brightness.dark
+        ? AppColors.textSecondaryDark
+        : AppColors.textSecondaryLight;
+    final small = theme.textTheme.bodySmall!.copyWith(color: secondary);
     final terms = query.trim().toLowerCase();
     final matches = _faqs
         .where(
@@ -91,8 +158,18 @@ class _FaqTabState extends State<_FaqTab> {
         )
         .toList();
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
+        Semantics(
+          header: true,
+          child: Text('How can we help?', style: theme.textTheme.headlineSmall),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Find answers about reports, locations and using EcoPin.',
+          style: small,
+        ),
+        const SizedBox(height: 24),
         TextField(
           decoration: const InputDecoration(
             labelText: 'Search help',
@@ -100,39 +177,100 @@ class _FaqTabState extends State<_FaqTab> {
           ),
           onChanged: (value) => setState(() => query = value),
         ),
+        const SizedBox(height: 24),
+        Semantics(
+          header: true,
+          child: Text('Common questions', style: theme.textTheme.titleMedium),
+        ),
         const SizedBox(height: 8),
         if (matches.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Text(
-              'No matching answers. Open a ticket from the My tickets tab and SWMO will reply there.',
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Semantics(
+              liveRegion: true,
+              child: Text(
+                'No matching answers. Open a ticket and SWMO can reply there.',
+                style: small,
+              ),
             ),
           ),
-        for (final faq in matches)
+        for (final faq in matches) ...[
           ExpansionTile(
-            title: Text(faq.question),
-            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            key: PageStorageKey(faq.question),
+            tilePadding: EdgeInsets.zero,
+            title: Text(
+              faq.question,
+              style: theme.textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            shape: const Border(),
+            collapsedShape: const Border(),
+            childrenPadding: const EdgeInsets.only(bottom: 16),
             expandedCrossAxisAlignment: CrossAxisAlignment.start,
-            children: [Text(faq.answer)],
+            children: [Text(faq.answer, style: small)],
           ),
-        const SizedBox(height: 16),
-        const Text(
-          'For immediate danger, such as live fallen wires or severe flooding, use Official contacts at the top of this screen instead of waiting for a report review.',
+          const Divider(),
+        ],
+        const SizedBox(height: 24),
+        SupportSection(
+          title: 'Still need help?',
+          quiet: true,
+          children: [
+            Text(
+              'Ask SWMO about a report or your account. You can follow the reply in My tickets.',
+              style: small,
+            ),
+            AppButton(
+              text: 'New ticket',
+              icon: Icons.add,
+              onPressed: widget.onCreate,
+            ),
+          ],
         ),
+        const SizedBox(height: 24),
+        const _ContactSection(),
       ],
     );
   }
 }
 
+class _ContactSection extends StatelessWidget {
+  const _ContactSection();
+
+  @override
+  Widget build(BuildContext context) => SupportSection(
+    title: 'Need to contact an office?',
+    icon: Icons.phone_outlined,
+    quiet: true,
+    children: [
+      const Text(
+        'For cleanup coordination or immediate danger, use the published SWMO and emergency contacts.',
+      ),
+      AppButton(
+        text: 'Official contacts',
+        icon: Icons.arrow_forward,
+        variant: ButtonVariant.link,
+        onPressed: () => Navigator.of(context, rootNavigator: true).push<void>(
+          MaterialPageRoute(builder: (_) => const OfficialContactsScreen()),
+        ),
+      ),
+    ],
+  );
+}
+
 class MyTicketsTab extends StatefulWidget {
-  const MyTicketsTab({super.key, required this.api, this.loadReports});
+  const MyTicketsTab({super.key, required this.api, required this.onCreate});
   final SupportTicketApi api;
-  final Future<List<TicketReportOption>> Function()? loadReports;
+  final VoidCallback onCreate;
   @override
   State<MyTicketsTab> createState() => _MyTicketsTabState();
 }
 
-class _MyTicketsTabState extends State<MyTicketsTab> {
+class _MyTicketsTabState extends State<MyTicketsTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final tickets = <SupportTicket>[];
   Map<String, String>? nextCursor;
   bool loading = true;
@@ -146,6 +284,7 @@ class _MyTicketsTabState extends State<MyTicketsTab> {
   }
 
   Future<void> _load() async {
+    if (loadingMore) return;
     setState(() {
       loading = true;
       error = null;
@@ -167,7 +306,7 @@ class _MyTicketsTabState extends State<MyTicketsTab> {
   }
 
   Future<void> _more() async {
-    if (loadingMore || nextCursor == null) return;
+    if (loading || loadingMore || nextCursor == null) return;
     setState(() => loadingMore = true);
     try {
       final page = await widget.api.list(cursor: nextCursor);
@@ -187,16 +326,6 @@ class _MyTicketsTabState extends State<MyTicketsTab> {
     }
   }
 
-  Future<void> _create() async {
-    final created = await Navigator.of(context).push<SupportTicket>(
-      MaterialPageRoute(
-        builder: (_) =>
-            NewTicketScreen(api: widget.api, loadReports: widget.loadReports),
-      ),
-    );
-    if (created != null) await _load();
-  }
-
   Future<void> _open(SupportTicket ticket) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -208,46 +337,145 @@ class _MyTicketsTabState extends State<MyTicketsTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading && tickets.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    super.build(context);
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final small = theme.textTheme.bodySmall!.copyWith(
+      color: dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+    );
+    final link = dark ? AppColors.linkDark : AppColors.primary;
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          FilledButton.icon(
-            onPressed: _create,
-            icon: const Icon(Icons.add),
-            label: const Text('New ticket'),
+          Semantics(
+            header: true,
+            child: Text(
+              'Your conversations',
+              style: theme.textTheme.headlineSmall,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          Text('Follow your questions and SWMO’s replies.', style: small),
+          const SizedBox(height: 24),
+          AppButton(
+            text: 'New ticket',
+            icon: Icons.add,
+            onPressed: widget.onCreate,
+          ),
+          const SizedBox(height: 24),
+          if (loading)
+            Semantics(
+              liveRegion: true,
+              label: 'Loading your tickets',
+              child: const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: LinearProgressIndicator(),
+              ),
+            ),
           if (error != null) ...[
-            Text(error!),
-            TextButton(onPressed: _load, child: const Text('Try again')),
-          ] else if (tickets.isEmpty)
-            const Text(
-              'You have no tickets yet. Open one to ask SWMO about a report. Only you can see your tickets and the replies.',
+            Semantics(liveRegion: true, child: Text(error!, style: small)),
+            if (tickets.isNotEmpty)
+              Text('Showing previously loaded tickets.', style: small),
+            AppButton(
+              text: 'Try again',
+              variant: ButtonVariant.link,
+              onPressed: loading ? null : _load,
+            ),
+          ] else if (!loading && tickets.isEmpty)
+            SupportSection(
+              title: 'No tickets yet',
+              quiet: true,
+              icon: Icons.forum_outlined,
+              children: [
+                Text(
+                  'Ask SWMO a question about a report or your account. Your ticket and replies will appear here.',
+                  style: small,
+                ),
+              ],
             ),
           for (final ticket in tickets)
-            Card(
-              child: ListTile(
-                onTap: () => _open(ticket),
-                title: Text('${ticket.reference} · ${ticket.categoryLabel}'),
-                subtitle: Text(
-                  ticket.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Card(
+                margin: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusCard),
+                  side: BorderSide(
+                    color: dark
+                        ? AppColors.dividerDark
+                        : AppColors.dividerLight,
+                  ),
                 ),
-                trailing: Chip(label: Text(ticket.statusLabel)),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppColors.radiusCard),
+                  onTap: () => _open(ticket),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 4,
+                          children: [
+                            Text(ticket.reference, style: small),
+                            Text(
+                              ticket.statusLabel,
+                              style: small.copyWith(color: link),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          ticket.categoryLabel,
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          ticket.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: small,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          ticket.hasReply ? 'Reply available' : 'No reply yet',
+                          style: small.copyWith(color: link),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           if (nextCursor != null)
-            TextButton(
-              onPressed: loadingMore ? null : _more,
-              child: Text(loadingMore ? 'Loading…' : 'Load older tickets'),
+            AppButton(
+              text: 'Load older tickets',
+              isLoading: loadingMore,
+              variant: ButtonVariant.link,
+              onPressed: loading ? null : _more,
             ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ExcludeSemantics(
+                child: Icon(Icons.lock_outline, size: 18, color: small.color),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Your tickets are not shown on the public map.',
+                  style: small,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const _ContactSection(),
         ],
       ),
     );

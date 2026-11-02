@@ -8,6 +8,7 @@ class SlidingSwitchOption {
     this.badge,
     this.semanticsLabel,
     this.liveRegion = false,
+    this.enabled = true,
   });
   final String label;
   final IconData? icon;
@@ -18,6 +19,10 @@ class SlidingSwitchOption {
   /// Accessible name when it should say more than [label].
   final String? semanticsLabel;
   final bool liveRegion;
+
+  /// A disabled option stays visible, greyed, and ignores taps (for example a
+  /// locked choice explained by nearby text).
+  final bool enabled;
 }
 
 /// Two-option switch: one track, a thumb that slides to the active option and
@@ -94,7 +99,10 @@ class SlidingSwitch extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final selected = selectedIndex == index;
     final accent = dark ? AppColors.linkDark : AppColors.primary;
-    final color = selected
+    final color = !option.enabled
+        ? (dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)
+              .withValues(alpha: .6)
+        : selected
         ? accent
         : dark
         ? AppColors.textSecondaryDark
@@ -102,19 +110,20 @@ class SlidingSwitch extends StatelessWidget {
     final roomy = MediaQuery.textScalerOf(context).scale(14) <= 18.2;
     return Semantics(
       button: true,
+      enabled: option.enabled,
       selected: selected,
       label: option.semanticsLabel ?? option.label,
       liveRegion: option.liveRegion,
       excludeSemantics: true,
-      onTap: () => onChanged(index),
+      onTap: option.enabled ? () => onChanged(index) : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(17),
-        onTap: () => onChanged(index),
+        onTap: option.enabled ? () => onChanged(index) : null,
         child: Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (roomy && option.icon != null) ...[
+              if ((roomy || !option.enabled) && option.icon != null) ...[
                 Icon(option.icon, size: 18, color: color),
                 const SizedBox(width: 6),
               ],

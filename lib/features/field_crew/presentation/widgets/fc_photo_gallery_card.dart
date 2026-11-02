@@ -96,7 +96,9 @@ class FcPhotoGalleryCard extends StatelessWidget {
                                   height: 112,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stack) =>
-                                      const Center(child: Text('Photo unavailable')),
+                                      const Center(
+                                        child: Text('Photo unavailable'),
+                                      ),
                                 ),
                               ),
                             ),

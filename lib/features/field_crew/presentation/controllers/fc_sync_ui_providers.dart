@@ -98,21 +98,21 @@ final fcQueuedFailuresProvider =
 
 String fcSyncPolicy(FcSyncSettings settings, FcNetworkType? network) {
   if (settings.mode == FcSyncMode.offlineOnly) {
-    return 'Offline Only pauses syncing. Change mode below before committing queued work.';
+    return 'Sending is paused. Change how your work is sent to send it.';
   }
   if (network == null) {
-    return 'Connection status is unavailable. Check the connection before committing.';
+    return 'Your connection could not be checked.';
   }
   if (network == FcNetworkType.none) {
-    return 'Waiting for a Wi-Fi or mobile connection. Local queued work stays on this device.';
+    return 'No signal. Your work stays on this phone until you have Wi-Fi or mobile data.';
   }
   if (network == FcNetworkType.wifi && !settings.syncOverWifi) {
-    return 'Wi-Fi sync is disabled. Enable it below or use allowed mobile data.';
+    return 'Sending over Wi-Fi is turned off. Turn it on, or use mobile data.';
   }
   if (network == FcNetworkType.mobile && !settings.syncOverMobileData) {
-    return 'Mobile data sync is disabled. Use Wi-Fi or enable mobile data below.';
+    return 'Sending over mobile data is turned off. Use Wi-Fi, or turn it on.';
   }
   return settings.mode == FcSyncMode.manualCommit
-      ? 'Manual Commit is selected. Choose Commit changes to upload queued work on this allowed connection.'
-      : 'Automatic sync is enabled on this connection. Queued work uploads when the sync service runs.';
+      ? 'Tap Send now to send your work on this connection.'
+      : 'Your work sends on its own on this connection.';
 }

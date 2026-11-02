@@ -45,80 +45,98 @@ class AppDialog extends StatelessWidget {
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 400),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: align,
-            children: [
-              if (icon != null) ...[
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: tone.withValues(alpha: .12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: ExcludeSemantics(
-                    child: Icon(icon, color: tone, size: 28),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              Semantics(
-                header: true,
-                child: Text(
-                  title,
-                  textAlign: centered ? TextAlign.center : TextAlign.start,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Content scrolls; the actions stay pinned so they are always reachable.
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: align,
+                  children: [
+                    if (icon != null) ...[
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: tone.withValues(alpha: .12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: ExcludeSemantics(
+                          child: Icon(icon, color: tone, size: 28),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        title,
+                        textAlign: centered
+                            ? TextAlign.center
+                            : TextAlign.start,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (message != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        message!,
+                        textAlign: centered
+                            ? TextAlign.center
+                            : TextAlign.start,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    if (child != null) ...[const SizedBox(height: 16), child!],
+                  ],
                 ),
               ),
-              if (message != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  message!,
-                  textAlign: centered ? TextAlign.center : TextAlign.start,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-              if (child != null) ...[const SizedBox(height: 16), child!],
-              const SizedBox(height: 24),
-              if (stackActions)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < actions.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 8),
-                      actions[i],
-                    ],
-                  ],
-                )
-              else if (centered)
-                Row(
-                  children: [
-                    for (var i = 0; i < actions.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 12),
-                      Expanded(child: actions[i]),
-                    ],
-                  ],
-                )
-              else
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.end,
-                    children: actions,
-                  ),
-                ),
-            ],
-          ),
+            ),
+            Padding(padding: const EdgeInsets.all(24), child: _actions()),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _actions() {
+    if (stackActions) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < actions.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            actions[i],
+          ],
+        ],
+      );
+    }
+    if (centered) {
+      return Row(
+        children: [
+          for (var i = 0; i < actions.length; i++) ...[
+            if (i > 0) const SizedBox(width: 12),
+            Expanded(child: actions[i]),
+          ],
+        ],
+      );
+    }
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.end,
+        children: actions,
       ),
     );
   }

@@ -63,7 +63,7 @@ class FcResponseUpdates extends StatelessWidget {
                 ),
               ),
               IconButton(
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                 onPressed: onDismiss,
                 tooltip: 'Dismiss response updates',
                 icon: const Icon(Icons.close),
@@ -71,7 +71,7 @@ class FcResponseUpdates extends StatelessWidget {
             ],
           ),
           Text(
-            'Some changes were merged, kept by the server, or sent for review. Open the task for its current instructions.',
+            'Some of your updates were combined with others, kept by the office, or sent for review. Open the job to see what to do next.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           ExpansionTile(

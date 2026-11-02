@@ -1,32 +1,37 @@
-import '../../providers/fc_investigation_provider.dart';
-import '../../providers/fc_task_detail_notifier.dart';
-import '../widgets/fc_investigation_card.dart';
-import '../widgets/cleanup_notes_dialog.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:ecopin_app/routes/app_routes.dart';
-import '../widgets/fc_pending_sync_badge.dart';
-import 'package:ecopin_app/shared/widgets/app_state_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:ecopin_app/core/database/app_database.dart';
-import 'package:ecopin_app/core/theme/colors.dart';
-import 'package:ecopin_app/core/theme/typography.dart';
-import 'package:ecopin_app/features/field_crew/providers/fc_report_detail_notifier.dart';
+import 'package:ecopin_app/features/field_crew/data/models/cleanup_task_model.dart';
 import 'package:ecopin_app/features/field_crew/providers/cleanup_task_detail_provider.dart';
-import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_report_metadata_card.dart';
-import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_photo_upload_section.dart';
-import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_lgu_notes_section.dart';
-import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_activity_log.dart';
-import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_report_action_buttons.dart';
-import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_shimmer_card.dart';
-import 'package:ecopin_app/features/field_crew/presentation/widgets/fc_conflict_summary.dart';
-import 'package:ecopin_app/features/field_crew/providers/fc_local_repository_provider.dart';
+import 'package:ecopin_app/features/field_crew/providers/cleanup_tasks_provider.dart';
+import 'package:ecopin_app/features/field_crew/providers/fc_report_detail_notifier.dart';
+import 'package:ecopin_app/features/field_crew/providers/fc_report_photo_slots_provider.dart';
 import 'package:ecopin_app/features/field_crew/providers/field_crew_reports_provider.dart';
 import 'package:ecopin_app/features/field_crew/sync/fc_sync_trigger.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ecopin_app/routes/app_routes.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
-import 'package:ecopin_app/features/field_crew/presentation/widgets/crew_urgency_form.dart';
+import 'package:ecopin_app/shared/widgets/app_state_view.dart';
+import '../../location/crew_investigation_session.dart';
+import '../../providers/fc_investigation_provider.dart';
+import '../../providers/fc_task_detail_notifier.dart';
+import '../controllers/fc_report_detail_presentation.dart';
+import '../controllers/fc_task_detail_presentation.dart';
+import '../widgets/cleanup_notes_dialog.dart';
+import '../widgets/crew_urgency_form.dart';
+import '../widgets/fc_activity_log.dart';
+import '../widgets/fc_conflict_summary.dart';
+import '../widgets/fc_lgu_notes_section.dart';
+import '../widgets/fc_offline_ui.dart';
+import '../widgets/fc_pending_sync_badge.dart';
+import '../widgets/fc_photo_upload_section.dart';
+import '../widgets/fc_report_action_bar.dart';
+import '../widgets/fc_report_header_card.dart';
+import '../widgets/fc_report_info_section.dart';
+import '../widgets/fc_report_steps_card.dart';
 
+/// Report details: where it is, the steps for this report (site visit, photos,
+/// acknowledge, complete) and a pinned action for the next one.
 class FieldCrewReportDetailScreen extends ConsumerWidget {
   final String reportId;
   final String? taskId;
@@ -44,578 +49,315 @@ class FieldCrewReportDetailScreen extends ConsumerWidget {
         ref.read(fcReportDetailNotifierProvider(reportId).notifier).refresh();
       }
     });
-    final detailState = ref.watch(fcReportDetailNotifierProvider(reportId));
-    final taskAsync = taskId != null
-        ? ref.watch(cleanupTaskDetailProvider(taskId!))
-        : null;
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? AppColors.textPrimaryDark : Colors.black87;
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Report Details',
-          style: AppTypography.h5.copyWith(
-            color: textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          if (detailState.report != null) FcPendingSyncBadge(entityId: reportId),
-        ],
-      ),
-      body: _buildBody(context, ref, detailState, taskAsync),
-    );
-  }
-
-  Widget _buildBody(
-    BuildContext context,
-    WidgetRef ref,
-    FcReportDetailState detailState,
-    AsyncValue? taskAsync,
-  ) {
-    if (detailState.isLoading && detailState.report == null) {
-      return const _ReportDetailSkeleton();
-    }
-
-    if (detailState.errorMessage != null && detailState.report == null) {
-      return AppStateView(
-        title: 'Could not load report',
-        message:
-            'It may not be available offline yet. Check your connection and try again.',
-        icon: Icons.cloud_off,
-        actionLabel: 'Retry',
-        onAction: () => ref
-            .read(fcReportDetailNotifierProvider(reportId).notifier)
-            .refresh(),
-      );
-    }
-
-    final report = detailState.report!;
-    final observationTask = taskAsync?.value;
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-
-    Widget? taskBanner;
-    bool isAssigned = currentUserId != null;
-
-    if (taskAsync != null) {
-      taskAsync.whenData((task) {
-        isAssigned =
-            currentUserId != null &&
-            task.assignedCrewIds.contains(currentUserId);
-        taskBanner = Container(
-          padding: const EdgeInsets.all(AppColors.spaceMD),
-          decoration: BoxDecoration(
-            color: AppColors.primaryDark.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(AppColors.radiusCard),
-            border: Border.all(
-              color: AppColors.primaryDark.withValues(alpha: 0.5),
-            ),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.link, color: AppColors.primaryDark),
-              const SizedBox(width: AppColors.spaceMD),
-              Expanded(
-                child: Text(
-                  'Part of Task: ${taskAsync.value?.title ?? ""}',
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.primaryDark,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      });
-    }
-
+    final state = ref.watch(fcReportDetailNotifierProvider(reportId));
     final notifier = ref.read(
       fcReportDetailNotifierProvider(reportId).notifier,
     );
+    final report = state.report;
+    final taskAsync = taskId != null
+        ? ref.watch(cleanupTaskDetailProvider(taskId!))
+        : null;
+    final task = taskAsync?.value;
+    final userId = ref.watch(fcCurrentUserIdProvider);
+    final isAssigned = task != null
+        ? userId != null && task.assignedCrewIds.contains(userId)
+        : userId != null;
+    final session = taskId != null && isAssigned
+        ? ref.watch(fcActiveInvestigationProvider(taskId!))
+        : null;
+    final slots = report == null
+        ? const FcReportPhotoSlots()
+        : ref.watch(fcReportPhotoSlotsProvider(reportId)).value ??
+              FcReportPhotoSlots.fromReport(report);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-
-    return RefreshIndicator(
-      onRefresh: () async => notifier.refresh(),
-      color: AppColors.primaryDark,
-      backgroundColor: cardColor,
-      child: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.all(AppColors.spaceLG),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (taskBanner != null) ...[
-                    taskBanner!,
-                    const SizedBox(height: AppColors.spaceLG),
-                  ],
-
-                  // Phase 5: conflict summary banner (auto-dismisses after 12 s)
-                  const FcConflictSummary(),
-
-                  if (taskId != null && isAssigned) ...[
-                    FcInvestigationCard(
-                      session: ref.watch(
-                        fcActiveInvestigationProvider(taskId!),
-                      ),
-                      reportId: reportId,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  // Metadata
-                  FcReportMetadataCard(report: report),
-                  if (isAssigned &&
-                      report.citizenPriority == 'urgent' &&
-                      observationTask != null &&
-                      currentUserId != null)
-                    CrewUrgencyForm(
-                      key: ValueKey(
-                        '$reportId:${observationTask.id}:${observationTask.assignmentGeneration}:${report.reportClaimGeneration}',
-                      ),
-                      canSubmit:
-                          report.cleanupTaskId == observationTask.id &&
-                          const [
-                            'created',
-                            'pending',
-                            'assigned',
-                            'en_route',
-                            'in_progress',
-                            'partially_completed',
-                          ].contains(observationTask.status) &&
-                          observationTask.routeStatus == 'ready',
-                      onSave: (result, conditions) =>
-                          notifier.addUrgencyObservation(
-                            taskId: observationTask.id,
-                            observerId: currentUserId,
-                            assignmentGeneration:
-                                observationTask.assignmentGeneration,
-                            reportClaimGeneration: report.reportClaimGeneration,
-                            result: result,
-                            conditions: conditions,
-                          ),
-                    ),
-                  const SizedBox(height: AppColors.spaceXL),
-
-                  // Photo Verification + Action Buttons right below Before & After photos
-                  _ReportPhotoSection(
-                    report: report,
-                    isAssigned: isAssigned,
-                    evidencePhotos: detailState.evidence,
-                    evidenceError: detailState.evidenceError,
-                    onViewOnMap: () => context.push(
-                      '${FieldCrewAppRoutes.map}?lat=${report.location.latitude}&lng=${report.location.longitude}',
-                    ),
-                    onStatusChange: (newStatus, hasBefore, hasAfter) async {
-                      String? completionNotes;
-                      if (const {
-                        'resolved',
-                        'completed',
-                        'closed',
-                      }.contains(newStatus.toLowerCase())) {
-                        try {
-                          if (taskId == null) {
-                            throw StateError(
-                              'Open the assigned task before recording completion.',
-                            );
-                          }
-                          ref
-                              .read(fcInvestigationProvider(taskId!))
-                              .requireIncident(reportId);
-                        } catch (error) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(error.toString())),
-                            );
-                          }
-                          return;
-                        }
-                      }
-                      if (newStatus.toLowerCase() == 'resolved') {
-                        final issueType = report.issueType?.toLowerCase() ?? '';
-                        final isScouting =
-                            issueType == 'scouting' ||
-                            issueType == 'acknowledge_only';
-                        if (!isScouting && (!hasBefore || !hasAfter)) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Before and after photos are required before completing cleanup.',
-                                ),
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
-                          }
-                          return;
-                        }
-                      }
-
-                      if (newStatus.toLowerCase() == 'resolved') {
-                        if (!context.mounted) return;
-                        completionNotes = await showCleanupNotesDialog(
-                          context,
-                          title: 'Complete cleanup',
-                          description:
-                              'Describe the work done. Before and After photos and action notes are checked during sync.',
-                        );
-                        if (completionNotes == null || !context.mounted) return;
-                      }
-                      if (newStatus == 'acknowledged') {
-                        await notifier.updateLifecycleStage('acknowledged');
-                      } else {
-                        await notifier.updateStatus(
-                          newStatus,
-                          notes: completionNotes,
-                        );
-                      }
-                      if (report.breachedAt != null &&
-                          (newStatus.toLowerCase() == 'resolved' ||
-                              newStatus.toLowerCase() == 'closed')) {
-                        if (context.mounted &&
-                            taskAsync != null &&
-                            taskAsync.value != null) {
-                          final task = taskAsync.value!;
-                          final currentIndex =
-                              task.reports?.indexWhere(
-                                (r) => r.id == report.id,
-                              ) ??
-                              -1;
-
-                          if (currentIndex != -1 && task.reports != null) {
-                            // Find next unresolved report
-                            try {
-                              final nextReport = task.reports!
-                                  .skip(currentIndex + 1)
-                                  .firstWhere(
-                                    (r) =>
-                                        r.status.toLowerCase() != 'resolved' &&
-                                        r.status.toLowerCase() != 'closed',
-                                  );
-                              context.pushReplacement(
-                                '/field-crew/tasks/${task.id}/reports/${nextReport.id}',
-                              );
-                            } catch (_) {
-                              // No next report found (all done or at end of list)
-                              context.pop();
-                            }
-                          } else {
-                            context.pop();
-                          }
-                        }
-                      }
-                    },
-                    onUpload: (file, type) async {
-                      try {
-                        final repo = ref.read(
-                          fieldCrewReportRepositoryProvider,
-                        );
-                        await repo.uploadReportPhoto(reportId, file, type);
-                        await notifier.refresh();
-                      } catch (e) {
-                        rethrow;
-                      }
-                    },
-                    onDelete: (slot, type) async {
-                      try {
-                        final repo = ref.read(
-                          fieldCrewReportRepositoryProvider,
-                        );
-                        await repo.deleteReportPhoto(
-                          reportId,
-                          type,
-                          photoId: slot.remoteId ?? slot.localPhotoId,
-                        );
-                        await notifier.refresh();
-                      } catch (e) {
-                        rethrow;
-                      }
-                    },
-                  ),
-                  const SizedBox(height: AppColors.spaceXL),
-
-                  // Notes input — local-first
-                  FcLguNotesSection(
-                    isAssigned: isAssigned,
-                    onSubmit: (note) async {
-                      await notifier.addNote(note);
-                    },
-                  ),
-                  const SizedBox(height: AppColors.spaceXL),
-
-                  // Activity log from local + remote state
-                  FcActivityLog(responses: detailState.notes),
-                  const SizedBox(height: AppColors.spaceXL),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Photo section — resolves FcLocalPhoto rows then renders FcPhotoUploadSection
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Queries [FcLocalPhotos] for local pending rows, then merges with the remote
-/// URL fallback from [ReportModel] to produce [FcPhotoSlot] objects.
-class _ReportPhotoSection extends ConsumerStatefulWidget {
-  final ReportModel report;
-  final bool isAssigned;
-  final List<dynamic> evidencePhotos;
-  final String? evidenceError;
-  final VoidCallback onViewOnMap;
-  final Future<void> Function(String newStatus, bool hasBefore, bool hasAfter)
-  onStatusChange;
-  final Future<void> Function(dynamic file, String type) onUpload;
-  final Future<void> Function(FcPhotoSlot slot, String type) onDelete;
-
-  const _ReportPhotoSection({
-    required this.report,
-    required this.isAssigned,
-    required this.evidencePhotos,
-    this.evidenceError,
-    required this.onViewOnMap,
-    required this.onStatusChange,
-    required this.onUpload,
-    required this.onDelete,
-  });
-
-  @override
-  ConsumerState<_ReportPhotoSection> createState() =>
-      _ReportPhotoSectionState();
-}
-
-class _ReportPhotoSectionState extends ConsumerState<_ReportPhotoSection> {
-  FcPhotoSlot? _beforeSlot;
-  List<FcPhotoSlot> _beforeSlots = [];
-  FcPhotoSlot? _afterSlot;
-  List<FcPhotoSlot> _afterSlots = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _resolveSlots();
-  }
-
-  @override
-  void didUpdateWidget(_ReportPhotoSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.report.beforePhotos != widget.report.beforePhotos ||
-        oldWidget.report.afterPhotos != widget.report.afterPhotos ||
-        oldWidget.report.beforePhotoUrl != widget.report.beforePhotoUrl ||
-        oldWidget.report.afterPhotoUrl != widget.report.afterPhotoUrl ||
-        oldWidget.report.status != widget.report.status ||
-        oldWidget.report.lifecycleStage != widget.report.lifecycleStage ||
-        oldWidget.report.id != widget.report.id) {
-      _resolveSlots();
+    Future<void> upload(File file, String type) async {
+      await ref
+          .read(fieldCrewReportRepositoryProvider)
+          .uploadReportPhoto(reportId, file, type);
+      await notifier.refresh();
+      ref.invalidate(fcReportPhotoSlotsProvider(reportId));
     }
-  }
 
-  Future<void> _resolveSlots() async {
-    final photoRepo = ref.read(fcLocalPhotoRepositoryProvider);
-    final allRows = await photoRepo.getPhotosForEntity(
-      widget.report.id,
-      'report',
-    );
-    final pendingDeletes = await photoRepo.getPendingDeletes();
-
-    List<FcPhotoSlot> buildSlotsForType(
-      String photoType,
-      List<Map<String, dynamic>> remoteCollection,
-      String? legacyUrl,
-    ) {
-      final rows = allRows.where((p) => p.photoType == photoType).toList();
-      final deletedIds = pendingDeletes
-          .where(
-            (p) =>
-                p.entityId == widget.report.id &&
-                p.entityType == 'report' &&
-                p.photoType == photoType,
-          )
-          .map((p) => p.remoteId ?? p.localPhotoId)
-          .toSet();
-      final slots = rows.map((p) => _buildSlot(p, null)!).toList();
-      final urls = slots.map((p) => p.remoteUrl).toSet();
-      for (final photo in remoteCollection) {
-        final url = photo['url'] as String?;
-        if (url != null && !deletedIds.contains(photo['id']) && urls.add(url)) {
-          slots.add(
-            FcPhotoSlot(remoteUrl: url, remoteId: photo['id'] as String?),
+    Future<void> delete(FcPhotoSlot slot, String type) async {
+      await ref
+          .read(fieldCrewReportRepositoryProvider)
+          .deleteReportPhoto(
+            reportId,
+            type,
+            photoId: slot.remoteId ?? slot.localPhotoId,
           );
+      await notifier.refresh();
+      ref.invalidate(fcReportPhotoSlotsProvider(reportId));
+    }
+
+    void say(String message) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    }
+
+    Future<void> change(String newStatus) async {
+      if (report == null) return;
+      final lower = newStatus.toLowerCase();
+      String? notes;
+      if (const {'resolved', 'completed', 'closed'}.contains(lower)) {
+        try {
+          if (taskId == null) {
+            throw StateError(
+              'Open this report from its job before completing it.',
+            );
+          }
+          ref.read(fcInvestigationProvider(taskId!)).requireIncident(reportId);
+        } catch (error) {
+          say(error is StateError ? error.message : 'Could not complete.');
+          return;
         }
       }
-      if (slots.isEmpty &&
-          remoteCollection.isEmpty &&
-          !deletedIds.contains('legacy') &&
-          legacyUrl?.isNotEmpty == true) {
-        slots.add(FcPhotoSlot(remoteUrl: legacyUrl, remoteId: 'legacy'));
+      if (lower == 'resolved') {
+        if (!crewReportIsScouting(report) &&
+            (!slots.hasBefore || !slots.hasAfter)) {
+          say('Before and After photos are needed before completing.');
+          return;
+        }
+        if (!context.mounted) return;
+        notes = await showCleanupNotesDialog(
+          context,
+          title: 'Complete report',
+          description:
+              'Describe the work done. Before and After photos and notes are checked when the report is sent.',
+        );
+        if (notes == null || !context.mounted) return;
       }
-      return slots;
+      if (newStatus == 'acknowledged') {
+        await notifier.updateLifecycleStage('acknowledged');
+      } else {
+        await notifier.updateStatus(newStatus, notes: notes);
+      }
+      say('Saved on this phone. It will send when you have signal.');
     }
 
-    final beforePhotos = buildSlotsForType(
-      'before',
-      widget.report.beforePhotos,
-      widget.report.beforePhotoUrl,
-    );
-    final afterPhotos = buildSlotsForType(
-      'after',
-      widget.report.afterPhotos,
-      widget.report.afterPhotoUrl,
-    );
+    final stage = report == null ? null : crewReportStage(report);
+    final next = reportsToHandle(
+      task?.reports ?? const <ReportModel>[],
+    ).where((r) => r.id != reportId).firstOrNull;
 
-    if (!mounted) return;
-    setState(() {
-      _beforeSlots = beforePhotos;
-      _beforeSlot = beforePhotos.isEmpty ? null : beforePhotos.first;
-      _afterSlots = afterPhotos;
-      _afterSlot = afterPhotos.isEmpty ? null : afterPhotos.first;
-    });
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Report details'),
+        actions: [if (report != null) FcPendingSyncBadge(entityId: reportId)],
+      ),
+      body: _body(
+        context,
+        ref,
+        state: state,
+        notifier: notifier,
+        task: task,
+        isAssigned: isAssigned,
+        userId: userId,
+        session: session,
+        slots: slots,
+        upload: upload,
+        delete: delete,
+      ),
+      bottomNavigationBar: report == null || !isAssigned || stage == null
+          ? null
+          : ListenableBuilder(
+              listenable: session ?? Listenable.merge(const []),
+              builder: (context, _) => FcReportActionBar(
+                stage: stage,
+                hint: crewReportAcknowledgeHint(
+                  scouting: crewReportIsScouting(report),
+                  hasBefore: slots.hasBefore,
+                ),
+                blocker: reportCompletionBlocker(
+                  report: report,
+                  slots: slots,
+                  session: session,
+                ),
+                onStatusChange: change,
+                onOpenNext: taskId != null && next != null
+                    ? () => context.pushReplacement(
+                        '/field-crew/tasks/${Uri.encodeComponent(taskId!)}/reports/${Uri.encodeComponent(next.id)}',
+                      )
+                    : null,
+                onBackToJob: taskId != null ? context.pop : null,
+              ),
+            ),
+    );
   }
 
-  /// Merges a local DB row with the remote URL fallback from [ReportModel].
-  FcPhotoSlot? _buildSlot(FcLocalPhoto? localRow, String? remoteUrl) {
-    if (localRow != null) {
-      return FcPhotoSlot(
-        localPhotoId: localRow.localPhotoId,
-        remoteId: localRow.remoteId,
-        localPath: localRow.localPath,
-        remoteUrl: localRow.remoteUrl,
-        syncStatus: localRow.syncStatus,
+  Widget _body(
+    BuildContext context,
+    WidgetRef ref, {
+    required FcReportDetailState state,
+    required FcReportDetailNotifier notifier,
+    required CleanupTask? task,
+    required bool isAssigned,
+    required String? userId,
+    required CrewInvestigationSession? session,
+    required FcReportPhotoSlots slots,
+    required Future<void> Function(File, String) upload,
+    required Future<void> Function(FcPhotoSlot, String) delete,
+  }) {
+    if (state.isLoading && state.report == null) {
+      return const Align(
+        alignment: Alignment.topCenter,
+        child: LinearProgressIndicator(semanticsLabel: 'Loading the report'),
       );
     }
-    if (remoteUrl != null && remoteUrl.isNotEmpty) {
-      return FcPhotoSlot(remoteUrl: remoteUrl);
+    if (state.errorMessage != null && state.report == null) {
+      return AppStateView(
+        title: 'Report could not load',
+        message:
+            'It may not be saved on this phone yet. Check your signal and try again.',
+        icon: Icons.cloud_off,
+        actionLabel: 'Reload report',
+        onAction: notifier.refresh,
+      );
     }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final currentStatus = widget.report.status.toLowerCase();
-    final bool isTerminal = const {
-      'resolved',
-      'completed',
-      'closed',
-      'rejected',
-      'waiting_for_feedback',
-    }.contains(currentStatus);
-
-    final bool isAcknowledged = ![
-      'unresolved',
-      'submitted',
-      'pending',
-    ].contains(currentStatus);
-
-    final currentLifecycle = widget.report.lifecycleStage?.toLowerCase();
-    final bool isLifecycleAcknowledged =
-        currentLifecycle != null &&
-        ![
-          'new',
-          'pending',
-          'under_review',
-          'submitted',
-        ].contains(currentLifecycle);
-
-    final bool effectivelyAcknowledged =
-        isAcknowledged || isLifecycleAcknowledged;
-
-    // Allow uploading Before photos before or after acknowledging (until completed/terminal).
-    final bool isBeforeEnabled = !isTerminal;
-    // Allow uploading After photos once acknowledged (until completed/terminal).
-    final bool isAfterEnabled = effectivelyAcknowledged && !isTerminal;
-
-    final bool hasBefore =
-        _beforeSlots.isNotEmpty ||
-        widget.report.beforePhotos.isNotEmpty ||
-        (widget.report.beforePhotoUrl != null &&
-            widget.report.beforePhotoUrl!.isNotEmpty);
-    final bool hasAfter =
-        _afterSlots.isNotEmpty ||
-        widget.report.afterPhotos.isNotEmpty ||
-        (widget.report.afterPhotoUrl != null &&
-            widget.report.afterPhotoUrl!.isNotEmpty);
-
-    return FcPhotoUploadSection(
-      evidencePhotos: widget.evidencePhotos,
-      evidenceError: widget.evidenceError,
-      beforeSlot: _beforeSlot,
-      beforeSlots: _beforeSlots,
-      afterSlot: _afterSlot,
-      afterSlots: _afterSlots,
-      isAssigned: widget.isAssigned,
-      isBeforeEnabled: isBeforeEnabled,
-      isAfterEnabled: isAfterEnabled,
-      actionSection: FcReportActionButtons(
-        report: widget.report,
-        isAssigned: widget.isAssigned,
-        hasBeforePhoto: hasBefore,
-        hasAfterPhoto: hasAfter,
-        onViewOnMap: widget.onViewOnMap,
-        onStatusChange: (newStatus) =>
-            widget.onStatusChange(newStatus, hasBefore, hasAfter),
+    final report = state.report!;
+    final rules = crewReportPhotoRules(report);
+    final items = <Widget>[
+      if (state.isLoading)
+        const LinearProgressIndicator(semanticsLabel: 'Refreshing the report'),
+      const FcConflictSummary(),
+      if (state.errorMessage != null)
+        FcOfflineNotice(
+          error: true,
+          message: state.errorMessage!,
+          action: TextButton(
+            onPressed: state.isLoading ? null : notifier.refresh,
+            child: const Text('Refresh report'),
+          ),
+        ),
+      if (taskId != null && task != null && !isAssigned)
+        const FcOfflineNotice(
+          message: 'View only. This job is assigned to other crew members.',
+        ),
+      FcReportHeaderCard(
+        report: report,
+        jobTitle: task?.title,
+        onOpenJob: taskId != null ? context.pop : null,
+        onShowOnMap: () => context.push(
+          '${FieldCrewAppRoutes.map}?lat=${report.location.latitude}&lng=${report.location.longitude}',
+        ),
       ),
-      onUpload: (file, type) async {
-        await widget.onUpload(file, type);
-        await _resolveSlots();
+      if (isAssigned)
+        FcReportStepsCard(
+          report: report,
+          slots: slots,
+          session: session,
+          onUpload: upload,
+          onDelete: delete,
+        )
+      else if (slots.before.isNotEmpty || slots.after.isNotEmpty)
+        _ReadOnlyPhotos(slots: slots, rules: rules),
+      if (isAssigned &&
+          report.citizenPriority == 'urgent' &&
+          task != null &&
+          userId != null)
+        CrewUrgencyForm(
+          key: ValueKey(
+            '$reportId:${task.id}:${task.assignmentGeneration}:${report.reportClaimGeneration}',
+          ),
+          canSubmit:
+              report.cleanupTaskId == task.id &&
+              const [
+                'created',
+                'pending',
+                'assigned',
+                'en_route',
+                'in_progress',
+                'partially_completed',
+              ].contains(task.status) &&
+              task.routeStatus == 'ready',
+          onSave: (result, conditions) => notifier.addUrgencyObservation(
+            taskId: task.id,
+            observerId: userId,
+            assignmentGeneration: task.assignmentGeneration,
+            reportClaimGeneration: report.reportClaimGeneration,
+            result: result,
+            conditions: conditions,
+          ),
+        ),
+      FcReportInfoSection(report: report),
+      FcCitizenEvidenceSection(
+        evidencePhotos: state.evidence,
+        evidenceError: state.evidenceError,
+      ),
+      FcLguNotesSection(
+        isAssigned: isAssigned,
+        onSubmit: (note) async => notifier.addNote(note),
+      ),
+      FcActivityLog(responses: state.notes, currentUserId: userId),
+    ];
+    return RefreshIndicator(
+      onRefresh: () async {
+        await notifier.refresh();
+        ref.invalidate(fcReportPhotoSlotsProvider(reportId));
       },
-      onDelete: (slot, type) async {
-        await widget.onDelete(slot, type);
-        await _resolveSlots();
-      },
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (_, index) => items[index],
+      ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Pending sync badge
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Small AppBar chip showing sync status.
-// ─────────────────────────────────────────────────────────────────────────────
-// Loading skeleton
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ReportDetailSkeleton extends StatelessWidget {
-  const _ReportDetailSkeleton();
+/// Photos for someone who is not assigned: viewable, never editable.
+class _ReadOnlyPhotos extends StatelessWidget {
+  const _ReadOnlyPhotos({required this.slots, required this.rules});
+  final FcReportPhotoSlots slots;
+  final ({bool before, bool after}) rules;
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.all(AppColors.spaceLG),
-          sliver: SliverToBoxAdapter(
-            child: Column(
-              children: const [
-                FcShimmerCard(height: 80),
-                SizedBox(height: AppColors.spaceLG),
-                FcShimmerCard(height: 180),
-                SizedBox(height: AppColors.spaceLG),
-                FcShimmerCard(height: 100),
-                SizedBox(height: AppColors.spaceXL),
-                FcShimmerCard(height: 250),
-              ],
+    final theme = Theme.of(context);
+    Widget group(String title, String type, List<FcPhotoSlot> photos) {
+      if (photos.isEmpty) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$title · ${photos.length} of ${FcPhotoStrip.maxPhotos}',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          FcPhotoStrip(
+            type: type,
+            slots: photos,
+            isAssigned: false,
+            isEnabled: false,
+            onUpload: (_, _) async {},
+            onDelete: (_, _) async {},
+          ),
+        ],
+      );
+    }
+
+    return FcOfflineCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text('Photos', style: theme.textTheme.titleMedium),
+          ),
+          const SizedBox(height: 12),
+          group('Before photos', 'before', slots.before),
+          if (slots.before.isNotEmpty && slots.after.isNotEmpty)
+            const SizedBox(height: 16),
+          group('After photos', 'after', slots.after),
+        ],
+      ),
     );
   }
 }

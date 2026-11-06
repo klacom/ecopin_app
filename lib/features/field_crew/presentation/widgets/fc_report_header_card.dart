@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_priority_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
@@ -36,7 +37,14 @@ class FcReportHeaderCard extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: StatusBadge(status: report.status),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                StatusBadge(status: report.status),
+                ReportPriorityBadge(priority: report.citizenPriority),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Semantics(

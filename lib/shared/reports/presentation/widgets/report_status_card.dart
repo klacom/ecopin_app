@@ -1,3 +1,4 @@
+import 'package:ecopin_app/shared/reports/presentation/widgets/report_priority_badge.dart';
 import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/shared/reports/data/models/report_model.dart';
 import 'package:ecopin_app/shared/reports/presentation/response_deadline.dart';
@@ -146,7 +147,14 @@ class ReportStatusCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Align(alignment: Alignment.centerLeft, child: badge),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          badge,
+                          ReportPriorityBadge(priority: report.citizenPriority),
+                        ],
+                      ),
                       const SizedBox(height: 6),
                       Text(sentence, style: theme.textTheme.bodyMedium),
                       if (targetLine != null) ...[

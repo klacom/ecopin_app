@@ -1,3 +1,4 @@
+import '../report_priority_badge.dart';
 import 'package:ecopin_app/core/theme/app_theme.dart';
 import 'package:ecopin_app/core/theme/colors.dart';
 import 'package:ecopin_app/core/utils/csat_rating_scale.dart';
@@ -180,11 +181,7 @@ class _ReportDetailsBodyState extends ConsumerState<ReportDetailsBody> {
   List<Widget> _reportContent(TextStyle small) {
     final report = widget.report;
     final colors = Theme.of(context).extension<AppStatusColors>()!;
-    final priority = switch (report.citizenPriority?.trim().toLowerCase()) {
-      'non_urgent' => 'Non-urgent',
-      'urgent' => 'Urgent',
-      _ => 'Not specified',
-    };
+    final priority = citizenPriorityLabel(report.citizenPriority);
     return [
       if (_rejected) ...[
         _panel('Review note', [
